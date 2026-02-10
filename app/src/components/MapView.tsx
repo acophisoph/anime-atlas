@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MouseEvent, WheelEvent } from 'react';
 
 type ViewState = { x: number; y: number; scale: number; dragging: boolean; startX: number; startY: number };
@@ -22,45 +22,17 @@ function clamp(v: number, min: number, max: number): number {
 
 export function MapView({ points, onClick, onHover, getFillColor, edges = [], viewKey, defaultScale }: MapViewProps) {
   const [view, setView] = useState<ViewState>({ x: 0, y: 0, scale: defaultScale ?? 1, dragging: false, startX: 0, startY: 0 });
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const dragDistanceRef = useRef(0);
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const transform = useMemo(() => `translate(${view.x}, ${view.y}) scale(${view.scale})`, [view.x, view.y, view.scale]);
 
   useEffect(() => {
     setView((prev) => ({ ...prev, x: 0, y: 0, scale: defaultScale ?? 1, dragging: false }));
+    setHoveredId(null);
+    onHover?.({ object: null });
   }, [viewKey, defaultScale]);
-
-  const transform = useMemo(() => `translate(${view.x}, ${view.y}) scale(${view.scale})`, [view.x, view.y, view.scale]);
-
-  const nearest = (clientX: number, clientY: number): Point | null => {
-    if (!svgRef.current || !points.length) return null;
-    const rect = svgRef.current.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-
-    const sx = ((clientX - rect.left) / rect.width) * 2 - 1;
-    const sy = ((clientY - rect.top) / rect.height) * 2 - 1;
-    const worldX = (sx - view.x) / view.scale;
-    const worldY = (sy - view.y) / view.scale;
-
-    const worldThreshold = ((22 / rect.width) * 2) / view.scale;
-    const maxDist2 = worldThreshold * worldThreshold;
-    let best: Point | null = null;
-    let bestD2 = maxDist2;
-
-    for (const p of points) {
-      const dx = p.x - worldX;
-      const dy = p.y - worldY;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < bestD2) {
-        bestD2 = d2;
-        best = p;
-      }
-    }
-    return best;
-  };
 
   return (
     <svg
-      ref={svgRef}
       viewBox="-1 -1 2 2"
       style={{ width: '100%', height: '100%', background: '#0f1117', cursor: view.dragging ? 'grabbing' : 'grab' }}
       onWheel={(e: WheelEvent<SVGSVGElement>) => {
@@ -70,28 +42,26 @@ export function MapView({ points, onClick, onHover, getFillColor, edges = [], vi
       }}
       onDoubleClick={() => setView((prev) => ({ ...prev, scale: clamp(prev.scale * 1.35, 0.16, 24) }))}
       onMouseDown={(e: MouseEvent<SVGSVGElement>) => {
-        dragDistanceRef.current = 0;
         setView((prev) => ({ ...prev, dragging: true, startX: e.clientX, startY: e.clientY }));
       }}
       onMouseMove={(e: MouseEvent<SVGSVGElement>) => {
         if (!view.dragging) {
-          onHover?.({ object: nearest(e.clientX, e.clientY) });
+          if (hoveredId !== null && e.target === e.currentTarget) {
+            setHoveredId(null);
+            onHover?.({ object: null });
+          }
           return;
         }
         const dxPx = e.clientX - view.startX;
         const dyPx = e.clientY - view.startY;
-        dragDistanceRef.current += Math.abs(dxPx) + Math.abs(dyPx);
         const dx = dxPx / 380;
         const dy = dyPx / 380;
         setView((prev) => ({ ...prev, x: prev.x + dx, y: prev.y + dy, startX: e.clientX, startY: e.clientY }));
       }}
-      onMouseUp={(e: MouseEvent<SVGSVGElement>) => {
-        const moved = dragDistanceRef.current > 4;
-        setView((prev) => ({ ...prev, dragging: false }));
-        if (!moved) onClick?.({ object: nearest(e.clientX, e.clientY) });
-      }}
+      onMouseUp={() => setView((prev) => ({ ...prev, dragging: false }))}
       onMouseLeave={() => {
         setView((prev) => ({ ...prev, dragging: false }));
+        setHoveredId(null);
         onHover?.({ object: null });
       }}
     >
@@ -110,9 +80,31 @@ export function MapView({ points, onClick, onHover, getFillColor, edges = [], vi
             />
           ))}
         {points.map((p: Point) => {
-          const visibleRadius = clamp(0.0024, 0.0068 / Math.sqrt(view.scale), 0.0068);
+          const visibleRadius = clamp(0.0023, 0.0068 / Math.sqrt(view.scale), 0.0068);
+          const hitRadius = Math.max(visibleRadius * 1.22, 0.0028);
           const fill = getFillColor ? getFillColor(p) : p.type === 0 ? '#66a3ff' : '#ff8080';
-          return <circle key={p.id} cx={p.x} cy={p.y} r={visibleRadius} fill={fill} pointerEvents="none" />;
+          return (
+            <g key={p.id}>
+              <circle cx={p.x} cy={p.y} r={visibleRadius} fill={fill} pointerEvents="none" />
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={hitRadius}
+                fill="transparent"
+                onMouseEnter={() => {
+                  if (hoveredId === p.id) return;
+                  setHoveredId(p.id);
+                  onHover?.({ object: p });
+                }}
+                onMouseLeave={() => {
+                  if (hoveredId !== p.id) return;
+                  setHoveredId(null);
+                  onHover?.({ object: null });
+                }}
+                onClick={() => onClick?.({ object: p })}
+              />
+            </g>
+          );
         })}
       </g>
     </svg>

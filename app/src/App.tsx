@@ -54,6 +54,39 @@ function personDisplayName(person: any, fallbackId?: number): string {
   return fallbackId ? `Person ${fallbackId}` : 'Unknown person';
 }
 
+
+function applyGridSeparation<T extends { id: number; x: number; y: number }>(pts: T[], minGap: number): T[] {
+  if (!pts.length) return [];
+  const cell = Math.max(1e-4, minGap);
+  const buckets = new Map<string, T[]>();
+  for (const p of pts) {
+    const ix = Math.round(p.x / cell);
+    const iy = Math.round(p.y / cell);
+    const key = `${ix}:${iy}`;
+    const arr = buckets.get(key) ?? [];
+    arr.push(p);
+    buckets.set(key, arr);
+  }
+
+  const out: T[] = [];
+  for (const arr of buckets.values()) {
+    if (arr.length === 1) {
+      out.push(arr[0]);
+      continue;
+    }
+    const cx = arr.reduce((acc, p) => acc + p.x, 0) / arr.length;
+    const cy = arr.reduce((acc, p) => acc + p.y, 0) / arr.length;
+    arr
+      .sort((a, b) => a.id - b.id)
+      .forEach((p, i) => {
+        const angle = i * 2.399963229728653;
+        const r = minGap * (0.4 + Math.sqrt(i + 1) * 0.9);
+        out.push({ ...p, x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+      });
+  }
+  return out;
+}
+
 function normalizePoints<T extends { x: number; y: number }>(pts: T[], targetHalfSpan = 0.84): T[] {
   if (!pts.length) return [];
   let minX = Infinity;
@@ -326,7 +359,10 @@ export default function App() {
       };
     });
 
-    return normalizePoints(lightlySeparated, 0.86);
+    const normalized = normalizePoints(lightlySeparated, 0.86);
+    const minGap = clamp(0.022 / Math.sqrt(Math.max(1, normalized.length) / 200), 0.0016, 0.022);
+    const separated = applyGridSeparation(normalized, minGap);
+    return normalizePoints(separated, 0.86);
   }, [filteredMediaPoints]);
 
   const displayedMediaPointById = useMemo(() => Object.fromEntries(displayedMediaPoints.map((p) => [p.id, p])), [displayedMediaPoints]);
@@ -342,7 +378,7 @@ export default function App() {
 
   const displayedPeoplePoints = useMemo(() => {
     if (!filteredPeoplePoints.length) return [];
-    return filteredPeoplePoints.map((p: any, idx: number) => {
+    const base = filteredPeoplePoints.map((p: any, idx: number) => {
       const j = hash01((p.id + idx) * 29.77);
       const baseScale = selectedNeighborhoodMap ? 1.16 : 1.38;
       return {
@@ -351,6 +387,8 @@ export default function App() {
         y: p.y * baseScale + Math.sin(j * Math.PI * 2) * 0.008
       };
     });
+    const minGap = clamp(0.02 / Math.sqrt(Math.max(1, base.length) / 250), 0.0014, 0.02);
+    return applyGridSeparation(base, minGap);
   }, [filteredPeoplePoints, selectedNeighborhoodMap]);
 
   const peoplePointById = useMemo(() => Object.fromEntries(displayedPeoplePoints.map((p) => [p.id, p])), [displayedPeoplePoints]);
