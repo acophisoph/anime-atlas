@@ -30,6 +30,8 @@ const STUDIO_COLORS: Record<string, string> = {
   Unaffiliated: '#94a3b8'
 };
 
+const HOP_COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'];
+
 export default function App() {
   const [lang, setLang] = useState<Lang>('en');
   const [scope, setScope] = useState<Scope>('BOTH');
@@ -37,7 +39,7 @@ export default function App() {
   const [peopleColorBy, setPeopleColorBy] = useState<'role' | 'studio'>('role');
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [studioFilter, setStudioFilter] = useState<string[]>([]);
-  const [peopleDepth, setPeopleDepth] = useState<1 | 2>(1);
+  const [peopleDepth, setPeopleDepth] = useState<number>(1);
 
   const [points, setPoints] = useState<any[]>([]);
   const [media, setMedia] = useState<any[]>([]);
@@ -73,6 +75,7 @@ export default function App() {
   const mediaById = useMemo(() => Object.fromEntries(media.map((m) => [m.id, m])), [media]);
   const peopleById = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
   const charactersById = useMemo(() => Object.fromEntries(characters.map((c) => [c.id, c])), [characters]);
+  const mediaPointById = useMemo(() => Object.fromEntries(points.map((p) => [p.id, p])), [points]);
   const availableTags = useMemo(() => Object.keys(tagToMedia).sort(), [tagToMedia]);
 
   const personStats = useMemo(() => {
@@ -95,32 +98,6 @@ export default function App() {
     return out;
   }, [media]);
 
-  const peoplePoints = useMemo(() => {
-    const sorted = [...people].sort((a, b) => a.id - b.id);
-    const degree = new Map<number, number>();
-    for (const [a, b, w] of collab) {
-      degree.set(a, (degree.get(a) ?? 0) + w);
-      degree.set(b, (degree.get(b) ?? 0) + w);
-    }
-    return sorted.map((p, i) => {
-      const angle = (i / Math.max(sorted.length, 1)) * Math.PI * 2;
-      const radius = 0.7 - Math.min(0.4, ((degree.get(p.id) ?? 1) / 20) * 0.4);
-      const stat = personStats[p.id] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
-      return {
-        id: p.id,
-        type: 2,
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-        role: stat.primaryRole,
-        studioCategory: stat.studioCategory
-      };
-    });
-  }, [people, collab, personStats]);
-
-  const roleCategories = useMemo(() => Object.keys(ROLE_COLORS), []);
-  const studioCategories = useMemo(() => Object.keys(STUDIO_COLORS), []);
-
-
   const personAdjacency = useMemo(() => {
     const adj = new Map<number, Array<[number, number]>>();
     for (const [a, b, w] of collab) {
@@ -130,20 +107,61 @@ export default function App() {
     return adj;
   }, [collab]);
 
-  const selectedNeighborhood = useMemo(() => {
+  const selectedNeighborhoodMap = useMemo(() => {
     if (atlasMode !== 'people' || !selectedPersonId) return null;
-    const reached = new Set<number>([selectedPersonId]);
+    const depthMap = new Map<number, number>([[selectedPersonId, 0]]);
     let frontier = new Set<number>([selectedPersonId]);
-    for (let d = 0; d < peopleDepth; d += 1) {
+    for (let d = 1; d <= peopleDepth; d += 1) {
       const next = new Set<number>();
       for (const pid of frontier) {
-        for (const [nid] of personAdjacency.get(pid) ?? []) if (!reached.has(nid)) next.add(nid);
+        for (const [nid] of personAdjacency.get(pid) ?? []) {
+          if (!depthMap.has(nid)) {
+            depthMap.set(nid, d);
+            next.add(nid);
+          }
+        }
       }
-      for (const n of next) reached.add(n);
       frontier = next;
+      if (!frontier.size) break;
     }
-    return reached;
+    return depthMap;
   }, [atlasMode, selectedPersonId, peopleDepth, personAdjacency]);
+
+  const peoplePoints = useMemo(() => {
+    const sorted = [...people].sort((a, b) => a.id - b.id);
+    const degree = new Map<number, number>();
+    for (const [a, b, w] of collab) {
+      degree.set(a, (degree.get(a) ?? 0) + w);
+      degree.set(b, (degree.get(b) ?? 0) + w);
+    }
+
+    if (selectedNeighborhoodMap && selectedPersonId) {
+      const seeded = sorted.filter((p) => selectedNeighborhoodMap.has(p.id));
+      return seeded.map((p, i) => {
+        const hop = selectedNeighborhoodMap.get(p.id) ?? 0;
+        const peers = seeded.filter((x) => (selectedNeighborhoodMap.get(x.id) ?? 0) === hop);
+        const idx = peers.findIndex((x) => x.id === p.id);
+        const angle = ((idx < 0 ? i : idx) / Math.max(peers.length, 1)) * Math.PI * 2;
+        const baseRadius = hop === 0 ? 0 : Math.min(0.9, hop * 0.16);
+        const radius = baseRadius + ((degree.get(p.id) ?? 1) % 3) * 0.01;
+        const stat = personStats[p.id] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
+        return { id: p.id, type: 2, x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, role: stat.primaryRole, studioCategory: stat.studioCategory, hop };
+      });
+    }
+
+    return sorted.map((p, i) => {
+      const angle = (i / Math.max(sorted.length, 1)) * Math.PI * 2;
+      const radius = 0.7 - Math.min(0.4, ((degree.get(p.id) ?? 1) / 20) * 0.4);
+      const stat = personStats[p.id] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
+      return { id: p.id, type: 2, x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, role: stat.primaryRole, studioCategory: stat.studioCategory, hop: 0 };
+    });
+  }, [people, collab, personStats, selectedNeighborhoodMap, selectedPersonId]);
+
+  const peoplePointById = useMemo(() => Object.fromEntries(peoplePoints.map((p) => [p.id, p])), [peoplePoints]);
+
+  const roleCategories = useMemo(() => Object.keys(ROLE_COLORS), []);
+  const studioCategories = useMemo(() => Object.keys(STUDIO_COLORS), []);
+
   const filteredIds = useMemo(() => {
     const scoped = media.filter((m) => scope === 'BOTH' || m.type === scope).map((m) => m.id);
     if (!selectedTags.length) return scoped;
@@ -154,14 +172,37 @@ export default function App() {
   const filteredPeoplePoints = peoplePoints.filter((p) => {
     const roleOk = roleFilter.length ? roleFilter.includes(p.role) : true;
     const studioOk = studioFilter.length ? studioFilter.includes(p.studioCategory) : true;
-    const neighborhoodOk = selectedNeighborhood ? selectedNeighborhood.has(p.id) : true;
+    const neighborhoodOk = selectedNeighborhoodMap ? selectedNeighborhoodMap.has(p.id) : true;
     return roleOk && studioOk && neighborhoodOk;
   });
 
-  const results = query
-    ? media.filter((m) => localizeTitle(m.title, lang).toLowerCase().includes(query.toLowerCase())).slice(0, 10)
-    : [];
+  const peopleEdges = useMemo(() => {
+    if (atlasMode !== 'people' || !selectedNeighborhoodMap) return [];
+    return collab
+      .filter(([a, b]) => selectedNeighborhoodMap.has(a) && selectedNeighborhoodMap.has(b))
+      .map(([a, b, w]) => {
+        const pa = peoplePointById[a];
+        const pb = peoplePointById[b];
+        if (!pa || !pb) return null;
+        const hop = Math.max(selectedNeighborhoodMap.get(a) ?? 0, selectedNeighborhoodMap.get(b) ?? 0);
+        return { from: pa, to: pb, width: Math.min(8, 1 + w), color: HOP_COLORS[Math.max(0, hop - 1)] ?? '#64748b' };
+      })
+      .filter(Boolean) as any[];
+  }, [atlasMode, selectedNeighborhoodMap, collab, peoplePointById]);
 
+  const mediaEdges = useMemo(() => {
+    if (atlasMode !== 'media' || !selected) return [];
+    return (selected.relations ?? [])
+      .map((r: any) => {
+        const to = mediaPointById[r.id];
+        const from = mediaPointById[selected.id];
+        if (!to || !from) return null;
+        return { from, to, width: 2, color: '#64748b' };
+      })
+      .filter(Boolean) as any[];
+  }, [atlasMode, selected, mediaPointById]);
+
+  const results = query ? media.filter((m) => localizeTitle(m.title, lang).toLowerCase().includes(query.toLowerCase())).slice(0, 10) : [];
   const selectedPerson = selectedPersonId ? peopleById[selectedPersonId] : null;
 
   if (!points.length || !media.length) return <Loading />;
@@ -175,13 +216,7 @@ export default function App() {
           <ul>
             {results.map((m) => (
               <li key={m.id}>
-                <button
-                  onClick={() => {
-                    setSelected(m);
-                    setSelectedPersonId(null);
-                    setAtlasMode('media');
-                  }}
-                >
+                <button onClick={() => { setSelected(m); setSelectedPersonId(null); setAtlasMode('media'); }}>
                   {localizeTitle(m.title, lang)} <small>[{m.type}] {m.year || ''}</small>
                 </button>
               </li>
@@ -191,18 +226,8 @@ export default function App() {
           {atlasMode === 'media' ? (
             <>
               <Filters tags={availableTags} selectedTags={selectedTags} setSelectedTags={setSelectedTags} />
-              <TalentFinder
-                roleToPeople={roleToPeople}
-                tagRoleToPeople={tagRoleToPeople}
-                peopleById={peopleById}
-                media={media}
-                onOpenPerson={(id: number) => {
-                  setSelectedPersonId(id);
-                  setSelected(null);
-                  setAtlasMode('people');
-                }}
-              />
-              <NetworkGraph selectedMedia={selected} selectedPersonId={selectedPersonId} depth={peopleDepth} edges={collab} peopleById={peopleById} />
+              <TalentFinder roleToPeople={roleToPeople} tagRoleToPeople={tagRoleToPeople} peopleById={peopleById} media={media} onOpenPerson={(id: number) => { setSelectedPersonId(id); setSelected(null); setAtlasMode('people'); }} />
+              <NetworkGraph selectedMedia={selected} selectedPersonId={selectedPersonId} depth={peopleDepth} edges={collab} peopleById={peopleById} mediaById={mediaById} relationLookup={relationLookup} lang={lang} />
             </>
           ) : (
             <div>
@@ -215,41 +240,28 @@ export default function App() {
                 </select>
               </label>
               <label style={{ marginLeft: 8 }}>
-                Depth:{' '}
-                <select value={peopleDepth} onChange={(e) => setPeopleDepth(Number(e.target.value) as 1 | 2)}>
-                  <option value={1}>1-hop</option>
-                  <option value={2}>2-hop</option>
+                Hops:{' '}
+                <select value={peopleDepth} onChange={(e) => setPeopleDepth(Number(e.target.value))}>
+                  {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </label>
-              {selectedPersonId && <div><small>Focused around selected person id {selectedPersonId}</small></div>}
+              {selectedPersonId && (
+                <div>
+                  <small>Focused around selected person id {selectedPersonId}</small>{' '}
+                  <button onClick={() => setSelectedPersonId(null)}>Reset to global staff atlas</button>
+                </div>
+              )}
+              <div style={{ marginTop: 8 }}><strong>Hop line colors:</strong>{HOP_COLORS.map((c, i) => <div key={c}><span style={{display:'inline-block',width:10,height:10,background:c,marginRight:6}} />Hop {i+1}</div>)}</div>
               <div style={{ marginTop: 8 }}>
                 <strong>Role filters</strong>
                 {roleCategories.map((r) => (
-                  <label key={r} style={{ display: 'block' }}>
-                    <input
-                      type="checkbox"
-                      checked={roleFilter.includes(r)}
-                      onChange={(e) =>
-                        setRoleFilter((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))
-                      }
-                    />
-                    {r}
-                  </label>
+                  <label key={r} style={{ display: 'block' }}><input type="checkbox" checked={roleFilter.includes(r)} onChange={(e) => setRoleFilter((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))} />{r}</label>
                 ))}
               </div>
               <div style={{ marginTop: 8 }}>
                 <strong>Studio filters</strong>
                 {studioCategories.map((s) => (
-                  <label key={s} style={{ display: 'block' }}>
-                    <input
-                      type="checkbox"
-                      checked={studioFilter.includes(s)}
-                      onChange={(e) =>
-                        setStudioFilter((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))
-                      }
-                    />
-                    {s}
-                  </label>
+                  <label key={s} style={{ display: 'block' }}><input type="checkbox" checked={studioFilter.includes(s)} onChange={(e) => setStudioFilter((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))} />{s}</label>
                 ))}
               </div>
             </div>
@@ -258,34 +270,21 @@ export default function App() {
 
         <MapView
           points={atlasMode === 'media' ? filteredMediaPoints : filteredPeoplePoints}
+          edges={atlasMode === 'media' ? mediaEdges : peopleEdges}
           getFillColor={(p: any) => {
             if (atlasMode === 'media') return p.type === 0 ? '#66a3ff' : '#ff8080';
             return peopleColorBy === 'role' ? ROLE_COLORS[p.role] ?? ROLE_COLORS.Other : STUDIO_COLORS[p.studioCategory] ?? STUDIO_COLORS.Unaffiliated;
           }}
           onHover={() => {}}
           onClick={(info: any) => {
-            if (atlasMode === 'media') {
-              setSelected(mediaById[info.object?.id]);
-              setSelectedPersonId(null);
-            } else {
-              setSelectedPersonId(info.object?.id ?? null);
-              setSelected(null);
-            }
+            if (atlasMode === 'media') { setSelected(mediaById[info.object?.id]); setSelectedPersonId(null); }
+            else { setSelectedPersonId(info.object?.id ?? null); setSelected(null); }
           }}
         />
 
         {selectedPerson ? (
           <aside style={{ padding: 10, borderLeft: '1px solid #333', overflow: 'auto' }}>
-            <PersonPage
-              person={selectedPerson}
-              media={media}
-              lang={lang}
-              onOpenMedia={(id: number) => {
-                setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null);
-                setSelectedPersonId(null);
-                setAtlasMode('media');
-              }}
-            />
+            <PersonPage person={selectedPerson} media={media} lang={lang} onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); }} />
           </aside>
         ) : (
           <Drawer
@@ -296,24 +295,12 @@ export default function App() {
             relationLookup={relationLookup}
             lang={lang}
             onExplore={(id: number) => setSelected(mediaById[id])}
-            onOpenPerson={(id: number) => {
-              setSelectedPersonId(id);
-              setSelected(null);
-              setAtlasMode('people');
-            }}
-            onOpenMedia={(id: number) => {
-              setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null);
-              setSelectedPersonId(null);
-              setAtlasMode('media');
-            }}
+            onOpenPerson={(id: number) => { setSelectedPersonId(id); setSelected(null); setAtlasMode('people'); }}
+            onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); }}
           />
         )}
       </div>
-      <footer style={{ padding: 8, borderTop: '1px solid #333' }}>
-        <a href="https://anilist.co" target="_blank" rel="noreferrer">
-          {t.dataAttribution}
-        </a>
-      </footer>
+      <footer style={{ padding: 8, borderTop: '1px solid #333' }}><a href="https://anilist.co" target="_blank" rel="noreferrer">{t.dataAttribution}</a></footer>
     </div>
   );
 }

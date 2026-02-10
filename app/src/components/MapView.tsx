@@ -2,7 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 
 type ViewState = { x: number; y: number; scale: number; dragging: boolean; startX: number; startY: number };
 
-export function MapView({ points, onClick, getFillColor }: any) {
+type Edge = { from: { x: number; y: number }; to: { x: number; y: number }; width?: number; color?: string };
+
+export function MapView({ points, onClick, getFillColor, edges = [] }: any & { edges?: Edge[] }) {
   const [view, setView] = useState<ViewState>({ x: 0, y: 0, scale: 1, dragging: false, startX: 0, startY: 0 });
   const dragDistanceRef = useRef(0);
 
@@ -35,6 +37,18 @@ export function MapView({ points, onClick, getFillColor }: any) {
       onMouseLeave={() => setView((prev) => ({ ...prev, dragging: false }))}
     >
       <g transform={transform}>
+        {edges.map((e, idx) => (
+          <line
+            key={`edge-${idx}`}
+            x1={e.from.x}
+            y1={e.from.y}
+            x2={e.to.x}
+            y2={e.to.y}
+            stroke={e.color ?? '#64748b'}
+            strokeWidth={(e.width ?? 1) / 200}
+            strokeOpacity={0.6}
+          />
+        ))}
         {points.map((p: any) => {
           const visibleRadius = Math.max(0.004, 0.012 / Math.sqrt(view.scale));
           const hitRadius = Math.max(visibleRadius, 0.018);

@@ -59,6 +59,14 @@ export function Drawer({
             <li key={idx}>
               {s.roleGroup}:{' '}
               <button onClick={() => onOpenPerson(s.personId)}>{personName}</button> — {s.roleRaw}
+              {person?.siteUrl ? (
+                <>
+                  {' '}
+                  <a href={person.siteUrl} target="_blank" rel="noreferrer">
+                    profile
+                  </a>
+                </>
+              ) : null}
             </li>
           );
         })}
@@ -68,8 +76,8 @@ export function Drawer({
         {media.characters?.slice(0, 10).map((c: any, idx: number) => {
           const characterName =
             charactersById[c.characterId]?.name?.full ?? charactersById[c.characterId]?.name?.native ?? `#${c.characterId}`;
-          const jp = dedupeById(c.voiceActorsJP ?? []);
-          const en = dedupeById(c.voiceActorsEN ?? []);
+          const jp = dedupeById(c.voiceActorsJP ?? (c.voiceActors ?? []).filter((v: any) => v.lang === 'JP'));
+          const en = dedupeById(c.voiceActorsEN ?? (c.voiceActors ?? []).filter((v: any) => v.lang === 'EN'));
           return (
             <li key={idx}>
               <strong>{characterName}</strong>
@@ -77,9 +85,9 @@ export function Drawer({
                 [JP]{' '}
                 {jp.length
                   ? jp.map((v: any) => (
-                      <button key={`jp-${v.id}`} onClick={() => onOpenPerson(v.id)}>
-                        {v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}
-                      </button>
+                      <span key={`jp-${v.id}`}>
+                        <button onClick={() => onOpenPerson(v.id)}>{v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}</button>{' '}
+                      </span>
                     ))
                   : '—'}
               </div>
@@ -87,9 +95,9 @@ export function Drawer({
                 [EN]{' '}
                 {en.length
                   ? en.map((v: any) => (
-                      <button key={`en-${v.id}`} onClick={() => onOpenPerson(v.id)}>
-                        {v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}
-                      </button>
+                      <span key={`en-${v.id}`}>
+                        <button onClick={() => onOpenPerson(v.id)}>{v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}</button>{' '}
+                      </span>
                     ))
                   : '—'}
               </div>

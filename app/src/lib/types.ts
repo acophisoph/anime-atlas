@@ -22,6 +22,16 @@ export type Media = {
   }[];
 };
 
-export type Person = { id: number; name: { full?: string; native?: string; alternative?: string[] }; siteUrl?: string };
+export type SocialLink = {
+  label: string;
+  url: string;
+};
+
+export type Person = {
+  id: number;
+  name: { full?: string; native?: string; alternative?: string[] };
+  siteUrl?: string;
+  socialLinks?: SocialLink[];
+};
 
 export type PointRecord = { id: number; type: 0 | 1; x: number; y: number; cluster: number; year: number };

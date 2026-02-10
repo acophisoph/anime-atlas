@@ -14,7 +14,7 @@ query MediaDetail($id:Int!){
     genres
     tags{ name rank }
     relations{ edges{ relationType node{ id } } }
-    staff(perPage:50){ edges{ role node{ id name{full native alternative} siteUrl } } }
+    staff(perPage:50){ edges{ role node{ id name{full native alternative} siteUrl description(asHtml:false) } } }
     characters(perPage:25){
       edges{
         role
@@ -46,6 +46,22 @@ function dedupeById<T extends { id?: number }>(arr: T[]): T[] {
   return out;
 }
 
+
+function extractUrls(text?: string): string[] {
+  if (!text) return [];
+  const matches = text.match(/https?:\/\/[^\s)]+/g) ?? [];
+  return [...new Set(matches)];
+}
+
+function toSocialLinks(person: any) {
+  const links = extractUrls(person?.description);
+  return links
+    .slice(0, 8)
+    .map((url) => ({
+      label: url.includes('twitter.com') || url.includes('x.com') ? 'Twitter/X' : url.includes('instagram.com') ? 'Instagram' : url.includes('youtube.com') ? 'YouTube' : 'External',
+      url
+    }));
+}
 async function main() {
   const topMedia = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'topMedia.json'), 'utf-8')) as Array<{ id: number }>;
   const topIds = new Set(topMedia.map((m) => m.id));
@@ -66,7 +82,8 @@ async function main() {
         peopleMap.set(person.id, {
           id: person.id,
           name: person.name,
-          siteUrl: person.siteUrl
+          siteUrl: person.siteUrl,
+          socialLinks: toSocialLinks(person)
         });
       }
       return {
@@ -86,7 +103,7 @@ async function main() {
       const voiceActorsEN = dedupeById((edge.enVoice ?? []).map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl })));
 
       for (const va of [...voiceActorsJP, ...voiceActorsEN]) {
-        if (va.id) peopleMap.set(va.id, { id: va.id, name: va.name, siteUrl: va.siteUrl });
+        if (va.id) peopleMap.set(va.id, { id: va.id, name: va.name, siteUrl: va.siteUrl, socialLinks: peopleMap.get(va.id)?.socialLinks ?? [] });
       }
 
       return { characterId: character?.id, role: edge.role, voiceActorsJP, voiceActorsEN };
