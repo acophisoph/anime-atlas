@@ -54,6 +54,25 @@ function personDisplayName(person: any, fallbackId?: number): string {
   return fallbackId ? `Person ${fallbackId}` : 'Unknown person';
 }
 
+function normalizePoints<T extends { x: number; y: number }>(pts: T[], targetHalfSpan = 0.84): T[] {
+  if (!pts.length) return [];
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const span = Math.max(1e-6, maxX - minX, maxY - minY);
+  const scale = (targetHalfSpan * 2) / span;
+  return pts.map((p) => ({ ...p, x: (p.x - cx) * scale, y: (p.y - cy) * scale }));
+}
+
 export default function App() {
   const [lang, setLang] = useState<Lang>('en');
   const [scope, setScope] = useState<Scope>('BOTH');
@@ -296,49 +315,18 @@ export default function App() {
 
   const displayedMediaPoints = useMemo(() => {
     if (!filteredMediaPoints.length) return [];
-    const pts = filteredMediaPoints.map((p: any, idx: number) => {
-      const j = hash01((p.id + idx) * 17.31);
+
+    const lightlySeparated = filteredMediaPoints.map((p: any, idx: number) => {
+      const j = hash01((p.id + idx) * 13.17);
+      const nudge = 0.0018;
       return {
         ...p,
-        x: p.x * 1.46 + Math.cos(j * Math.PI * 2) * 0.01,
-        y: p.y * 1.46 + Math.sin(j * Math.PI * 2) * 0.01
+        x: p.x + Math.cos(j * Math.PI * 2) * nudge,
+        y: p.y + Math.sin(j * Math.PI * 2) * nudge
       };
     });
 
-    const doRepel = pts.length <= 220;
-    if (doRepel) {
-      for (let iter = 0; iter < 4; iter += 1) {
-        for (let i = 0; i < pts.length; i += 1) {
-          for (let j = i + 1; j < pts.length; j += 1) {
-            const a = pts[i];
-            const b = pts[j];
-            let dx = b.x - a.x;
-            let dy = b.y - a.y;
-            const dist = Math.hypot(dx, dy) || 1e-6;
-            const minDist = 0.028;
-            if (dist < minDist) {
-              dx /= dist;
-              dy /= dist;
-              const push = (minDist - dist) * 0.18;
-              a.x -= dx * push;
-              a.y -= dy * push;
-              b.x += dx * push;
-              b.y += dy * push;
-            }
-          }
-        }
-      }
-    }
-
-    for (const p of pts) {
-      const mag = Math.hypot(p.x, p.y);
-      if (mag > 0.92) {
-        p.x = (p.x / mag) * 0.92;
-        p.y = (p.y / mag) * 0.92;
-      }
-    }
-
-    return pts;
+    return normalizePoints(lightlySeparated, 0.86);
   }, [filteredMediaPoints]);
 
   const displayedMediaPointById = useMemo(() => Object.fromEntries(displayedMediaPoints.map((p) => [p.id, p])), [displayedMediaPoints]);
@@ -433,8 +421,8 @@ export default function App() {
   }, [query, media, people, lang]);
 
   const selectedPerson = selectedPersonId ? peopleById[selectedPersonId] : null;
-  const dynamicMediaScale = clamp(1.35 / Math.sqrt(Math.max(1, displayedMediaPoints.length) / 140), 0.32, 1.1);
-  const dynamicPeopleScale = clamp(1.28 / Math.sqrt(Math.max(1, displayedPeoplePoints.length) / 140), 0.3, 1.05);
+  const dynamicMediaScale = clamp(1.05 / Math.sqrt(Math.max(1, displayedMediaPoints.length) / 180), 0.14, 0.95);
+  const dynamicPeopleScale = clamp(1.05 / Math.sqrt(Math.max(1, displayedPeoplePoints.length) / 180), 0.14, 0.9);
   const mapViewKey = `${atlasMode}-${atlasMode === 'media' ? (mediaNetworkSeedId ? 'explore' : 'global') : (peopleExploreMode ? 'explore' : 'global')}`;
 
   if (!points.length || !media.length) return <Loading />;

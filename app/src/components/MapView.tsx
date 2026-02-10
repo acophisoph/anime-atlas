@@ -41,7 +41,7 @@ export function MapView({ points, onClick, onHover, getFillColor, edges = [], vi
     const worldX = (sx - view.x) / view.scale;
     const worldY = (sy - view.y) / view.scale;
 
-    const worldThreshold = ((30 / rect.width) * 2) / view.scale;
+    const worldThreshold = ((22 / rect.width) * 2) / view.scale;
     const maxDist2 = worldThreshold * worldThreshold;
     let best: Point | null = null;
     let bestD2 = maxDist2;
@@ -110,7 +110,7 @@ export function MapView({ points, onClick, onHover, getFillColor, edges = [], vi
             />
           ))}
         {points.map((p: Point) => {
-          const visibleRadius = clamp(0.004, 0.0085 * Math.sqrt(view.scale), 0.0115);
+          const visibleRadius = clamp(0.0024, 0.0068 / Math.sqrt(view.scale), 0.0068);
           const fill = getFillColor ? getFillColor(p) : p.type === 0 ? '#66a3ff' : '#ff8080';
           return <circle key={p.id} cx={p.x} cy={p.y} r={visibleRadius} fill={fill} pointerEvents="none" />;
         })}
