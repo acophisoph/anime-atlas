@@ -12,6 +12,7 @@ export type Media = {
   genres: string[];
   tags: { name: string; rank: number }[];
   siteUrl?: string;
+  studios?: { id: number; name: string; siteUrl?: string; isAnimationStudio?: boolean }[];
   relations: { id: number; relationType: string }[];
   staff?: { personId: number; roleRaw: string; roleGroup: string }[];
   characters?: {

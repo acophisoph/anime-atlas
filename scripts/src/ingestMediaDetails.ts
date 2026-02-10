@@ -9,6 +9,7 @@ const mediaQuery = `
 query MediaDetail($id:Int!){
   Media(id:$id){
     id type format popularity averageScore siteUrl
+    studios{ nodes{ id name siteUrl isAnimationStudio } }
     title{romaji english native}
     startDate{year}
     genres
@@ -163,6 +164,7 @@ async function main() {
       genres: m.genres ?? [],
       tags: (m.tags ?? []).map((t: any) => ({ name: t.name, rank: t.rank })),
       siteUrl: m.siteUrl,
+      studios: (m.studios?.nodes ?? []).map((st: any) => ({ id: st.id, name: st.name, siteUrl: st.siteUrl, isAnimationStudio: !!st.isAnimationStudio })),
       relations,
       staff,
       characters

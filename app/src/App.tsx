@@ -117,14 +117,11 @@ export default function App() {
   const mediaStudioById = useMemo(() => {
     const out: Record<number, string> = {};
     for (const m of media) {
-      const studioNames = (m.staff ?? [])
-        .filter((st: any) => st.roleGroup === 'Studio/Production')
-        .map((st: any) => peopleById[st.personId]?.name?.full ?? peopleById[st.personId]?.name?.native)
-        .filter(Boolean);
-      out[m.id] = studioNames[0] ?? 'Unknown Studio';
+      const studio = (m.studios ?? []).find((st: any) => st?.isAnimationStudio)?.name ?? (m.studios ?? [])[0]?.name;
+      out[m.id] = studio ?? 'Unknown Studio';
     }
     return out;
-  }, [media, peopleById]);
+  }, [media]);
 
   const animeStudios = useMemo(() => {
     const counts = new Map<string, number>();
@@ -133,14 +130,15 @@ export default function App() {
       const studio = mediaStudioById[m.id] ?? 'Unknown Studio';
       counts.set(studio, (counts.get(studio) ?? 0) + 1);
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, 24);
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+    return sorted.filter((name) => name !== 'Unknown Studio').slice(0, 24);
   }, [media, mediaStudioById]);
 
   const studioPalette = useMemo(() => {
     const palette = ['#7dd3fc', '#fca5a5', '#86efac', '#fde68a', '#c4b5fd', '#f9a8d4', '#67e8f9', '#fdba74', '#93c5fd', '#d8b4fe'];
     const out: Record<string, string> = {};
     animeStudios.forEach((name, i) => { out[name] = palette[i % palette.length]; });
-    out['Unknown Studio'] = '#9ca3af';
+    out['Unknown Studio'] = '#6b7280';
     return out;
   }, [animeStudios]);
 
@@ -257,8 +255,6 @@ export default function App() {
     return out;
   }, [people, collab, personStats, selectedNeighborhoodMap]);
 
-  const peoplePointById = useMemo(() => Object.fromEntries(peoplePoints.map((p) => [p.id, p])), [peoplePoints]);
-
   const roleCategories = useMemo(() => Object.keys(ROLE_COLORS), []);
   const studioCategories = useMemo(() => Object.keys(STUDIO_COLORS), []);
 
@@ -296,12 +292,91 @@ export default function App() {
       return { ...p, x: p.x + Math.cos(j * Math.PI * 2) * Math.abs(offset), y: p.y + Math.sin(j * Math.PI * 2) * Math.abs(offset) };
     });
   }, [points, filteredIds, mediaNetworkSeedId, selected, mediaRelationIds, selectedAnimeStudios, mediaById, mediaStudioById]);
+
+
+  const displayedMediaPoints = useMemo(() => {
+    if (!filteredMediaPoints.length) return [];
+    const pts = filteredMediaPoints.map((p: any) => ({ ...p }));
+    const cx = pts.reduce((a: number, p: any) => a + p.x, 0) / pts.length;
+    const cy = pts.reduce((a: number, p: any) => a + p.y, 0) / pts.length;
+
+    for (const p of pts) {
+      p.x = (p.x - cx) * 1.28;
+      p.y = (p.y - cy) * 1.28;
+    }
+
+    for (let iter = 0; iter < 10; iter += 1) {
+      for (let i = 0; i < pts.length; i += 1) {
+        for (let j = i + 1; j < pts.length; j += 1) {
+          const a = pts[i];
+          const b = pts[j];
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 1e-6;
+          const minDist = 0.03;
+          if (dist < minDist) {
+            dx /= dist;
+            dy /= dist;
+            const push = (minDist - dist) * 0.23;
+            a.x -= dx * push;
+            a.y -= dy * push;
+            b.x += dx * push;
+            b.y += dy * push;
+          }
+        }
+      }
+    }
+
+    for (const p of pts) {
+      const mag = Math.hypot(p.x, p.y);
+      if (mag > 0.92) {
+        p.x = (p.x / mag) * 0.92;
+        p.y = (p.y / mag) * 0.92;
+      }
+    }
+
+    return pts;
+  }, [filteredMediaPoints]);
+
   const filteredPeoplePoints = peoplePoints.filter((p) => {
     const roleOk = roleFilter.length ? roleFilter.includes(p.role) : true;
     const studioOk = studioFilter.length ? studioFilter.includes(p.studioCategory) : true;
     const neighborhoodOk = selectedNeighborhoodMap ? selectedNeighborhoodMap.has(p.id) : true;
     return roleOk && studioOk && neighborhoodOk;
   });
+
+
+
+  const displayedPeoplePoints = useMemo(() => {
+    if (!filteredPeoplePoints.length) return [];
+    const pts = filteredPeoplePoints.map((p: any) => ({ ...p }));
+
+    for (let iter = 0; iter < 8; iter += 1) {
+      for (let i = 0; i < pts.length; i += 1) {
+        for (let j = i + 1; j < pts.length; j += 1) {
+          const a = pts[i];
+          const b = pts[j];
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 1e-6;
+          const minDist = 0.028;
+          if (dist < minDist) {
+            dx /= dist;
+            dy /= dist;
+            const push = (minDist - dist) * 0.2;
+            a.x -= dx * push;
+            a.y -= dy * push;
+            b.x += dx * push;
+            b.y += dy * push;
+          }
+        }
+      }
+    }
+
+    return pts;
+  }, [filteredPeoplePoints]);
+
+  const peoplePointById = useMemo(() => Object.fromEntries(displayedPeoplePoints.map((p) => [p.id, p])), [displayedPeoplePoints]);
 
   const peopleEdges = useMemo(() => {
     if (atlasMode !== 'people' || !selectedNeighborhoodMap) return [];
@@ -367,7 +442,7 @@ export default function App() {
                   Color by:{' '}
                   <select value={mediaColorBy} onChange={(e: ChangeEvent<HTMLSelectElement>) => setMediaColorBy(e.target.value as 'type' | 'studio')}>
                     <option value="type">Anime vs Manga</option>
-                    <option value="studio">Anime Studio</option>
+                    <option value="studio">Animation Studio</option>
                   </select>
                 </label>
                 {mediaNetworkSeedId ? (
@@ -377,22 +452,24 @@ export default function App() {
                   </div>
                 ) : null}
                 {mediaColorBy === 'studio' ? (
-                  <div style={{ marginTop: 8 }}>
-                    <strong>Anime studio filters</strong>
-                    {animeStudios.map((studio) => (
-                      <label key={studio} style={{ display: 'block' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedAnimeStudios.includes(studio)}
-                          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                            setSelectedAnimeStudios((prev) => (e.target.checked ? [...prev, studio] : prev.filter((x) => x !== studio)))
-                          }
-                        />
-                        <span style={{ display: 'inline-block', width: 10, height: 10, margin: '0 6px', background: studioPalette[studio] ?? '#9ca3af' }} />
-                        {studio}
-                      </label>
-                    ))}
-                  </div>
+                  <details style={{ marginTop: 8 }} open>
+                    <summary><strong>Animation studio filters</strong></summary>
+                    <div style={{ marginTop: 6 }}>
+                      {(['Unknown Studio', ...animeStudios]).map((studio) => (
+                        <label key={studio} style={{ display: 'block' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedAnimeStudios.includes(studio)}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                              setSelectedAnimeStudios((prev) => (e.target.checked ? [...prev, studio] : prev.filter((x) => x !== studio)))
+                            }
+                          />
+                          <span style={{ display: 'inline-block', width: 10, height: 10, margin: '0 6px', background: studioPalette[studio] ?? '#9ca3af' }} />
+                          {studio}
+                        </label>
+                      ))}
+                    </div>
+                  </details>
                 ) : null}
               </div>
               <TalentFinder roleToPeople={roleToPeople} tagRoleToPeople={tagRoleToPeople} peopleById={peopleById} media={media} onOpenPerson={(id: number) => { setSelectedPersonId(id); setSelected(null); setAtlasMode('people'); setPeopleExploreMode(true); }} />
@@ -429,25 +506,28 @@ export default function App() {
                   )}
                 </div>
               )}
-              <div style={{ marginTop: 8 }}><strong>Hop line colors:</strong>{HOP_COLORS.map((c, i) => <div key={c}><span style={{display:'inline-block',width:10,height:10,background:c,marginRight:6}} />Hop {i+1}</div>)}</div>
-              <div style={{ marginTop: 8 }}>
-                <strong>Role filters</strong>
-                {roleCategories.map((r) => (
-                  <label key={r} style={{ display: 'block' }}><input type="checkbox" checked={roleFilter.includes(r)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRoleFilter((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))} />{r}</label>
-                ))}
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <strong>Studio filters</strong>
-                {studioCategories.map((s) => (
-                  <label key={s} style={{ display: 'block' }}><input type="checkbox" checked={studioFilter.includes(s)} onChange={(e: ChangeEvent<HTMLInputElement>) => setStudioFilter((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))} />{s}</label>
-                ))}
-              </div>
+              <details style={{ marginTop: 8 }}>
+                <summary><strong>Advanced staff filters</strong></summary>
+                <div style={{ marginTop: 6 }}><strong>Hop line colors:</strong>{HOP_COLORS.map((c, i) => <div key={c}><span style={{display:'inline-block',width:10,height:10,background:c,marginRight:6}} />Hop {i+1}</div>)}</div>
+                <div style={{ marginTop: 8 }}>
+                  <strong>Role filters</strong>
+                  {roleCategories.map((r) => (
+                    <label key={r} style={{ display: 'block' }}><input type="checkbox" checked={roleFilter.includes(r)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRoleFilter((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))} />{r}</label>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <strong>Studio filters</strong>
+                  {studioCategories.map((s) => (
+                    <label key={s} style={{ display: 'block' }}><input type="checkbox" checked={studioFilter.includes(s)} onChange={(e: ChangeEvent<HTMLInputElement>) => setStudioFilter((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))} />{s}</label>
+                  ))}
+                </div>
+              </details>
             </div>
           )}
         </div>
 
         <MapView
-          points={atlasMode === 'media' ? filteredMediaPoints : filteredPeoplePoints}
+          points={atlasMode === 'media' ? displayedMediaPoints : displayedPeoplePoints}
           edges={atlasMode === 'media' ? mediaEdges : peopleEdges}
           getFillColor={(p: any) => {
             if (atlasMode === 'media') {
