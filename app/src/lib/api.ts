@@ -58,7 +58,7 @@ async function loadChunked<T>(prefix: 'media' | 'people' | 'characters', count: 
 }
 
 export async function loadAllMeta() {
-  const manifest = await loadManifest().catch(() => ({}));
+  const manifest: Manifest = await loadManifest().catch(() => ({} as Manifest));
   const counts = manifest.counts ?? {};
   const chunkSize = manifest.buildConfig?.chunkSize ?? DEFAULT_CHUNK_SIZE;
 
