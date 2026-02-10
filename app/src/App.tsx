@@ -43,6 +43,17 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+
+function personDisplayName(person: any, fallbackId?: number): string {
+  if (!person) return fallbackId ? `Person ${fallbackId}` : 'Unknown person';
+  if (typeof person.name === 'string') return person.name;
+  if (typeof person.name?.full === 'string' && person.name.full.trim()) return person.name.full;
+  if (typeof person.name?.native === 'string' && person.name.native.trim()) return person.name.native;
+  if (typeof person.name?.alternative === 'string' && person.name.alternative.trim()) return person.name.alternative;
+  if (Array.isArray(person.name?.alternative) && person.name.alternative.length) return String(person.name.alternative[0]);
+  return fallbackId ? `Person ${fallbackId}` : 'Unknown person';
+}
+
 export default function App() {
   const [lang, setLang] = useState<Lang>('en');
   const [scope, setScope] = useState<Scope>('BOTH');
@@ -289,8 +300,8 @@ export default function App() {
       const j = hash01((p.id + idx) * 17.31);
       return {
         ...p,
-        x: p.x * 1.32 + Math.cos(j * Math.PI * 2) * 0.006,
-        y: p.y * 1.32 + Math.sin(j * Math.PI * 2) * 0.006
+        x: p.x * 1.46 + Math.cos(j * Math.PI * 2) * 0.01,
+        y: p.y * 1.46 + Math.sin(j * Math.PI * 2) * 0.01
       };
     });
 
@@ -415,15 +426,15 @@ export default function App() {
       .slice(0, 8)
       .map((m) => ({ kind: 'media' as const, id: m.id, label: localizeTitle(m.title, lang), sub: `[${m.type}] ${m.year || ''}` }));
     const peopleMatches = people
-      .filter((p) => (p.name ?? '').toLowerCase().includes(q))
+      .filter((p) => personDisplayName(p, p.id).toLowerCase().includes(q))
       .slice(0, 8)
-      .map((p) => ({ kind: 'people' as const, id: p.id, label: p.name ?? `Person ${p.id}`, sub: 'Staff' }));
+      .map((p) => ({ kind: 'people' as const, id: p.id, label: personDisplayName(p, p.id), sub: 'Staff' }));
     return [...mediaMatches, ...peopleMatches].slice(0, 12);
   }, [query, media, people, lang]);
 
   const selectedPerson = selectedPersonId ? peopleById[selectedPersonId] : null;
-  const dynamicMediaScale = clamp(1.35 / Math.sqrt(Math.max(1, displayedMediaPoints.length) / 140), 0.18, 1.1);
-  const dynamicPeopleScale = clamp(1.28 / Math.sqrt(Math.max(1, displayedPeoplePoints.length) / 140), 0.16, 1.05);
+  const dynamicMediaScale = clamp(1.35 / Math.sqrt(Math.max(1, displayedMediaPoints.length) / 140), 0.32, 1.1);
+  const dynamicPeopleScale = clamp(1.28 / Math.sqrt(Math.max(1, displayedPeoplePoints.length) / 140), 0.3, 1.05);
   const mapViewKey = `${atlasMode}-${atlasMode === 'media' ? (mediaNetworkSeedId ? 'explore' : 'global') : (peopleExploreMode ? 'explore' : 'global')}`;
 
   if (!points.length || !media.length) return <Loading />;
@@ -583,7 +594,7 @@ export default function App() {
                 setHoveredNode(m ? { kind: 'media', label: localizeTitle(m.title, lang), sub: `[${m.type}] ${m.year || ''}` } : null);
               } else {
                 const p = peopleById[id];
-                setHoveredNode(p ? { kind: 'people', label: p.name ?? `Person ${id}`, sub: 'Staff' } : null);
+                setHoveredNode(p ? { kind: 'people', label: personDisplayName(p, id), sub: 'Staff' } : null);
               }
             }}
             onClick={(info: any) => {
