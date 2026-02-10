@@ -1,0 +1,8 @@
+node_modules
+app/dist
+scripts/.cache
+scripts/dist
+.DS_Store
+
+data/**/*.bin
+app/public/data/**/*.bin
