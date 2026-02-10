@@ -1,10 +1,16 @@
 import { decodePoints } from './binary';
 
 const base = import.meta.env.BASE_URL;
+const DEFAULT_CHUNK_SIZE = 200;
 
 export const dataUrl = (p: string) => `${base}data/${p}`;
 
-export async function loadManifest() {
+type Manifest = {
+  counts?: { media?: number; people?: number; characters?: number };
+  buildConfig?: { chunkSize?: number };
+};
+
+export async function loadManifest(): Promise<Manifest> {
   return (await fetch(dataUrl('manifest.json'))).json();
 }
 
@@ -41,9 +47,24 @@ export async function loadGraphEdges(name: string): Promise<Array<[number, numbe
   }
 }
 
+async function loadChunked<T>(prefix: 'media' | 'people' | 'characters', count: number, chunkSize: number): Promise<T[]> {
+  const chunks = Math.max(1, Math.ceil(count / chunkSize));
+  const requests = Array.from({ length: chunks }).map((_, i) => {
+    const file = `meta/${prefix}_${String(i).padStart(3, '0')}.json`;
+    return loadJson<T[]>(file).catch(() => []);
+  });
+  const loaded = await Promise.all(requests);
+  return loaded.flat();
+}
+
 export async function loadAllMeta() {
-  const media = await loadJson<any[]>('meta/media_000.json');
-  const people = await loadJson<any[]>('meta/people_000.json').catch(() => []);
-  const characters = await loadJson<any[]>('meta/characters_000.json').catch(() => []);
+  const manifest = await loadManifest().catch(() => ({}));
+  const counts = manifest.counts ?? {};
+  const chunkSize = manifest.buildConfig?.chunkSize ?? DEFAULT_CHUNK_SIZE;
+
+  const media = await loadChunked<any>('media', counts.media ?? chunkSize, chunkSize);
+  const people = await loadChunked<any>('people', counts.people ?? chunkSize, chunkSize);
+  const characters = await loadChunked<any>('characters', counts.characters ?? chunkSize, chunkSize);
+
   return { media, people, characters };
 }

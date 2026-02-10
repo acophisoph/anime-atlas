@@ -18,6 +18,7 @@ export default function App() {
   const [points, setPoints] = useState<any[]>([]);
   const [media, setMedia] = useState<any[]>([]);
   const [people, setPeople] = useState<any[]>([]);
+  const [characters, setCharacters] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -29,9 +30,10 @@ export default function App() {
   useEffect(() => {
     Promise.all([
       loadPoints().then(setPoints),
-      loadAllMeta().then(({ media, people }) => {
+      loadAllMeta().then(({ media, people, characters }) => {
         setMedia(media);
         setPeople(people);
+        setCharacters(characters);
       }),
       loadJson<Record<string, number[]>>('indices/tag_to_media.json').then(setTagToMedia),
       loadJson<Record<string, number[]>>('indices/role_to_people.json').then(setRoleToPeople),
@@ -43,6 +45,7 @@ export default function App() {
   const t = dict[lang];
   const mediaById = useMemo(() => Object.fromEntries(media.map((m) => [m.id, m])), [media]);
   const peopleById = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
+  const charactersById = useMemo(() => Object.fromEntries(characters.map((c) => [c.id, c])), [characters]);
   const availableTags = useMemo(() => Object.keys(tagToMedia).sort(), [tagToMedia]);
 
   const filteredIds = useMemo(() => {
@@ -81,7 +84,14 @@ export default function App() {
           <NetworkGraph selectedId={selected?.id ?? null} edges={collab} />
         </div>
         <MapView points={filteredPoints} onHover={() => {}} onClick={(info: any) => setSelected(mediaById[info.object?.id])} />
-        <Drawer media={selected} lang={lang} onExplore={(id: number) => setSelected(mediaById[id])} />
+        <Drawer
+          media={selected}
+          mediaById={mediaById}
+          peopleById={peopleById}
+          charactersById={charactersById}
+          lang={lang}
+          onExplore={(id: number) => setSelected(mediaById[id])}
+        />
       </div>
       <footer style={{ padding: 8, borderTop: '1px solid #333' }}>
         <a href="https://anilist.co" target="_blank" rel="noreferrer">
