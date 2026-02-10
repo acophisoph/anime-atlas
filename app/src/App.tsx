@@ -70,7 +70,9 @@ export default function App() {
           <ul>
             {results.map((m) => (
               <li key={m.id}>
-                <button onClick={() => setSelected(m)}>{localizeTitle(m.title, lang)}</button>
+                <button onClick={() => setSelected(m)}>
+                  {localizeTitle(m.title, lang)} <small>[{m.type}] {m.year || ''}</small>
+                </button>
               </li>
             ))}
           </ul>
@@ -79,9 +81,10 @@ export default function App() {
             roleToPeople={roleToPeople}
             tagRoleToPeople={tagRoleToPeople}
             peopleById={peopleById}
+            media={media}
             onOpenPerson={(id: number) => alert(peopleById[id]?.name?.full || id)}
           />
-          <NetworkGraph selectedId={selected?.id ?? null} edges={collab} />
+          <NetworkGraph selectedMedia={selected} edges={collab} peopleById={peopleById} />
         </div>
         <MapView points={filteredPoints} onHover={() => {}} onClick={(info: any) => setSelected(mediaById[info.object?.id])} />
         <Drawer
