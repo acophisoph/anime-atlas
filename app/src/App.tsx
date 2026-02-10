@@ -1,0 +1,503 @@
+import { useEffect, useMemo, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { Header } from './components/Header';
+import { Filters } from './components/Filters';
+import { SearchBox } from './components/SearchBox';
+import { Drawer } from './components/Drawer';
+import { Loading } from './components/Loading';
+import { MapView } from './components/MapView';
+import { TalentFinder } from './components/TalentFinder';
+import { NetworkGraph } from './components/NetworkGraph';
+import { PersonPage } from './components/PersonPage';
+import { dict, localizeTitle } from './i18n/i18n';
+import { loadAllMeta, loadGraphEdges, loadJson, loadPoints } from './lib/api';
+import type { Lang, Scope } from './lib/types';
+import { intersectSorted } from './lib/setOps';
+
+const ROLE_COLORS: Record<string, string> = {
+  Direction: '#ff7f50',
+  Writing: '#87cefa',
+  Art: '#dda0dd',
+  Animation: '#66cdaa',
+  Music: '#ffd166',
+  Sound: '#f4a261',
+  Voice: '#f28482',
+  'Studio/Production': '#8ecae6',
+  Other: '#adb5bd'
+};
+
+const STUDIO_COLORS: Record<string, string> = {
+  'Studio/Production': '#a78bfa',
+  Unaffiliated: '#94a3b8'
+};
+
+const HOP_COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'];
+
+
+function hash01(n: number): number {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
+export default function App() {
+  const [lang, setLang] = useState<Lang>('en');
+  const [scope, setScope] = useState<Scope>('BOTH');
+  const [atlasMode, setAtlasMode] = useState<'media' | 'people'>('media');
+  const [peopleColorBy, setPeopleColorBy] = useState<'role' | 'studio'>('role');
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [studioFilter, setStudioFilter] = useState<string[]>([]);
+  const [peopleDepth, setPeopleDepth] = useState<number>(1);
+  const [peopleExploreMode, setPeopleExploreMode] = useState<boolean>(false);
+  const [mediaColorBy, setMediaColorBy] = useState<'type' | 'studio'>('type');
+  const [selectedAnimeStudios, setSelectedAnimeStudios] = useState<string[]>([]);
+
+  const [points, setPoints] = useState<any[]>([]);
+  const [media, setMedia] = useState<any[]>([]);
+  const [people, setPeople] = useState<any[]>([]);
+  const [characters, setCharacters] = useState<any[]>([]);
+  const [relationLookup, setRelationLookup] = useState<Record<string, any>>({});
+  const [selected, setSelected] = useState<any>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [mediaNetworkSeedId, setMediaNetworkSeedId] = useState<number | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [query, setQuery] = useState('');
+  const [tagToMedia, setTagToMedia] = useState<Record<string, number[]>>({});
+  const [roleToPeople, setRoleToPeople] = useState<Record<string, number[]>>({});
+  const [tagRoleToPeople, setTagRoleToPeople] = useState<Record<string, number[]>>({});
+  const [collab, setCollab] = useState<Array<[number, number, number]>>([]);
+
+  useEffect(() => {
+    Promise.all([
+      loadPoints().then(setPoints),
+      loadAllMeta().then(({ media, people, characters, relationLookup }) => {
+        setMedia(media);
+        setPeople(people);
+        setCharacters(characters);
+        setRelationLookup(relationLookup);
+      }),
+      loadJson<Record<string, number[]>>('indices/tag_to_media.json').then(setTagToMedia),
+      loadJson<Record<string, number[]>>('indices/role_to_people.json').then(setRoleToPeople),
+      loadJson<Record<string, number[]>>('indices/tagrole_to_people.json').then(setTagRoleToPeople),
+      loadGraphEdges('person_collab').then(setCollab)
+    ]);
+  }, []);
+
+  const t = dict[lang];
+  const mediaById = useMemo(() => Object.fromEntries(media.map((m) => [m.id, m])), [media]);
+  const peopleById = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
+  const charactersById = useMemo(() => Object.fromEntries(characters.map((c) => [c.id, c])), [characters]);
+  const mediaPointById = useMemo(() => Object.fromEntries(points.map((p) => [p.id, p])), [points]);
+  const availableTags = useMemo(() => Object.keys(tagToMedia).sort(), [tagToMedia]);
+
+  const personStats = useMemo(() => {
+    const roleCounts = new Map<number, Map<string, number>>();
+    const studioFlag = new Map<number, boolean>();
+    for (const m of media) {
+      for (const s of m.staff ?? []) {
+        if (!s.personId) continue;
+        const rm = roleCounts.get(s.personId) ?? new Map<string, number>();
+        rm.set(s.roleGroup ?? 'Other', (rm.get(s.roleGroup ?? 'Other') ?? 0) + 1);
+        roleCounts.set(s.personId, rm);
+        if (s.roleGroup === 'Studio/Production') studioFlag.set(s.personId, true);
+      }
+    }
+    const out: Record<number, { primaryRole: string; studioCategory: string }> = {};
+    for (const [pid, rm] of roleCounts.entries()) {
+      const primaryRole = [...rm.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Other';
+      out[pid] = { primaryRole, studioCategory: studioFlag.get(pid) ? 'Studio/Production' : 'Unaffiliated' };
+    }
+    return out;
+  }, [media]);
+
+
+  const mediaStudioById = useMemo(() => {
+    const out: Record<number, string> = {};
+    for (const m of media) {
+      const studioNames = (m.staff ?? [])
+        .filter((st: any) => st.roleGroup === 'Studio/Production')
+        .map((st: any) => peopleById[st.personId]?.name?.full ?? peopleById[st.personId]?.name?.native)
+        .filter(Boolean);
+      out[m.id] = studioNames[0] ?? 'Unknown Studio';
+    }
+    return out;
+  }, [media, peopleById]);
+
+  const animeStudios = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of media) {
+      if (m.type !== 'ANIME') continue;
+      const studio = mediaStudioById[m.id] ?? 'Unknown Studio';
+      counts.set(studio, (counts.get(studio) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, 24);
+  }, [media, mediaStudioById]);
+
+  const studioPalette = useMemo(() => {
+    const palette = ['#7dd3fc', '#fca5a5', '#86efac', '#fde68a', '#c4b5fd', '#f9a8d4', '#67e8f9', '#fdba74', '#93c5fd', '#d8b4fe'];
+    const out: Record<string, string> = {};
+    animeStudios.forEach((name, i) => { out[name] = palette[i % palette.length]; });
+    out['Unknown Studio'] = '#9ca3af';
+    return out;
+  }, [animeStudios]);
+
+  const personAdjacency = useMemo(() => {
+    const adj = new Map<number, Array<[number, number]>>();
+    for (const [a, b, w] of collab) {
+      adj.set(a, [...(adj.get(a) ?? []), [b, w]]);
+      adj.set(b, [...(adj.get(b) ?? []), [a, w]]);
+    }
+    return adj;
+  }, [collab]);
+
+  const selectedNeighborhoodMap = useMemo(() => {
+    if (atlasMode !== 'people' || !peopleExploreMode || !selectedPersonId) return null;
+    const depthMap = new Map<number, number>([[selectedPersonId, 0]]);
+    let frontier = new Set<number>([selectedPersonId]);
+    for (let d = 1; d <= peopleDepth; d += 1) {
+      const next = new Set<number>();
+      for (const pid of frontier) {
+        for (const [nid] of personAdjacency.get(pid) ?? []) {
+          if (!depthMap.has(nid)) {
+            depthMap.set(nid, d);
+            next.add(nid);
+          }
+        }
+      }
+      frontier = next;
+      if (!frontier.size) break;
+    }
+    return depthMap;
+  }, [atlasMode, peopleExploreMode, selectedPersonId, peopleDepth, personAdjacency]);
+
+  const peoplePoints = useMemo(() => {
+    const sorted = [...people].sort((a, b) => a.id - b.id);
+    const degree = new Map<number, number>();
+    const adj = new Map<number, number[]>();
+
+    for (const [a, b, w] of collab) {
+      degree.set(a, (degree.get(a) ?? 0) + w);
+      degree.set(b, (degree.get(b) ?? 0) + w);
+      adj.set(a, [...(adj.get(a) ?? []), b]);
+      adj.set(b, [...(adj.get(b) ?? []), a]);
+    }
+
+    const visited = new Set<number>();
+    const components: number[][] = [];
+    for (const p of sorted) {
+      if (visited.has(p.id)) continue;
+      const queue = [p.id];
+      const comp: number[] = [];
+      visited.add(p.id);
+      while (queue.length) {
+        const curr = queue.shift()!;
+        comp.push(curr);
+        for (const n of adj.get(curr) ?? []) {
+          if (visited.has(n)) continue;
+          visited.add(n);
+          queue.push(n);
+        }
+      }
+      components.push(comp);
+    }
+
+    components.sort((a, b) => b.length - a.length);
+
+    const out: any[] = [];
+    components.forEach((comp, ci) => {
+      const centerAngle = (ci / Math.max(components.length, 1)) * Math.PI * 2;
+      const centerRadius = clamp(0.14 + ci * 0.11, 0.12, 0.82);
+      const cx = Math.cos(centerAngle) * centerRadius;
+      const cy = Math.sin(centerAngle) * centerRadius;
+      const compSorted = [...comp].sort((a, b) => (degree.get(b) ?? 0) - (degree.get(a) ?? 0));
+
+      const localPos = new Map<number, { x: number; y: number }>();
+      compSorted.forEach((pid, i) => {
+        const angle = i * 2.399963229728653; // golden-angle spiral
+        const r = Math.min(0.28, 0.03 + Math.sqrt(i) * 0.016);
+        localPos.set(pid, { x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+      });
+
+      for (let iter = 0; iter < 14; iter += 1) {
+        for (const pid of compSorted) {
+          const nbs = (adj.get(pid) ?? []).filter((n) => localPos.has(n));
+          if (!nbs.length) continue;
+          const avg = nbs.reduce(
+            (acc, n) => {
+              const p = localPos.get(n)!;
+              return { x: acc.x + p.x, y: acc.y + p.y };
+            },
+            { x: 0, y: 0 }
+          );
+          const cur = localPos.get(pid)!;
+          const nx = cur.x * 0.78 + (avg.x / nbs.length) * 0.22;
+          const ny = cur.y * 0.78 + (avg.y / nbs.length) * 0.22;
+          localPos.set(pid, { x: nx, y: ny });
+        }
+      }
+
+      compSorted.forEach((pid) => {
+        const stat = personStats[pid] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
+        const lp = localPos.get(pid) ?? { x: 0, y: 0 };
+        out.push({
+          id: pid,
+          type: 2,
+          x: cx + lp.x,
+          y: cy + lp.y,
+          role: stat.primaryRole,
+          studioCategory: stat.studioCategory,
+          hop: selectedNeighborhoodMap?.get(pid) ?? 0
+        });
+      });
+    });
+
+    return out;
+  }, [people, collab, personStats, selectedNeighborhoodMap]);
+
+  const peoplePointById = useMemo(() => Object.fromEntries(peoplePoints.map((p) => [p.id, p])), [peoplePoints]);
+
+  const roleCategories = useMemo(() => Object.keys(ROLE_COLORS), []);
+  const studioCategories = useMemo(() => Object.keys(STUDIO_COLORS), []);
+
+  const filteredIds = useMemo(() => {
+    const scoped = media.filter((m) => scope === 'BOTH' || m.type === scope).map((m) => m.id);
+    if (!selectedTags.length) return scoped;
+    return intersectSorted([scoped.sort((a, b) => a - b), ...selectedTags.map((tag) => tagToMedia[tag] ?? [])]);
+  }, [media, scope, selectedTags, tagToMedia]);
+
+  const mediaRelationIds = useMemo(() => {
+    if (!selected) return new Set<number>();
+    return new Set<number>([selected.id, ...(selected.relations ?? []).map((r: any) => r.id)]);
+  }, [selected]);
+
+  const filteredMediaPoints = useMemo(() => {
+    let byScope = points.filter((p) => filteredIds.includes(p.id));
+
+    if (selectedAnimeStudios.length) {
+      const studioSet = new Set(selectedAnimeStudios);
+      byScope = byScope.filter((p) => {
+        const m = mediaById[p.id];
+        if (!m) return false;
+        if (m.type !== 'ANIME') return true;
+        return studioSet.has(mediaStudioById[p.id] ?? 'Unknown Studio');
+      });
+    }
+
+    const base = mediaNetworkSeedId && selected ? byScope.filter((p) => mediaRelationIds.has(p.id)) : byScope;
+
+    return base.map((p) => {
+      const m = mediaById[p.id];
+      if (!m) return p;
+      const j = hash01(p.id * 7.13);
+      const offset = m.type === 'ANIME' ? -0.006 : 0.006;
+      return { ...p, x: p.x + Math.cos(j * Math.PI * 2) * Math.abs(offset), y: p.y + Math.sin(j * Math.PI * 2) * Math.abs(offset) };
+    });
+  }, [points, filteredIds, mediaNetworkSeedId, selected, mediaRelationIds, selectedAnimeStudios, mediaById, mediaStudioById]);
+  const filteredPeoplePoints = peoplePoints.filter((p) => {
+    const roleOk = roleFilter.length ? roleFilter.includes(p.role) : true;
+    const studioOk = studioFilter.length ? studioFilter.includes(p.studioCategory) : true;
+    const neighborhoodOk = selectedNeighborhoodMap ? selectedNeighborhoodMap.has(p.id) : true;
+    return roleOk && studioOk && neighborhoodOk;
+  });
+
+  const peopleEdges = useMemo(() => {
+    if (atlasMode !== 'people' || !selectedNeighborhoodMap) return [];
+    return collab
+      .filter(([a, b]) => selectedNeighborhoodMap.has(a) && selectedNeighborhoodMap.has(b))
+      .sort((a, b) => b[2] - a[2])
+      .slice(0, 280)
+      .map(([a, b, w]) => {
+        const pa = peoplePointById[a];
+        const pb = peoplePointById[b];
+        if (!pa || !pb) return null;
+        const hop = Math.max(selectedNeighborhoodMap.get(a) ?? 0, selectedNeighborhoodMap.get(b) ?? 0);
+        return {
+          from: pa,
+          to: pb,
+          width: 0.6 + Math.log2(1 + Math.max(1, w)) * 0.35,
+          color: HOP_COLORS[Math.max(0, hop - 1)] ?? '#64748b',
+          opacity: hop <= 2 ? 0.32 : 0.2
+        };
+      })
+      .filter(Boolean) as any[];
+  }, [atlasMode, selectedNeighborhoodMap, collab, peoplePointById]);
+
+  const mediaEdges = useMemo(() => {
+    if (atlasMode !== 'media' || !selected || !mediaNetworkSeedId) return [];
+    return (selected.relations ?? [])
+      .map((r: any) => {
+        const to = mediaPointById[r.id];
+        const from = mediaPointById[selected.id];
+        if (!to || !from) return null;
+        return { from, to, width: 1.2, color: '#cbd5e1', opacity: 0.55 };
+      })
+      .filter(Boolean) as any[];
+  }, [atlasMode, selected, mediaPointById, mediaNetworkSeedId]);
+
+  const results = query ? media.filter((m) => localizeTitle(m.title, lang).toLowerCase().includes(query.toLowerCase())).slice(0, 10) : [];
+  const selectedPerson = selectedPersonId ? peopleById[selectedPersonId] : null;
+
+  if (!points.length || !media.length) return <Loading />;
+
+  return (
+    <div style={{ height: '100vh', display: 'grid', gridTemplateRows: 'auto 1fr auto' }}>
+      <Header t={t} lang={lang} setLang={setLang} scope={scope} setScope={setScope} atlasMode={atlasMode} setAtlasMode={setAtlasMode} />
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 360px', minHeight: 0 }}>
+        <div style={{ padding: 10, overflow: 'auto' }}>
+          <SearchBox placeholder={t.search} value={query} setValue={setQuery} />
+          <ul>
+            {results.map((m) => (
+              <li key={m.id}>
+                <button onClick={() => { setSelected(m); setSelectedPersonId(null); setAtlasMode('media'); setMediaNetworkSeedId(null); setPeopleExploreMode(false); }}>
+                  {localizeTitle(m.title, lang)} <small>[{m.type}] {m.year || ''}</small>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {atlasMode === 'media' ? (
+            <>
+              <Filters tags={availableTags} selectedTags={selectedTags} setSelectedTags={setSelectedTags} />
+              <div style={{ marginTop: 8 }}>
+                <h4>Media Atlas Controls</h4>
+                <label>
+                  Color by:{' '}
+                  <select value={mediaColorBy} onChange={(e: ChangeEvent<HTMLSelectElement>) => setMediaColorBy(e.target.value as 'type' | 'studio')}>
+                    <option value="type">Anime vs Manga</option>
+                    <option value="studio">Anime Studio</option>
+                  </select>
+                </label>
+                {mediaNetworkSeedId ? (
+                  <div style={{ marginTop: 6 }}>
+                    <small>Explore network mode for selected title.</small>{' '}
+                    <button onClick={() => setMediaNetworkSeedId(null)}>Back to global media atlas</button>
+                  </div>
+                ) : null}
+                {mediaColorBy === 'studio' ? (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Anime studio filters</strong>
+                    {animeStudios.map((studio) => (
+                      <label key={studio} style={{ display: 'block' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedAnimeStudios.includes(studio)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                            setSelectedAnimeStudios((prev) => (e.target.checked ? [...prev, studio] : prev.filter((x) => x !== studio)))
+                          }
+                        />
+                        <span style={{ display: 'inline-block', width: 10, height: 10, margin: '0 6px', background: studioPalette[studio] ?? '#9ca3af' }} />
+                        {studio}
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <TalentFinder roleToPeople={roleToPeople} tagRoleToPeople={tagRoleToPeople} peopleById={peopleById} media={media} onOpenPerson={(id: number) => { setSelectedPersonId(id); setSelected(null); setAtlasMode('people'); setPeopleExploreMode(true); }} />
+              <NetworkGraph selectedMedia={selected} selectedPersonId={selectedPersonId} depth={peopleDepth} edges={collab} peopleById={peopleById} mediaById={mediaById} relationLookup={relationLookup} lang={lang} />
+            </>
+          ) : (
+            <div>
+              <h3>Staff Atlas Controls</h3>
+              <label>
+                Color by:{' '}
+                <select value={peopleColorBy} onChange={(e: ChangeEvent<HTMLSelectElement>) => setPeopleColorBy(e.target.value as 'role' | 'studio')}>
+                  <option value="role">Most frequent role</option>
+                  <option value="studio">Studio affiliation</option>
+                </select>
+              </label>
+              <label style={{ marginLeft: 8 }}>
+                Hops:{' '}
+                <select value={peopleDepth} onChange={(e: ChangeEvent<HTMLSelectElement>) => setPeopleDepth(Number(e.target.value))}>
+                  {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+              <div style={{ marginTop: 6 }}>
+                <label>
+                  <input type="checkbox" checked={peopleExploreMode} onChange={(e: ChangeEvent<HTMLInputElement>) => setPeopleExploreMode(e.target.checked)} /> Explore network mode (click staff nodes)
+                </label>
+              </div>
+              {selectedPersonId && (
+                <div>
+                  <small>{peopleExploreMode ? `Focused around selected person id ${selectedPersonId}` : `Selected person id ${selectedPersonId}`}</small>{' '}
+                  {peopleExploreMode ? (
+                    <button onClick={() => setPeopleExploreMode(false)}>Back to global staff atlas</button>
+                  ) : (
+                    <button onClick={() => setPeopleExploreMode(true)}>Explore selected person network</button>
+                  )}
+                </div>
+              )}
+              <div style={{ marginTop: 8 }}><strong>Hop line colors:</strong>{HOP_COLORS.map((c, i) => <div key={c}><span style={{display:'inline-block',width:10,height:10,background:c,marginRight:6}} />Hop {i+1}</div>)}</div>
+              <div style={{ marginTop: 8 }}>
+                <strong>Role filters</strong>
+                {roleCategories.map((r) => (
+                  <label key={r} style={{ display: 'block' }}><input type="checkbox" checked={roleFilter.includes(r)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRoleFilter((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))} />{r}</label>
+                ))}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <strong>Studio filters</strong>
+                {studioCategories.map((s) => (
+                  <label key={s} style={{ display: 'block' }}><input type="checkbox" checked={studioFilter.includes(s)} onChange={(e: ChangeEvent<HTMLInputElement>) => setStudioFilter((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))} />{s}</label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <MapView
+          points={atlasMode === 'media' ? filteredMediaPoints : filteredPeoplePoints}
+          edges={atlasMode === 'media' ? mediaEdges : peopleEdges}
+          getFillColor={(p: any) => {
+            if (atlasMode === 'media') {
+              if (mediaNetworkSeedId && selected) {
+                if (p.id === selected.id) return '#facc15';
+                if (mediaRelationIds.has(p.id)) return '#7dd3fc';
+              }
+              if (mediaColorBy === 'studio') {
+                const m = mediaById[p.id];
+                if (m?.type === 'ANIME') return studioPalette[mediaStudioById[p.id] ?? 'Unknown Studio'] ?? '#9ca3af';
+              }
+              return p.type === 0 ? '#66a3ff' : '#ff8080';
+            }
+            return peopleColorBy === 'role' ? ROLE_COLORS[p.role] ?? ROLE_COLORS.Other : STUDIO_COLORS[p.studioCategory] ?? STUDIO_COLORS.Unaffiliated;
+          }}
+          onHover={() => {}}
+          onClick={(info: any) => {
+            if (atlasMode === 'media') {
+              const id = info.object?.id;
+              setSelected(mediaById[id]);
+              setSelectedPersonId(null);
+              if (mediaNetworkSeedId) setMediaNetworkSeedId(id ?? null);
+              else setMediaNetworkSeedId(null);
+            } else {
+              const id = info.object?.id ?? null;
+              setSelectedPersonId(id);
+              setSelected(null);
+            }
+          }}
+        />
+
+        {selectedPerson ? (
+          <aside style={{ padding: 10, borderLeft: '1px solid #333', overflow: 'auto' }}>
+            <PersonPage person={selectedPerson} media={media} lang={lang} onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); setMediaNetworkSeedId(null); setPeopleExploreMode(false); }} />
+          </aside>
+        ) : (
+          <Drawer
+            media={selected}
+            mediaById={mediaById}
+            peopleById={peopleById}
+            charactersById={charactersById}
+            relationLookup={relationLookup}
+            lang={lang}
+            onExplore={(id: number) => { setSelected(mediaById[id]); setMediaNetworkSeedId(id); }}
+            onOpenPerson={(id: number) => { setSelectedPersonId(id); setSelected(null); setAtlasMode('people'); setPeopleExploreMode(true); }}
+            onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); setMediaNetworkSeedId(null); setPeopleExploreMode(false); }}
+          />
+        )}
+      </div>
+      <footer style={{ padding: 8, borderTop: '1px solid #333' }}><a href="https://anilist.co" target="_blank" rel="noreferrer">{t.dataAttribution}</a></footer>
+    </div>
+  );
+}
