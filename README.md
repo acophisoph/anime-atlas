@@ -32,6 +32,37 @@ Build production site:
 BASE_PATH=/anime-atlas/ npm run build:site
 ```
 
+
+## Automated 100k batched ingestion (self-healing)
+
+Use the batched ingester to process **50k anime + 50k manga** in **1,000 batches** of 100 entries (50 anime + 50 manga):
+
+```bash
+# optional fallback enrichment comes from public Jikan API (no signup needed) when AniList is missing fields
+# default: 50k anime + 50k manga, chunked into 1000 auto-retried batches
+npm run ingest:batched -w scripts
+```
+
+Behavior:
+
+- persists per-batch state in `data/_tmp/batchState.json`
+- writes merged intermediate metadata (`mediaDetails.json`, `people.json`, `characters.json`, `relationLookup.json`) after every batch
+- rebuilds artifacts after each successful batch so the site data updates incrementally
+- automatically retries failed batches (up to `BATCH_MAX_RETRIES`, default 6)
+- supports resume/restart without redoing completed batches
+
+Useful env overrides:
+
+- `TOP_ANIME`, `TOP_MANGA`
+- `BATCH_ANIME`, `BATCH_MANGA`
+- `BATCH_MAX_RETRIES`
+
+Dry run (no artifact rebuilds):
+
+```bash
+npm run ingest:batched -w scripts -- --dry-run
+```
+
 ## Scaling to 100k
 
 Edit `scripts/src/config.ts`:
