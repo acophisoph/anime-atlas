@@ -65,6 +65,7 @@ export default function App() {
   const [mediaNetworkSeedId, setMediaNetworkSeedId] = useState<number | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState('');
+  const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [tagToMedia, setTagToMedia] = useState<Record<string, number[]>>({});
   const [roleToPeople, setRoleToPeople] = useState<Record<string, number[]>>({});
   const [tagRoleToPeople, setTagRoleToPeople] = useState<Record<string, number[]>>({});
@@ -206,16 +207,16 @@ export default function App() {
 
     const out: any[] = [];
     components.forEach((comp, ci) => {
-      const centerAngle = (ci / Math.max(components.length, 1)) * Math.PI * 2;
-      const centerRadius = clamp(0.22 + ci * 0.14, 0.2, 0.88);
+      const centerAngle = ci * 2.399963229728653;
+      const centerRadius = Math.min(0.82, 0.08 + Math.sqrt(ci) * 0.1);
       const cx = Math.cos(centerAngle) * centerRadius;
       const cy = Math.sin(centerAngle) * centerRadius;
       const compSorted = [...comp].sort((a, b) => (degree.get(b) ?? 0) - (degree.get(a) ?? 0));
 
       const localPos = new Map<number, { x: number; y: number }>();
       compSorted.forEach((pid, i) => {
-        const angle = i * 2.399963229728653; // golden-angle spiral
-        const r = Math.min(0.38, 0.05 + Math.sqrt(i) * 0.022);
+        const angle = i * 2.399963229728653;
+        const r = Math.min(0.58, 0.08 + Math.sqrt(i) * 0.034);
         localPos.set(pid, { x: Math.cos(angle) * r, y: Math.sin(angle) * r });
       });
 
@@ -377,18 +378,18 @@ export default function App() {
 
       const ca = perNode.get(a) ?? 0;
       const cb = perNode.get(b) ?? 0;
-      if (ca >= 5 || cb >= 5) continue;
+      if (ca >= 4 || cb >= 4) continue;
 
       out.push({
         from: pa,
         to: pb,
-        width: 0.22 + Math.log2(1 + Math.max(1, w)) * 0.12,
+        width: 0.14 + Math.log2(1 + Math.max(1, w)) * 0.08,
         color: HOP_COLORS[Math.max(0, hop - 1)] ?? '#64748b',
-        opacity: hop <= 1 ? 0.14 : 0.09
+        opacity: hop <= 1 ? 0.11 : 0.07
       });
       perNode.set(a, ca + 1);
       perNode.set(b, cb + 1);
-      if (out.length >= 110) break;
+      if (out.length >= 80) break;
     }
 
     return out;
@@ -406,8 +407,24 @@ export default function App() {
       .filter(Boolean) as any[];
   }, [atlasMode, selected, displayedMediaPointById, mediaNetworkSeedId]);
 
-  const results = query ? media.filter((m) => localizeTitle(m.title, lang).toLowerCase().includes(query.toLowerCase())).slice(0, 10) : [];
+  const searchResults = useMemo(() => {
+    if (!query.trim()) return [] as Array<{ kind: 'media' | 'people'; id: number; label: string; sub: string }>;
+    const q = query.toLowerCase();
+    const mediaMatches = media
+      .filter((m) => localizeTitle(m.title, lang).toLowerCase().includes(q))
+      .slice(0, 8)
+      .map((m) => ({ kind: 'media' as const, id: m.id, label: localizeTitle(m.title, lang), sub: `[${m.type}] ${m.year || ''}` }));
+    const peopleMatches = people
+      .filter((p) => (p.name ?? '').toLowerCase().includes(q))
+      .slice(0, 8)
+      .map((p) => ({ kind: 'people' as const, id: p.id, label: p.name ?? `Person ${p.id}`, sub: 'Staff' }));
+    return [...mediaMatches, ...peopleMatches].slice(0, 12);
+  }, [query, media, people, lang]);
+
   const selectedPerson = selectedPersonId ? peopleById[selectedPersonId] : null;
+  const dynamicMediaScale = clamp(1.35 / Math.sqrt(Math.max(1, displayedMediaPoints.length) / 140), 0.18, 1.1);
+  const dynamicPeopleScale = clamp(1.28 / Math.sqrt(Math.max(1, displayedPeoplePoints.length) / 140), 0.16, 1.05);
+  const mapViewKey = `${atlasMode}-${atlasMode === 'media' ? (mediaNetworkSeedId ? 'explore' : 'global') : (peopleExploreMode ? 'explore' : 'global')}`;
 
   if (!points.length || !media.length) return <Loading />;
 
@@ -418,10 +435,24 @@ export default function App() {
         <div style={{ padding: 10, overflow: 'auto' }}>
           <SearchBox placeholder={t.search} value={query} setValue={setQuery} />
           <ul>
-            {results.map((m) => (
-              <li key={m.id}>
-                <button onClick={() => { setSelected(m); setSelectedPersonId(null); setAtlasMode('media'); setMediaNetworkSeedId(null); setPeopleExploreMode(false); }}>
-                  {localizeTitle(m.title, lang)} <small>[{m.type}] {m.year || ''}</small>
+            {searchResults.map((r) => (
+              <li key={`${r.kind}-${r.id}`}>
+                <button
+                  onClick={() => {
+                    if (r.kind === 'media') {
+                      setSelected(mediaById[r.id] ?? relationLookup[String(r.id)] ?? null);
+                      setSelectedPersonId(null);
+                      setAtlasMode('media');
+                      setMediaNetworkSeedId(null);
+                      setPeopleExploreMode(false);
+                    } else {
+                      setSelectedPersonId(r.id);
+                      setSelected(null);
+                      setAtlasMode('people');
+                    }
+                  }}
+                >
+                  {r.label} <small>{r.sub}</small>
                 </button>
               </li>
             ))}
@@ -521,38 +552,60 @@ export default function App() {
           )}
         </div>
 
-        <MapView
-          points={atlasMode === 'media' ? displayedMediaPoints : displayedPeoplePoints}
-          edges={atlasMode === 'media' ? mediaEdges : peopleEdges}
-          getFillColor={(p: any) => {
-            if (atlasMode === 'media') {
-              if (mediaNetworkSeedId && selected) {
-                if (p.id === selected.id) return '#facc15';
-                if (mediaRelationIds.has(p.id)) return '#7dd3fc';
+        <div style={{ position: 'relative', minHeight: 0 }}>
+          <MapView
+            viewKey={mapViewKey}
+            defaultScale={atlasMode === 'media' ? dynamicMediaScale : dynamicPeopleScale}
+            points={atlasMode === 'media' ? displayedMediaPoints : displayedPeoplePoints}
+            edges={atlasMode === 'media' ? mediaEdges : peopleEdges}
+            getFillColor={(p: any) => {
+              if (atlasMode === 'media') {
+                if (mediaNetworkSeedId && selected) {
+                  if (p.id === selected.id) return '#facc15';
+                  if (mediaRelationIds.has(p.id)) return '#7dd3fc';
+                }
+                if (mediaColorBy === 'studio') {
+                  const m = mediaById[p.id];
+                  if (m?.type === 'ANIME') return studioPalette[mediaStudioById[p.id] ?? 'Unknown Studio'] ?? '#9ca3af';
+                }
+                return p.type === 0 ? '#66a3ff' : '#ff8080';
               }
-              if (mediaColorBy === 'studio') {
-                const m = mediaById[p.id];
-                if (m?.type === 'ANIME') return studioPalette[mediaStudioById[p.id] ?? 'Unknown Studio'] ?? '#9ca3af';
-              }
-              return p.type === 0 ? '#66a3ff' : '#ff8080';
-            }
-            return peopleColorBy === 'role' ? ROLE_COLORS[p.role] ?? ROLE_COLORS.Other : STUDIO_COLORS[p.studioCategory] ?? STUDIO_COLORS.Unaffiliated;
-          }}
-          onHover={() => {}}
-          onClick={(info: any) => {
-            if (atlasMode === 'media') {
+              return peopleColorBy === 'role' ? ROLE_COLORS[p.role] ?? ROLE_COLORS.Other : STUDIO_COLORS[p.studioCategory] ?? STUDIO_COLORS.Unaffiliated;
+            }}
+            onHover={(info: any) => {
               const id = info.object?.id;
-              setSelected(mediaById[id]);
-              setSelectedPersonId(null);
-              if (mediaNetworkSeedId) setMediaNetworkSeedId(id ?? null);
-              else setMediaNetworkSeedId(null);
-            } else {
-              const id = info.object?.id ?? null;
-              setSelectedPersonId(id);
-              setSelected(null);
-            }
-          }}
-        />
+              if (!id) {
+                setHoveredNode(null);
+                return;
+              }
+              if (atlasMode === 'media') {
+                const m = mediaById[id] ?? relationLookup[String(id)];
+                setHoveredNode(m ? { kind: 'media', label: localizeTitle(m.title, lang), sub: `[${m.type}] ${m.year || ''}` } : null);
+              } else {
+                const p = peopleById[id];
+                setHoveredNode(p ? { kind: 'people', label: p.name ?? `Person ${id}`, sub: 'Staff' } : null);
+              }
+            }}
+            onClick={(info: any) => {
+              const id = info.object?.id;
+              if (!id) return;
+              if (atlasMode === 'media') {
+                setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null);
+                setSelectedPersonId(null);
+                if (mediaNetworkSeedId) setMediaNetworkSeedId(id);
+              } else {
+                setSelectedPersonId(id);
+                setSelected(null);
+              }
+            }}
+          />
+          {hoveredNode ? (
+            <div style={{ position: 'absolute', left: 10, bottom: 10, background: 'rgba(15,17,23,0.85)', border: '1px solid #334155', borderRadius: 6, padding: '6px 8px', pointerEvents: 'none' }}>
+              <div style={{ fontWeight: 600 }}>{hoveredNode.label}</div>
+              <small style={{ color: '#cbd5e1' }}>{hoveredNode.sub}</small>
+            </div>
+          ) : null}
+        </div>
 
         {selectedPerson ? (
           <aside style={{ padding: 10, borderLeft: '1px solid #333', overflow: 'auto' }}>
