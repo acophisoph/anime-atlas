@@ -19,15 +19,38 @@ query MediaDetail($id:Int!){
       edges{
         role
         node{ id name{full native} siteUrl }
-        voiceActors(language:JAPANESE, sort:[RELEVANCE,ID]){ id name{full native} siteUrl }
-        voiceActorRoles(language:ENGLISH, sort:[RELEVANCE,ID]){ voiceActor{ id name{full native} siteUrl } }
+        jpVoice: voiceActors(language:JAPANESE, sort:[RELEVANCE,ID]){ id name{full native} siteUrl }
+        enVoice: voiceActors(language:ENGLISH, sort:[RELEVANCE,ID]){ id name{full native} siteUrl }
       }
     }
   }
 }`;
 
+const relationLookupQuery = `
+query RelationLite($id:Int!){
+  Media(id:$id){
+    id type format siteUrl
+    startDate{year}
+    title{romaji english native}
+  }
+}`;
+
+function dedupeById<T extends { id?: number }>(arr: T[]): T[] {
+  const seen = new Set<number>();
+  const out: T[] = [];
+  for (const item of arr) {
+    if (!item.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
+
 async function main() {
   const topMedia = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'topMedia.json'), 'utf-8')) as Array<{ id: number }>;
+  const topIds = new Set(topMedia.map((m) => m.id));
+  const relationIds = new Set<number>();
+
   const media = [] as any[];
   const peopleMap = new Map<number, any>();
   const charactersMap = new Map<number, any>();
@@ -58,13 +81,22 @@ async function main() {
       if (character) {
         charactersMap.set(character.id, { id: character.id, name: character.name, siteUrl: character.siteUrl });
       }
-      const vaJp = (edge.voiceActors ?? []).map((va: any) => ({ id: va.id, name: va.name, lang: 'JP', siteUrl: va.siteUrl }));
-      const vaEn = (edge.voiceActorRoles ?? []).map((r: any) => ({ id: r.voiceActor?.id, name: r.voiceActor?.name, lang: 'EN', siteUrl: r.voiceActor?.siteUrl }));
-      for (const va of [...vaJp, ...vaEn]) {
+
+      const voiceActorsJP = dedupeById((edge.jpVoice ?? []).map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl })));
+      const voiceActorsEN = dedupeById((edge.enVoice ?? []).map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl })));
+
+      for (const va of [...voiceActorsJP, ...voiceActorsEN]) {
         if (va.id) peopleMap.set(va.id, { id: va.id, name: va.name, siteUrl: va.siteUrl });
       }
-      return { characterId: character?.id, role: edge.role, voiceActors: [...vaJp, ...vaEn].filter((x) => x.id) };
+
+      return { characterId: character?.id, role: edge.role, voiceActorsJP, voiceActorsEN };
     });
+
+    const relations = (m.relations?.edges ?? [])
+      .map((e: any) => ({ id: e.node?.id, relationType: e.relationType }))
+      .filter((x: any) => x.id);
+
+    for (const rel of relations) relationIds.add(rel.id);
 
     media.push({
       id: m.id,
@@ -77,7 +109,7 @@ async function main() {
       genres: m.genres ?? [],
       tags: (m.tags ?? []).map((t: any) => ({ name: t.name, rank: t.rank })),
       siteUrl: m.siteUrl,
-      relations: (m.relations?.edges ?? []).map((e: any) => ({ id: e.node?.id, relationType: e.relationType })).filter((x: any) => x.id),
+      relations,
       staff,
       characters
     });
@@ -85,10 +117,26 @@ async function main() {
     logger.info('Fetched media', m.id);
   }
 
+  const relationLookup: Record<number, any> = {};
+  const missingRelationIds = [...relationIds].filter((id) => !topIds.has(id));
+  for (const id of missingRelationIds) {
+    const relData = await queryAniList<{ Media: any }>(relationLookupQuery, { id });
+    if (!relData.Media) continue;
+    relationLookup[id] = {
+      id: relData.Media.id,
+      type: relData.Media.type,
+      title: relData.Media.title,
+      year: relData.Media.startDate?.year ?? 0,
+      format: relData.Media.format,
+      siteUrl: relData.Media.siteUrl
+    };
+  }
+
   await fs.mkdir(TMP_DIR, { recursive: true });
   await fs.writeFile(path.join(TMP_DIR, 'mediaDetails.json'), JSON.stringify(media, null, 2));
   await fs.writeFile(path.join(TMP_DIR, 'people.json'), JSON.stringify([...peopleMap.values()], null, 2));
   await fs.writeFile(path.join(TMP_DIR, 'characters.json'), JSON.stringify([...charactersMap.values()], null, 2));
+  await fs.writeFile(path.join(TMP_DIR, 'relationLookup.json'), JSON.stringify(relationLookup, null, 2));
 }
 
 main().catch((error) => {

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 
 type ViewState = { x: number; y: number; scale: number; dragging: boolean; startX: number; startY: number };
 
-export function MapView({ points, onClick }: any) {
+export function MapView({ points, onClick, getFillColor }: any) {
   const [view, setView] = useState<ViewState>({ x: 0, y: 0, scale: 1, dragging: false, startX: 0, startY: 0 });
   const dragDistanceRef = useRef(0);
 
@@ -38,9 +38,10 @@ export function MapView({ points, onClick }: any) {
         {points.map((p: any) => {
           const visibleRadius = Math.max(0.004, 0.012 / Math.sqrt(view.scale));
           const hitRadius = Math.max(visibleRadius, 0.018);
+          const fill = getFillColor ? getFillColor(p) : p.type === 0 ? '#66a3ff' : '#ff8080';
           return (
             <g key={p.id}>
-              <circle cx={p.x} cy={p.y} r={visibleRadius} fill={p.type === 0 ? '#66a3ff' : '#ff8080'} pointerEvents="none">
+              <circle cx={p.x} cy={p.y} r={visibleRadius} fill={fill} pointerEvents="none">
                 <title>{p.id}</title>
               </circle>
               <circle

@@ -1,16 +1,25 @@
 import { localizeTitle } from '../i18n/i18n';
 
-function dedupeVoiceActors(voiceActors: Array<{ id: number; lang: 'JP' | 'EN'; name?: { full?: string } }>) {
-  const seen = new Set<string>();
-  return voiceActors.filter((va) => {
-    const key = `${va.id}:${va.lang}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+function dedupeById(items: Array<{ id: number; name?: { full?: string } }>) {
+  const seen = new Set<number>();
+  return items.filter((item) => {
+    if (!item.id || seen.has(item.id)) return false;
+    seen.add(item.id);
     return true;
   });
 }
 
-export function Drawer({ media, mediaById, peopleById, charactersById, lang, onExplore }: any) {
+export function Drawer({
+  media,
+  mediaById,
+  peopleById,
+  charactersById,
+  relationLookup,
+  lang,
+  onExplore,
+  onOpenPerson,
+  onOpenMedia
+}: any) {
   if (!media) return <aside style={{ padding: 10 }}>Select a media point</aside>;
   return (
     <aside style={{ padding: 10, borderLeft: '1px solid #333', overflow: 'auto' }}>
@@ -25,21 +34,31 @@ export function Drawer({ media, mediaById, peopleById, charactersById, lang, onE
       <h4>Related</h4>
       <ul>
         {media.relations?.slice(0, 10).map((r: any, idx: number) => {
-          const rel = mediaById[r.id];
+          const rel = mediaById[r.id] || relationLookup?.[String(r.id)];
+          const label = rel ? localizeTitle(rel.title, lang) : `#${r.id}`;
           return (
             <li key={idx}>
-              {rel ? localizeTitle(rel.title, lang) : `#${r.id}`} ({r.relationType})
+              {rel ? (
+                <button onClick={() => onOpenMedia(r.id)}>{label}</button>
+              ) : (
+                <a href={`https://anilist.co/${media.type === 'MANGA' ? 'manga' : 'anime'}/${r.id}`} target="_blank" rel="noreferrer">
+                  {label}
+                </a>
+              )}{' '}
+              ({r.relationType})
             </li>
           );
         })}
       </ul>
       <h4>Credits</h4>
       <ul>
-        {media.staff?.slice(0, 16).map((s: any, idx: number) => {
-          const personName = peopleById[s.personId]?.name?.full ?? peopleById[s.personId]?.name?.native ?? `#${s.personId}`;
+        {media.staff?.slice(0, 20).map((s: any, idx: number) => {
+          const person = peopleById[s.personId];
+          const personName = person?.name?.full ?? person?.name?.native ?? `#${s.personId}`;
           return (
             <li key={idx}>
-              {s.roleGroup}: {personName} — {s.roleRaw}
+              {s.roleGroup}:{' '}
+              <button onClick={() => onOpenPerson(s.personId)}>{personName}</button> — {s.roleRaw}
             </li>
           );
         })}
@@ -49,15 +68,31 @@ export function Drawer({ media, mediaById, peopleById, charactersById, lang, onE
         {media.characters?.slice(0, 10).map((c: any, idx: number) => {
           const characterName =
             charactersById[c.characterId]?.name?.full ?? charactersById[c.characterId]?.name?.native ?? `#${c.characterId}`;
-          const voiceActors = dedupeVoiceActors(c.voiceActors ?? []);
+          const jp = dedupeById(c.voiceActorsJP ?? []);
+          const en = dedupeById(c.voiceActorsEN ?? []);
           return (
             <li key={idx}>
-              {characterName}{' '}
-              {voiceActors.map((v: any) => (
-                <span key={`${v.id}-${v.lang}`}>
-                  [{v.lang}] {v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}{' '}
-                </span>
-              ))}
+              <strong>{characterName}</strong>
+              <div>
+                [JP]{' '}
+                {jp.length
+                  ? jp.map((v: any) => (
+                      <button key={`jp-${v.id}`} onClick={() => onOpenPerson(v.id)}>
+                        {v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}
+                      </button>
+                    ))
+                  : '—'}
+              </div>
+              <div>
+                [EN]{' '}
+                {en.length
+                  ? en.map((v: any) => (
+                      <button key={`en-${v.id}`} onClick={() => onOpenPerson(v.id)}>
+                        {v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}
+                      </button>
+                    ))
+                  : '—'}
+              </div>
             </li>
           );
         })}

@@ -32,6 +32,7 @@ async function main() {
   const media = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'mediaDetails.json'), 'utf-8'));
   const people = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'people.json'), 'utf-8'));
   const characters = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'characters.json'), 'utf-8'));
+  const relationLookup = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'relationLookup.json'), 'utf-8').catch(() => '{}'));
 
   await fs.mkdir(path.join(DATA_DIR, 'indices'), { recursive: true });
   await fs.mkdir(path.join(DATA_DIR, 'meta'), { recursive: true });
@@ -56,6 +57,7 @@ async function main() {
   for (const [i, part] of chunk(characters, BUILD_CONFIG.chunkSize).entries()) {
     await fs.writeFile(path.join(DATA_DIR, 'meta', `characters_${String(i).padStart(3, '0')}.json`), JSON.stringify(part));
   }
+  await fs.writeFile(path.join(DATA_DIR, 'meta', 'media_rel_lookup.json'), JSON.stringify(relationLookup));
 
   const mediaRel = media.flatMap((m: any) => (m.relations ?? []).map((r: any) => [m.id, r.id, 1] as [number, number, number]));
   const mediaCredits = media.flatMap((m: any) => (m.staff ?? []).map((s: any) => [m.id, s.personId, 1] as [number, number, number])).filter((x: any) => x[1]);

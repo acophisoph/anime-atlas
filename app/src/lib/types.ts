@@ -14,7 +14,12 @@ export type Media = {
   siteUrl?: string;
   relations: { id: number; relationType: string }[];
   staff?: { personId: number; roleRaw: string; roleGroup: string }[];
-  characters?: { characterId: number; role: string; voiceActors: { id: number; name: any; lang: 'JP' | 'EN'; siteUrl?: string }[] }[];
+  characters?: {
+    characterId: number;
+    role: string;
+    voiceActorsJP: { id: number; name: any; siteUrl?: string }[];
+    voiceActorsEN: { id: number; name: any; siteUrl?: string }[];
+  }[];
 };
 
 export type Person = { id: number; name: { full?: string; native?: string; alternative?: string[] }; siteUrl?: string };

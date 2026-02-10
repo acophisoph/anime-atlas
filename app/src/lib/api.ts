@@ -66,5 +66,7 @@ export async function loadAllMeta() {
   const people = await loadChunked<any>('people', counts.people ?? chunkSize, chunkSize);
   const characters = await loadChunked<any>('characters', counts.characters ?? chunkSize, chunkSize);
 
-  return { media, people, characters };
+  const relationLookup = await loadJson<Record<string, any>>('meta/media_rel_lookup.json').catch(() => ({}));
+
+  return { media, people, characters, relationLookup };
 }
