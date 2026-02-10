@@ -38,7 +38,7 @@ export function MapView({ points, onClick, getFillColor, edges = [] }: any & { e
       onMouseLeave={() => setView((prev) => ({ ...prev, dragging: false }))}
     >
       <g transform={transform}>
-        {edges.map((e: Edge, idx: number) => (
+        {!view.dragging && edges.map((e: Edge, idx: number) => (
           <line
             key={`edge-${idx}`}
             x1={e.from.x}
@@ -52,7 +52,7 @@ export function MapView({ points, onClick, getFillColor, edges = [] }: any & { e
         ))}
         {points.map((p: any) => {
           const visibleRadius = Math.max(0.004, 0.012 / Math.sqrt(view.scale));
-          const hitRadius = Math.max(visibleRadius, 0.018);
+          const hitRadius = Math.max(visibleRadius, 0.013);
           const fill = getFillColor ? getFillColor(p) : p.type === 0 ? '#66a3ff' : '#ff8080';
           return (
             <g key={p.id}>

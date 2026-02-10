@@ -3,7 +3,7 @@ import { localizeTitle } from '../i18n/i18n';
 function isLocalizationRole(roleRaw?: string): boolean {
   if (!roleRaw) return false;
   const text = roleRaw.toLowerCase();
-  return /(translat|locali[sz]ation|letter|typeset|proofread|subtit|dub script|\(english|\(spanish|\(portuguese|\(french|\(german|\(italian|\(polish)/i.test(text);
+  return /(translat|locali[sz]ation|letter|typeset|proofread|subtit|dub|dubb|adr|adaptation|portuguese|spanish|french|german|italian|polish|arabic|thai|turkish|russian|english)/i.test(text);
 }
 
 function dedupeById(items: Array<{ id: number; name?: { full?: string } }>) {

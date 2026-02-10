@@ -207,7 +207,7 @@ export default function App() {
     const out: any[] = [];
     components.forEach((comp, ci) => {
       const centerAngle = (ci / Math.max(components.length, 1)) * Math.PI * 2;
-      const centerRadius = clamp(0.14 + ci * 0.11, 0.12, 0.82);
+      const centerRadius = clamp(0.22 + ci * 0.14, 0.2, 0.88);
       const cx = Math.cos(centerAngle) * centerRadius;
       const cy = Math.sin(centerAngle) * centerRadius;
       const compSorted = [...comp].sort((a, b) => (degree.get(b) ?? 0) - (degree.get(a) ?? 0));
@@ -215,27 +215,15 @@ export default function App() {
       const localPos = new Map<number, { x: number; y: number }>();
       compSorted.forEach((pid, i) => {
         const angle = i * 2.399963229728653; // golden-angle spiral
-        const r = Math.min(0.28, 0.03 + Math.sqrt(i) * 0.016);
+        const r = Math.min(0.38, 0.05 + Math.sqrt(i) * 0.022);
         localPos.set(pid, { x: Math.cos(angle) * r, y: Math.sin(angle) * r });
       });
 
-      for (let iter = 0; iter < 14; iter += 1) {
-        for (const pid of compSorted) {
-          const nbs = (adj.get(pid) ?? []).filter((n) => localPos.has(n));
-          if (!nbs.length) continue;
-          const avg = nbs.reduce(
-            (acc, n) => {
-              const p = localPos.get(n)!;
-              return { x: acc.x + p.x, y: acc.y + p.y };
-            },
-            { x: 0, y: 0 }
-          );
-          const cur = localPos.get(pid)!;
-          const nx = cur.x * 0.78 + (avg.x / nbs.length) * 0.22;
-          const ny = cur.y * 0.78 + (avg.y / nbs.length) * 0.22;
-          localPos.set(pid, { x: nx, y: ny });
-        }
-      }
+      compSorted.forEach((pid, i) => {
+        const base = localPos.get(pid) ?? { x: 0, y: 0 };
+        const angle = hash01(pid * 5 + i) * Math.PI * 2;
+        localPos.set(pid, { x: base.x + Math.cos(angle) * 0.01, y: base.y + Math.sin(angle) * 0.01 });
+      });
 
       compSorted.forEach((pid) => {
         const stat = personStats[pid] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
@@ -296,32 +284,35 @@ export default function App() {
 
   const displayedMediaPoints = useMemo(() => {
     if (!filteredMediaPoints.length) return [];
-    const pts = filteredMediaPoints.map((p: any) => ({ ...p }));
-    const cx = pts.reduce((a: number, p: any) => a + p.x, 0) / pts.length;
-    const cy = pts.reduce((a: number, p: any) => a + p.y, 0) / pts.length;
+    const pts = filteredMediaPoints.map((p: any, idx: number) => {
+      const j = hash01((p.id + idx) * 17.31);
+      return {
+        ...p,
+        x: p.x * 1.32 + Math.cos(j * Math.PI * 2) * 0.006,
+        y: p.y * 1.32 + Math.sin(j * Math.PI * 2) * 0.006
+      };
+    });
 
-    for (const p of pts) {
-      p.x = (p.x - cx) * 1.28;
-      p.y = (p.y - cy) * 1.28;
-    }
-
-    for (let iter = 0; iter < 10; iter += 1) {
-      for (let i = 0; i < pts.length; i += 1) {
-        for (let j = i + 1; j < pts.length; j += 1) {
-          const a = pts[i];
-          const b = pts[j];
-          let dx = b.x - a.x;
-          let dy = b.y - a.y;
-          const dist = Math.hypot(dx, dy) || 1e-6;
-          const minDist = 0.03;
-          if (dist < minDist) {
-            dx /= dist;
-            dy /= dist;
-            const push = (minDist - dist) * 0.23;
-            a.x -= dx * push;
-            a.y -= dy * push;
-            b.x += dx * push;
-            b.y += dy * push;
+    const doRepel = pts.length <= 220;
+    if (doRepel) {
+      for (let iter = 0; iter < 4; iter += 1) {
+        for (let i = 0; i < pts.length; i += 1) {
+          for (let j = i + 1; j < pts.length; j += 1) {
+            const a = pts[i];
+            const b = pts[j];
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy) || 1e-6;
+            const minDist = 0.028;
+            if (dist < minDist) {
+              dx /= dist;
+              dy /= dist;
+              const push = (minDist - dist) * 0.18;
+              a.x -= dx * push;
+              a.y -= dy * push;
+              b.x += dx * push;
+              b.y += dy * push;
+            }
           }
         }
       }
@@ -338,6 +329,8 @@ export default function App() {
     return pts;
   }, [filteredMediaPoints]);
 
+  const displayedMediaPointById = useMemo(() => Object.fromEntries(displayedMediaPoints.map((p) => [p.id, p])), [displayedMediaPoints]);
+
   const filteredPeoplePoints = peoplePoints.filter((p) => {
     const roleOk = roleFilter.length ? roleFilter.includes(p.role) : true;
     const studioOk = studioFilter.length ? studioFilter.includes(p.studioCategory) : true;
@@ -349,68 +342,69 @@ export default function App() {
 
   const displayedPeoplePoints = useMemo(() => {
     if (!filteredPeoplePoints.length) return [];
-    const pts = filteredPeoplePoints.map((p: any) => ({ ...p }));
-
-    for (let iter = 0; iter < 8; iter += 1) {
-      for (let i = 0; i < pts.length; i += 1) {
-        for (let j = i + 1; j < pts.length; j += 1) {
-          const a = pts[i];
-          const b = pts[j];
-          let dx = b.x - a.x;
-          let dy = b.y - a.y;
-          const dist = Math.hypot(dx, dy) || 1e-6;
-          const minDist = 0.028;
-          if (dist < minDist) {
-            dx /= dist;
-            dy /= dist;
-            const push = (minDist - dist) * 0.2;
-            a.x -= dx * push;
-            a.y -= dy * push;
-            b.x += dx * push;
-            b.y += dy * push;
-          }
-        }
-      }
-    }
-
-    return pts;
-  }, [filteredPeoplePoints]);
+    return filteredPeoplePoints.map((p: any, idx: number) => {
+      const j = hash01((p.id + idx) * 29.77);
+      const baseScale = selectedNeighborhoodMap ? 1.16 : 1.38;
+      return {
+        ...p,
+        x: p.x * baseScale + Math.cos(j * Math.PI * 2) * 0.008,
+        y: p.y * baseScale + Math.sin(j * Math.PI * 2) * 0.008
+      };
+    });
+  }, [filteredPeoplePoints, selectedNeighborhoodMap]);
 
   const peoplePointById = useMemo(() => Object.fromEntries(displayedPeoplePoints.map((p) => [p.id, p])), [displayedPeoplePoints]);
 
   const peopleEdges = useMemo(() => {
-    if (atlasMode !== 'people' || !selectedNeighborhoodMap) return [];
-    return collab
+    if (atlasMode !== 'people' || !selectedNeighborhoodMap || !selectedPersonId) return [];
+
+    const ranked = collab
       .filter(([a, b]) => selectedNeighborhoodMap.has(a) && selectedNeighborhoodMap.has(b))
-      .sort((a, b) => b[2] - a[2])
-      .slice(0, 280)
-      .map(([a, b, w]) => {
-        const pa = peoplePointById[a];
-        const pb = peoplePointById[b];
-        if (!pa || !pb) return null;
-        const hop = Math.max(selectedNeighborhoodMap.get(a) ?? 0, selectedNeighborhoodMap.get(b) ?? 0);
-        return {
-          from: pa,
-          to: pb,
-          width: 0.6 + Math.log2(1 + Math.max(1, w)) * 0.35,
-          color: HOP_COLORS[Math.max(0, hop - 1)] ?? '#64748b',
-          opacity: hop <= 2 ? 0.32 : 0.2
-        };
-      })
-      .filter(Boolean) as any[];
-  }, [atlasMode, selectedNeighborhoodMap, collab, peoplePointById]);
+      .sort((a, b) => b[2] - a[2]);
+
+    const perNode = new Map<number, number>();
+    const out: any[] = [];
+    for (const [a, b, w] of ranked) {
+      const ha = selectedNeighborhoodMap.get(a) ?? 99;
+      const hb = selectedNeighborhoodMap.get(b) ?? 99;
+      const hop = Math.max(ha, hb);
+      const pa = peoplePointById[a];
+      const pb = peoplePointById[b];
+      if (!pa || !pb) continue;
+
+      const nearSeed = a === selectedPersonId || b === selectedPersonId;
+      if (!(nearSeed || (hop <= 2 && Math.abs(ha - hb) <= 1))) continue;
+
+      const ca = perNode.get(a) ?? 0;
+      const cb = perNode.get(b) ?? 0;
+      if (ca >= 5 || cb >= 5) continue;
+
+      out.push({
+        from: pa,
+        to: pb,
+        width: 0.22 + Math.log2(1 + Math.max(1, w)) * 0.12,
+        color: HOP_COLORS[Math.max(0, hop - 1)] ?? '#64748b',
+        opacity: hop <= 1 ? 0.14 : 0.09
+      });
+      perNode.set(a, ca + 1);
+      perNode.set(b, cb + 1);
+      if (out.length >= 110) break;
+    }
+
+    return out;
+  }, [atlasMode, selectedNeighborhoodMap, collab, peoplePointById, selectedPersonId]);
 
   const mediaEdges = useMemo(() => {
     if (atlasMode !== 'media' || !selected || !mediaNetworkSeedId) return [];
     return (selected.relations ?? [])
       .map((r: any) => {
-        const to = mediaPointById[r.id];
-        const from = mediaPointById[selected.id];
+        const to = displayedMediaPointById[r.id];
+        const from = displayedMediaPointById[selected.id];
         if (!to || !from) return null;
         return { from, to, width: 1.2, color: '#cbd5e1', opacity: 0.55 };
       })
       .filter(Boolean) as any[];
-  }, [atlasMode, selected, mediaPointById, mediaNetworkSeedId]);
+  }, [atlasMode, selected, displayedMediaPointById, mediaNetworkSeedId]);
 
   const results = query ? media.filter((m) => localizeTitle(m.title, lang).toLowerCase().includes(query.toLowerCase())).slice(0, 10) : [];
   const selectedPerson = selectedPersonId ? peopleById[selectedPersonId] : null;
@@ -454,6 +448,7 @@ export default function App() {
                 {mediaColorBy === 'studio' ? (
                   <details style={{ marginTop: 8 }} open>
                     <summary><strong>Animation studio filters</strong></summary>
+                    <button style={{ marginTop: 6 }} onClick={() => setSelectedAnimeStudios([])}>Clear studio filters</button>
                     <div style={{ marginTop: 6 }}>
                       {(['Unknown Studio', ...animeStudios]).map((studio) => (
                         <label key={studio} style={{ display: 'block' }}>

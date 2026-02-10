@@ -59,7 +59,7 @@ function extractUrls(text?: string): string[] {
 function isLocalizationRole(role?: string): boolean {
   if (!role) return false;
   const normalized = role.toLowerCase();
-  return /(translat|locali[sz]ation|letter|typeset|proofread|subtit|dub script|editor\s*\(|\(english|\(spanish|\(portuguese|\(french|\(german|\(italian|\(polish)/i.test(normalized);
+  return /(translat|locali[sz]ation|letter|typeset|proofread|subtit|dub|dubb|adr|adaptation|editor\s*\(|portuguese|spanish|french|german|italian|polish|arabic|thai|turkish|russian|english)/i.test(normalized);
 }
 
 function splitVoiceActorsByLanguage(actors: any[]): { voiceActorsJP: any[]; voiceActorsEN: any[] } {
