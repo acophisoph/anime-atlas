@@ -114,24 +114,14 @@ export function Drawer({
             charactersById[c.characterId]?.name?.full ?? charactersById[c.characterId]?.name?.native ?? `#${c.characterId}`;
           const jp = dedupeById(c.voiceActorsJP ?? (c.voiceActors ?? []).filter((v: any) => ['JP', 'JAPANESE'].includes(String(v.lang ?? v.language ?? '').toUpperCase())));
           const en = dedupeById(c.voiceActorsEN ?? (c.voiceActors ?? []).filter((v: any) => ['EN', 'ENGLISH'].includes(String(v.lang ?? v.language ?? '').toUpperCase())));
+          const allVa = dedupeById([...jp, ...en]);
           return (
             <li key={idx}>
               <strong>{characterName}</strong>
               <div>
-                [JP]{' '}
-                {jp.length
-                  ? jp.map((v: any) => (
-                      <span key={`jp-${v.id}`}>
-                        <button onClick={() => onOpenPerson(v.id)}>{v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}</button>{' '}
-                      </span>
-                    ))
-                  : '—'}
-              </div>
-              <div>
-                [EN]{' '}
-                {en.length
-                  ? en.map((v: any) => (
-                      <span key={`en-${v.id}`}>
+                {allVa.length
+                  ? allVa.map((v: any) => (
+                      <span key={`va-${v.id}`}>
                         <button onClick={() => onOpenPerson(v.id)}>{v.name?.full ?? peopleById[v.id]?.name?.full ?? `#${v.id}`}</button>{' '}
                       </span>
                     ))
