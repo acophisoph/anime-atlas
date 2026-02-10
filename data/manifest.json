@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "counts": {
+    "media": 2,
+    "people": 2,
+    "characters": 1,
+    "points": 2
+  },
+  "buildConfig": {
+    "topAnime": 100,
+    "topManga": 100
+  },
+  "basePath": "/anime-atlas/",
+  "binarySpec": {
+    "points": "{count:u32}{id:u32,type:u8,x:f32,y:f32,cluster:u16,year:u16}*",
+    "graph": "{count:u32}{src:u32,dst:u32,weight:u32}*"
+  }
+}
