@@ -3,7 +3,7 @@ import type { MouseEvent, WheelEvent } from 'react';
 
 type ViewState = { x: number; y: number; scale: number; dragging: boolean; startX: number; startY: number };
 
-type Edge = { from: { x: number; y: number }; to: { x: number; y: number }; width?: number; color?: string };
+type Edge = { from: { x: number; y: number }; to: { x: number; y: number }; width?: number; color?: string; opacity?: number };
 
 export function MapView({ points, onClick, getFillColor, edges = [] }: any & { edges?: Edge[] }) {
   const [view, setView] = useState<ViewState>({ x: 0, y: 0, scale: 1, dragging: false, startX: 0, startY: 0 });
@@ -46,8 +46,8 @@ export function MapView({ points, onClick, getFillColor, edges = [] }: any & { e
             x2={e.to.x}
             y2={e.to.y}
             stroke={e.color ?? '#64748b'}
-            strokeWidth={(e.width ?? 1) / 200}
-            strokeOpacity={0.6}
+            strokeWidth={Math.max(0.0015, (e.width ?? 1) / 260)}
+            strokeOpacity={e.opacity ?? 0.35}
           />
         ))}
         {points.map((p: any) => {

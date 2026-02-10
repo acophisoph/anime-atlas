@@ -1,5 +1,11 @@
 import { localizeTitle } from '../i18n/i18n';
 
+function isLocalizationRole(roleRaw?: string): boolean {
+  if (!roleRaw) return false;
+  const text = roleRaw.toLowerCase();
+  return /(translat|locali[sz]ation|letter|typeset|proofread|subtit|dub script|\(english|\(spanish|\(portuguese|\(french|\(german|\(italian|\(polish)/i.test(text);
+}
+
 function dedupeById(items: Array<{ id: number; name?: { full?: string } }>) {
   const seen = new Set<number>();
   return items.filter((item) => {
@@ -21,6 +27,10 @@ export function Drawer({
   onOpenMedia
 }: any) {
   if (!media) return <aside style={{ padding: 10 }}>Select a media point</aside>;
+
+  const coreStaff = (media.staff ?? []).filter((s: any) => !isLocalizationRole(s.roleRaw));
+  const localizationStaff = (media.staff ?? []).filter((s: any) => isLocalizationRole(s.roleRaw));
+
   return (
     <aside style={{ padding: 10, borderLeft: '1px solid #333', overflow: 'auto' }}>
       <h3>{localizeTitle(media.title, lang)}</h3>
@@ -52,7 +62,7 @@ export function Drawer({
       </ul>
       <h4>Credits</h4>
       <ul>
-        {media.staff?.slice(0, 20).map((s: any, idx: number) => {
+        {coreStaff.slice(0, 20).map((s: any, idx: number) => {
           const person = peopleById[s.personId];
           const personName = person?.name?.full ?? person?.name?.native ?? `#${s.personId}`;
           return (
@@ -71,13 +81,39 @@ export function Drawer({
           );
         })}
       </ul>
+
+      {localizationStaff.length ? (
+        <>
+          <h4>Localization / Translation</h4>
+          <ul>
+            {localizationStaff.slice(0, 20).map((s: any, idx: number) => {
+              const person = peopleById[s.personId];
+              const personName = person?.name?.full ?? person?.name?.native ?? `#${s.personId}`;
+              return (
+                <li key={`loc-${idx}`}>
+                  {s.roleGroup}:{' '}
+                  <button onClick={() => onOpenPerson(s.personId)}>{personName}</button> — {s.roleRaw}
+                  {person?.siteUrl ? (
+                    <>
+                      {' '}
+                      <a href={person.siteUrl} target="_blank" rel="noreferrer">
+                        profile
+                      </a>
+                    </>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
       <h4>Character VA</h4>
       <ul>
         {media.characters?.slice(0, 10).map((c: any, idx: number) => {
           const characterName =
             charactersById[c.characterId]?.name?.full ?? charactersById[c.characterId]?.name?.native ?? `#${c.characterId}`;
-          const jp = dedupeById(c.voiceActorsJP ?? (c.voiceActors ?? []).filter((v: any) => v.lang === 'JP'));
-          const en = dedupeById(c.voiceActorsEN ?? (c.voiceActors ?? []).filter((v: any) => v.lang === 'EN'));
+          const jp = dedupeById(c.voiceActorsJP ?? (c.voiceActors ?? []).filter((v: any) => ['JP', 'JAPANESE'].includes(String(v.lang ?? v.language ?? '').toUpperCase())));
+          const en = dedupeById(c.voiceActorsEN ?? (c.voiceActors ?? []).filter((v: any) => ['EN', 'ENGLISH'].includes(String(v.lang ?? v.language ?? '').toUpperCase())));
           return (
             <li key={idx}>
               <strong>{characterName}</strong>

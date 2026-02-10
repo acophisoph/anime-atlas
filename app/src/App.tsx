@@ -33,6 +33,16 @@ const STUDIO_COLORS: Record<string, string> = {
 
 const HOP_COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#14b8a6'];
 
+
+function hash01(n: number): number {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
 export default function App() {
   const [lang, setLang] = useState<Lang>('en');
   const [scope, setScope] = useState<Scope>('BOTH');
@@ -49,6 +59,7 @@ export default function App() {
   const [relationLookup, setRelationLookup] = useState<Record<string, any>>({});
   const [selected, setSelected] = useState<any>(null);
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [mediaNetworkSeedId, setMediaNetworkSeedId] = useState<number | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [tagToMedia, setTagToMedia] = useState<Record<string, number[]>>({});
@@ -138,25 +149,118 @@ export default function App() {
 
     if (selectedNeighborhoodMap && selectedPersonId) {
       const seeded = sorted.filter((p) => selectedNeighborhoodMap.has(p.id));
-      return seeded.map((p, i) => {
-        const hop = selectedNeighborhoodMap.get(p.id) ?? 0;
-        const peers = seeded.filter((x) => (selectedNeighborhoodMap.get(x.id) ?? 0) === hop);
-        const idx = peers.findIndex((x) => x.id === p.id);
-        const angle = ((idx < 0 ? i : idx) / Math.max(peers.length, 1)) * Math.PI * 2;
-        const baseRadius = hop === 0 ? 0 : Math.min(0.9, hop * 0.16);
-        const radius = baseRadius + ((degree.get(p.id) ?? 1) % 3) * 0.01;
+      const pos = new Map<number, { x: number; y: number }>();
+      pos.set(selectedPersonId, { x: 0, y: 0 });
+
+      for (let d = 1; d <= peopleDepth; d += 1) {
+        const layer = seeded.filter((p) => (selectedNeighborhoodMap.get(p.id) ?? 0) === d);
+        for (const p of layer) {
+          const neighbors = (personAdjacency.get(p.id) ?? [])
+            .map(([nid]) => nid)
+            .filter((nid) => (selectedNeighborhoodMap.get(nid) ?? 99) < d && pos.has(nid));
+
+          const angle = hash01(p.id + d * 1000) * Math.PI * 2;
+          const jitter = 0.04 + hash01(p.id * 17) * 0.04;
+
+          if (neighbors.length) {
+            const avg = neighbors.reduce(
+              (acc, nid) => {
+                const npos = pos.get(nid)!;
+                return { x: acc.x + npos.x, y: acc.y + npos.y };
+              },
+              { x: 0, y: 0 }
+            );
+            const baseX = avg.x / neighbors.length;
+            const baseY = avg.y / neighbors.length;
+            pos.set(p.id, {
+              x: baseX + Math.cos(angle) * (0.05 + d * 0.05 + jitter),
+              y: baseY + Math.sin(angle) * (0.05 + d * 0.05 + jitter)
+            });
+          } else {
+            const radius = 0.12 + d * 0.12;
+            pos.set(p.id, { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
+          }
+        }
+      }
+
+      for (let iter = 0; iter < 16; iter += 1) {
+        for (const p of seeded) {
+          const d = selectedNeighborhoodMap.get(p.id) ?? 0;
+          if (d === 0) continue;
+          const neighbors = (personAdjacency.get(p.id) ?? []).map(([nid]) => nid).filter((nid) => pos.has(nid));
+          if (!neighbors.length) continue;
+          const avg = neighbors.reduce(
+            (acc, nid) => {
+              const npos = pos.get(nid)!;
+              return { x: acc.x + npos.x, y: acc.y + npos.y };
+            },
+            { x: 0, y: 0 }
+          );
+          const current = pos.get(p.id)!;
+          const nx = current.x * 0.7 + (avg.x / neighbors.length) * 0.3;
+          const ny = current.y * 0.7 + (avg.y / neighbors.length) * 0.3;
+          const maxR = 0.92;
+          const mag = Math.hypot(nx, ny);
+          const scale = mag > maxR ? maxR / mag : 1;
+          pos.set(p.id, { x: nx * scale, y: ny * scale });
+        }
+      }
+
+      return seeded.map((p) => {
         const stat = personStats[p.id] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
-        return { id: p.id, type: 2, x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, role: stat.primaryRole, studioCategory: stat.studioCategory, hop };
+        const hop = selectedNeighborhoodMap.get(p.id) ?? 0;
+        const pt = pos.get(p.id) ?? { x: 0, y: 0 };
+        return { id: p.id, type: 2, x: pt.x, y: pt.y, role: stat.primaryRole, studioCategory: stat.studioCategory, hop };
       });
     }
 
-    return sorted.map((p, i) => {
-      const angle = (i / Math.max(sorted.length, 1)) * Math.PI * 2;
-      const radius = 0.7 - Math.min(0.4, ((degree.get(p.id) ?? 1) / 20) * 0.4);
-      const stat = personStats[p.id] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
-      return { id: p.id, type: 2, x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, role: stat.primaryRole, studioCategory: stat.studioCategory, hop: 0 };
+    const adj = new Map<number, number[]>();
+    for (const [a, b] of collab) {
+      adj.set(a, [...(adj.get(a) ?? []), b]);
+      adj.set(b, [...(adj.get(b) ?? []), a]);
+    }
+
+    const visited = new Set<number>();
+    const components: number[][] = [];
+    for (const p of sorted) {
+      if (visited.has(p.id)) continue;
+      const queue = [p.id];
+      const comp: number[] = [];
+      visited.add(p.id);
+      while (queue.length) {
+        const curr = queue.shift()!;
+        comp.push(curr);
+        for (const n of adj.get(curr) ?? []) {
+          if (visited.has(n)) continue;
+          visited.add(n);
+          queue.push(n);
+        }
+      }
+      components.push(comp);
+    }
+
+    components.sort((a, b) => b.length - a.length);
+
+    const out: any[] = [];
+    components.forEach((comp, ci) => {
+      const centerAngle = (ci / Math.max(components.length, 1)) * Math.PI * 2;
+      const centerRadius = clamp(0.18 + ci * 0.09, 0.15, 0.75);
+      const cx = Math.cos(centerAngle) * centerRadius;
+      const cy = Math.sin(centerAngle) * centerRadius;
+      const compSorted = [...comp].sort((a, b) => (degree.get(b) ?? 0) - (degree.get(a) ?? 0));
+
+      compSorted.forEach((pid, i) => {
+        const stat = personStats[pid] ?? { primaryRole: 'Other', studioCategory: 'Unaffiliated' };
+        const a = hash01(pid * 13 + i) * Math.PI * 2;
+        const ring = 0.03 + (i / Math.max(compSorted.length, 1)) * Math.min(0.23, 0.06 + compSorted.length * 0.0025);
+        const x = cx + Math.cos(a) * ring;
+        const y = cy + Math.sin(a) * ring;
+        out.push({ id: pid, type: 2, x, y, role: stat.primaryRole, studioCategory: stat.studioCategory, hop: 0 });
+      });
     });
-  }, [people, collab, personStats, selectedNeighborhoodMap, selectedPersonId]);
+
+    return out;
+  }, [people, collab, personStats, selectedNeighborhoodMap, selectedPersonId, peopleDepth, personAdjacency]);
 
   const peoplePointById = useMemo(() => Object.fromEntries(peoplePoints.map((p) => [p.id, p])), [peoplePoints]);
 
@@ -169,7 +273,16 @@ export default function App() {
     return intersectSorted([scoped.sort((a, b) => a - b), ...selectedTags.map((tag) => tagToMedia[tag] ?? [])]);
   }, [media, scope, selectedTags, tagToMedia]);
 
-  const filteredMediaPoints = points.filter((p) => filteredIds.includes(p.id));
+  const mediaRelationIds = useMemo(() => {
+    if (!selected) return new Set<number>();
+    return new Set<number>([selected.id, ...(selected.relations ?? []).map((r: any) => r.id)]);
+  }, [selected]);
+
+  const filteredMediaPoints = useMemo(() => {
+    const byScope = points.filter((p) => filteredIds.includes(p.id));
+    if (!mediaNetworkSeedId || !selected) return byScope;
+    return points.filter((p) => mediaRelationIds.has(p.id));
+  }, [points, filteredIds, mediaNetworkSeedId, selected, mediaRelationIds]);
   const filteredPeoplePoints = peoplePoints.filter((p) => {
     const roleOk = roleFilter.length ? roleFilter.includes(p.role) : true;
     const studioOk = studioFilter.length ? studioFilter.includes(p.studioCategory) : true;
@@ -181,27 +294,35 @@ export default function App() {
     if (atlasMode !== 'people' || !selectedNeighborhoodMap) return [];
     return collab
       .filter(([a, b]) => selectedNeighborhoodMap.has(a) && selectedNeighborhoodMap.has(b))
+      .sort((a, b) => b[2] - a[2])
+      .slice(0, 280)
       .map(([a, b, w]) => {
         const pa = peoplePointById[a];
         const pb = peoplePointById[b];
         if (!pa || !pb) return null;
         const hop = Math.max(selectedNeighborhoodMap.get(a) ?? 0, selectedNeighborhoodMap.get(b) ?? 0);
-        return { from: pa, to: pb, width: Math.min(8, 1 + w), color: HOP_COLORS[Math.max(0, hop - 1)] ?? '#64748b' };
+        return {
+          from: pa,
+          to: pb,
+          width: 0.6 + Math.log2(1 + Math.max(1, w)) * 0.35,
+          color: HOP_COLORS[Math.max(0, hop - 1)] ?? '#64748b',
+          opacity: hop <= 2 ? 0.32 : 0.2
+        };
       })
       .filter(Boolean) as any[];
   }, [atlasMode, selectedNeighborhoodMap, collab, peoplePointById]);
 
   const mediaEdges = useMemo(() => {
-    if (atlasMode !== 'media' || !selected) return [];
+    if (atlasMode !== 'media' || !selected || !mediaNetworkSeedId) return [];
     return (selected.relations ?? [])
       .map((r: any) => {
         const to = mediaPointById[r.id];
         const from = mediaPointById[selected.id];
         if (!to || !from) return null;
-        return { from, to, width: 2, color: '#64748b' };
+        return { from, to, width: 1.2, color: '#cbd5e1', opacity: 0.55 };
       })
       .filter(Boolean) as any[];
-  }, [atlasMode, selected, mediaPointById]);
+  }, [atlasMode, selected, mediaPointById, mediaNetworkSeedId]);
 
   const results = query ? media.filter((m) => localizeTitle(m.title, lang).toLowerCase().includes(query.toLowerCase())).slice(0, 10) : [];
   const selectedPerson = selectedPersonId ? peopleById[selectedPersonId] : null;
@@ -217,7 +338,7 @@ export default function App() {
           <ul>
             {results.map((m) => (
               <li key={m.id}>
-                <button onClick={() => { setSelected(m); setSelectedPersonId(null); setAtlasMode('media'); }}>
+                <button onClick={() => { setSelected(m); setSelectedPersonId(null); setAtlasMode('media'); setMediaNetworkSeedId(null); }}>
                   {localizeTitle(m.title, lang)} <small>[{m.type}] {m.year || ''}</small>
                 </button>
               </li>
@@ -273,19 +394,25 @@ export default function App() {
           points={atlasMode === 'media' ? filteredMediaPoints : filteredPeoplePoints}
           edges={atlasMode === 'media' ? mediaEdges : peopleEdges}
           getFillColor={(p: any) => {
-            if (atlasMode === 'media') return p.type === 0 ? '#66a3ff' : '#ff8080';
+            if (atlasMode === 'media') {
+              if (mediaNetworkSeedId && selected) {
+                if (p.id === selected.id) return '#facc15';
+                if (mediaRelationIds.has(p.id)) return '#7dd3fc';
+              }
+              return p.type === 0 ? '#66a3ff' : '#ff8080';
+            }
             return peopleColorBy === 'role' ? ROLE_COLORS[p.role] ?? ROLE_COLORS.Other : STUDIO_COLORS[p.studioCategory] ?? STUDIO_COLORS.Unaffiliated;
           }}
           onHover={() => {}}
           onClick={(info: any) => {
-            if (atlasMode === 'media') { setSelected(mediaById[info.object?.id]); setSelectedPersonId(null); }
+            if (atlasMode === 'media') { setSelected(mediaById[info.object?.id]); setSelectedPersonId(null); setMediaNetworkSeedId(null); }
             else { setSelectedPersonId(info.object?.id ?? null); setSelected(null); }
           }}
         />
 
         {selectedPerson ? (
           <aside style={{ padding: 10, borderLeft: '1px solid #333', overflow: 'auto' }}>
-            <PersonPage person={selectedPerson} media={media} lang={lang} onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); }} />
+            <PersonPage person={selectedPerson} media={media} lang={lang} onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); setMediaNetworkSeedId(null); }} />
           </aside>
         ) : (
           <Drawer
@@ -295,9 +422,9 @@ export default function App() {
             charactersById={charactersById}
             relationLookup={relationLookup}
             lang={lang}
-            onExplore={(id: number) => setSelected(mediaById[id])}
+            onExplore={(id: number) => { setSelected(mediaById[id]); setMediaNetworkSeedId(id); }}
             onOpenPerson={(id: number) => { setSelectedPersonId(id); setSelected(null); setAtlasMode('people'); }}
-            onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); }}
+            onOpenMedia={(id: number) => { setSelected(mediaById[id] ?? relationLookup[String(id)] ?? null); setSelectedPersonId(null); setAtlasMode('media'); setMediaNetworkSeedId(null); }}
           />
         )}
       </div>

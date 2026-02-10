@@ -19,8 +19,9 @@ query MediaDetail($id:Int!){
       edges{
         role
         node{ id name{full native} siteUrl }
-        jpVoice: voiceActors(language:JAPANESE, sort:[RELEVANCE,ID]){ id name{full native} siteUrl }
-        enVoice: voiceActors(language:ENGLISH, sort:[RELEVANCE,ID]){ id name{full native} siteUrl }
+        jpVoice: voiceActors(language:JAPANESE, sort:[RELEVANCE,ID]){ id name{full native} siteUrl languageV2 }
+        enVoice: voiceActors(language:ENGLISH, sort:[RELEVANCE,ID]){ id name{full native} siteUrl languageV2 }
+        allVoice: voiceActors(sort:[RELEVANCE,ID]){ id name{full native} siteUrl languageV2 }
       }
     }
   }
@@ -53,6 +54,34 @@ function extractUrls(text?: string): string[] {
   return [...new Set(matches)];
 }
 
+
+function isLocalizationRole(role?: string): boolean {
+  if (!role) return false;
+  const normalized = role.toLowerCase();
+  return /(translat|locali[sz]ation|letter|typeset|proofread|subtit|dub script|editor\s*\(|\(english|\(spanish|\(portuguese|\(french|\(german|\(italian|\(polish)/i.test(normalized);
+}
+
+function splitVoiceActorsByLanguage(actors: any[]): { voiceActorsJP: any[]; voiceActorsEN: any[] } {
+  const voiceActorsJP = dedupeById(
+    actors
+      .filter((va: any) => {
+        const lang = String(va?.languageV2 ?? '').toLowerCase();
+        return lang.includes('japanese') || lang === 'jp';
+      })
+      .map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl }))
+  );
+
+  const voiceActorsEN = dedupeById(
+    actors
+      .filter((va: any) => {
+        const lang = String(va?.languageV2 ?? '').toLowerCase();
+        return lang.includes('english') || lang === 'en';
+      })
+      .map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl }))
+  );
+
+  return { voiceActorsJP, voiceActorsEN };
+}
 function toSocialLinks(person: any) {
   const links = extractUrls(person?.description);
   return links
@@ -76,22 +105,24 @@ async function main() {
     const m = data.Media;
     if (!m) continue;
 
-    const staff = (m.staff?.edges ?? []).map((edge: any) => {
-      const person = edge.node;
-      if (person) {
-        peopleMap.set(person.id, {
-          id: person.id,
-          name: person.name,
-          siteUrl: person.siteUrl,
-          socialLinks: toSocialLinks(person)
-        });
-      }
-      return {
-        personId: person?.id,
-        roleRaw: edge.role || 'Unknown',
-        roleGroup: normalizeRole(edge.role || 'Unknown')
-      };
-    });
+    const staff = (m.staff?.edges ?? [])
+      .filter((edge: any) => !isLocalizationRole(edge.role || ''))
+      .map((edge: any) => {
+        const person = edge.node;
+        if (person) {
+          peopleMap.set(person.id, {
+            id: person.id,
+            name: person.name,
+            siteUrl: person.siteUrl,
+            socialLinks: toSocialLinks(person)
+          });
+        }
+        return {
+          personId: person?.id,
+          roleRaw: edge.role || 'Unknown',
+          roleGroup: normalizeRole(edge.role || 'Unknown')
+        };
+      });
 
     const characters = (m.characters?.edges ?? []).map((edge: any) => {
       const character = edge.node;
@@ -99,8 +130,14 @@ async function main() {
         charactersMap.set(character.id, { id: character.id, name: character.name, siteUrl: character.siteUrl });
       }
 
-      const voiceActorsJP = dedupeById((edge.jpVoice ?? []).map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl })));
-      const voiceActorsEN = dedupeById((edge.enVoice ?? []).map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl })));
+      let voiceActorsJP = dedupeById((edge.jpVoice ?? []).map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl })));
+      let voiceActorsEN = dedupeById((edge.enVoice ?? []).map((va: any) => ({ id: va.id, name: va.name, siteUrl: va.siteUrl })));
+
+      if (!voiceActorsJP.length || !voiceActorsEN.length) {
+        const split = splitVoiceActorsByLanguage(edge.allVoice ?? []);
+        voiceActorsJP = voiceActorsJP.length ? voiceActorsJP : split.voiceActorsJP;
+        voiceActorsEN = voiceActorsEN.length ? voiceActorsEN : split.voiceActorsEN;
+      }
 
       for (const va of [...voiceActorsJP, ...voiceActorsEN]) {
         if (va.id) peopleMap.set(va.id, { id: va.id, name: va.name, siteUrl: va.siteUrl, socialLinks: peopleMap.get(va.id)?.socialLinks ?? [] });
