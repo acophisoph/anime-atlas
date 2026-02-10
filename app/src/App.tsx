@@ -55,35 +55,58 @@ function personDisplayName(person: any, fallbackId?: number): string {
 }
 
 
-function applyGridSeparation<T extends { id: number; x: number; y: number }>(pts: T[], minGap: number): T[] {
-  if (!pts.length) return [];
-  const cell = Math.max(1e-4, minGap);
-  const buckets = new Map<string, T[]>();
-  for (const p of pts) {
-    const ix = Math.round(p.x / cell);
-    const iy = Math.round(p.y / cell);
-    const key = `${ix}:${iy}`;
-    const arr = buckets.get(key) ?? [];
-    arr.push(p);
-    buckets.set(key, arr);
+function enforceMinDistance<T extends { id: number; x: number; y: number }>(pts: T[], minGap: number, iterations = 4): T[] {
+  if (pts.length <= 1) return pts;
+  const out = pts.map((p) => ({ ...p }));
+  const cellSize = Math.max(minGap, 1e-4);
+
+  for (let iter = 0; iter < iterations; iter += 1) {
+    const grid = new Map<string, number[]>();
+    for (let i = 0; i < out.length; i += 1) {
+      const p = out[i];
+      const gx = Math.floor(p.x / cellSize);
+      const gy = Math.floor(p.y / cellSize);
+      const key = `${gx}:${gy}`;
+      const arr = grid.get(key) ?? [];
+      arr.push(i);
+      grid.set(key, arr);
+    }
+
+    for (let i = 0; i < out.length; i += 1) {
+      const a = out[i];
+      const gx = Math.floor(a.x / cellSize);
+      const gy = Math.floor(a.y / cellSize);
+      for (let ox = -1; ox <= 1; ox += 1) {
+        for (let oy = -1; oy <= 1; oy += 1) {
+          const neighbors = grid.get(`${gx + ox}:${gy + oy}`);
+          if (!neighbors) continue;
+          for (const j of neighbors) {
+            if (j <= i) continue;
+            const b = out[j];
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            let d = Math.hypot(dx, dy);
+            if (d >= minGap) continue;
+            if (d < 1e-8) {
+              const ang = ((a.id * 73856093) ^ (b.id * 19349663)) % 6283 / 1000;
+              dx = Math.cos(ang);
+              dy = Math.sin(ang);
+              d = 1;
+            } else {
+              dx /= d;
+              dy /= d;
+            }
+            const push = (minGap - d) * 0.5;
+            a.x -= dx * push;
+            a.y -= dy * push;
+            b.x += dx * push;
+            b.y += dy * push;
+          }
+        }
+      }
+    }
   }
 
-  const out: T[] = [];
-  for (const arr of buckets.values()) {
-    if (arr.length === 1) {
-      out.push(arr[0]);
-      continue;
-    }
-    const cx = arr.reduce((acc, p) => acc + p.x, 0) / arr.length;
-    const cy = arr.reduce((acc, p) => acc + p.y, 0) / arr.length;
-    arr
-      .sort((a, b) => a.id - b.id)
-      .forEach((p, i) => {
-        const angle = i * 2.399963229728653;
-        const r = minGap * (0.4 + Math.sqrt(i + 1) * 0.9);
-        out.push({ ...p, x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
-      });
-  }
   return out;
 }
 
@@ -361,7 +384,7 @@ export default function App() {
 
     const normalized = normalizePoints(lightlySeparated, 0.86);
     const minGap = clamp(0.022 / Math.sqrt(Math.max(1, normalized.length) / 200), 0.0016, 0.022);
-    const separated = applyGridSeparation(normalized, minGap);
+    const separated = enforceMinDistance(normalized, minGap, 4);
     return normalizePoints(separated, 0.86);
   }, [filteredMediaPoints]);
 
@@ -388,7 +411,7 @@ export default function App() {
       };
     });
     const minGap = clamp(0.02 / Math.sqrt(Math.max(1, base.length) / 250), 0.0014, 0.02);
-    return applyGridSeparation(base, minGap);
+    return enforceMinDistance(base, minGap, 4);
   }, [filteredPeoplePoints, selectedNeighborhoodMap]);
 
   const peoplePointById = useMemo(() => Object.fromEntries(displayedPeoplePoints.map((p) => [p.id, p])), [displayedPeoplePoints]);
@@ -507,12 +530,18 @@ export default function App() {
                     <option value="studio">Animation Studio</option>
                   </select>
                 </label>
-                {mediaNetworkSeedId ? (
-                  <div style={{ marginTop: 6 }}>
-                    <small>Explore network mode for selected title.</small>{' '}
-                    <button onClick={() => setMediaNetworkSeedId(null)}>Back to global media atlas</button>
-                  </div>
-                ) : null}
+                <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    disabled={!selected}
+                    onClick={() => {
+                      if (!selected?.id) return;
+                      setMediaNetworkSeedId(selected.id);
+                    }}
+                  >
+                    Explore selected title network
+                  </button>
+                  {mediaNetworkSeedId ? <button onClick={() => setMediaNetworkSeedId(null)}>Back to global media atlas</button> : null}
+                </div>
                 {mediaColorBy === 'studio' ? (
                   <details style={{ marginTop: 8 }} open>
                     <summary><strong>Animation studio filters</strong></summary>

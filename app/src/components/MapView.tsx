@@ -81,29 +81,26 @@ export function MapView({ points, onClick, onHover, getFillColor, edges = [], vi
           ))}
         {points.map((p: Point) => {
           const visibleRadius = clamp(0.0023, 0.0068 / Math.sqrt(view.scale), 0.0068);
-          const hitRadius = Math.max(visibleRadius * 1.22, 0.0028);
           const fill = getFillColor ? getFillColor(p) : p.type === 0 ? '#66a3ff' : '#ff8080';
           return (
-            <g key={p.id}>
-              <circle cx={p.x} cy={p.y} r={visibleRadius} fill={fill} pointerEvents="none" />
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={hitRadius}
-                fill="transparent"
-                onMouseEnter={() => {
-                  if (hoveredId === p.id) return;
-                  setHoveredId(p.id);
-                  onHover?.({ object: p });
-                }}
-                onMouseLeave={() => {
-                  if (hoveredId !== p.id) return;
-                  setHoveredId(null);
-                  onHover?.({ object: null });
-                }}
-                onClick={() => onClick?.({ object: p })}
-              />
-            </g>
+            <circle
+              key={p.id}
+              cx={p.x}
+              cy={p.y}
+              r={visibleRadius}
+              fill={fill}
+              onMouseEnter={() => {
+                if (hoveredId === p.id) return;
+                setHoveredId(p.id);
+                onHover?.({ object: p });
+              }}
+              onMouseLeave={() => {
+                if (hoveredId !== p.id) return;
+                setHoveredId(null);
+                onHover?.({ object: null });
+              }}
+              onClick={() => onClick?.({ object: p })}
+            />
           );
         })}
       </g>
