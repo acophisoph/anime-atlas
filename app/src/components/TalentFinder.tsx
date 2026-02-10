@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { intersectSorted } from '../lib/setOps';
 
 type WindowKey = 'all_time' | 'last_3y' | 'last_5y' | 'last_10y';
@@ -74,7 +75,7 @@ export function TalentFinder({ roleToPeople, tagRoleToPeople, peopleById, media,
     <div>
       <h3>Talent Finder</h3>
       <div style={{ display: 'grid', gap: 6 }}>
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
+        <select value={role} onChange={(e: ChangeEvent<HTMLSelectElement>) => setRole(e.target.value)}>
           <option value="">Select role group</option>
           {roles.map((r) => (
             <option key={r} value={r}>
@@ -83,7 +84,7 @@ export function TalentFinder({ roleToPeople, tagRoleToPeople, peopleById, media,
           ))}
         </select>
 
-        <select value={window} onChange={(e) => setWindow(e.target.value as WindowKey)}>
+        <select value={window} onChange={(e: ChangeEvent<HTMLSelectElement>) => setWindow(e.target.value as WindowKey)}>
           <option value="all_time">All-time</option>
           <option value="last_3y">Last 3 years</option>
           <option value="last_5y">Last 5 years</option>
@@ -97,7 +98,7 @@ export function TalentFinder({ roleToPeople, tagRoleToPeople, peopleById, media,
                 <input
                   type="checkbox"
                   checked={tags.includes(tag)}
-                  onChange={(e) =>
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
                     setTags((prev) => (e.target.checked ? [...prev, tag] : prev.filter((x) => x !== tag)))
                   }
                 />

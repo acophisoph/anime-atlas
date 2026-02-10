@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { Header } from './components/Header';
 import { Filters } from './components/Filters';
 import { SearchBox } from './components/SearchBox';
@@ -234,14 +235,14 @@ export default function App() {
               <h3>Staff Atlas Controls</h3>
               <label>
                 Color by:{' '}
-                <select value={peopleColorBy} onChange={(e) => setPeopleColorBy(e.target.value as 'role' | 'studio')}>
+                <select value={peopleColorBy} onChange={(e: ChangeEvent<HTMLSelectElement>) => setPeopleColorBy(e.target.value as 'role' | 'studio')}>
                   <option value="role">Most frequent role</option>
                   <option value="studio">Studio affiliation</option>
                 </select>
               </label>
               <label style={{ marginLeft: 8 }}>
                 Hops:{' '}
-                <select value={peopleDepth} onChange={(e) => setPeopleDepth(Number(e.target.value))}>
+                <select value={peopleDepth} onChange={(e: ChangeEvent<HTMLSelectElement>) => setPeopleDepth(Number(e.target.value))}>
                   {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </label>
@@ -255,13 +256,13 @@ export default function App() {
               <div style={{ marginTop: 8 }}>
                 <strong>Role filters</strong>
                 {roleCategories.map((r) => (
-                  <label key={r} style={{ display: 'block' }}><input type="checkbox" checked={roleFilter.includes(r)} onChange={(e) => setRoleFilter((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))} />{r}</label>
+                  <label key={r} style={{ display: 'block' }}><input type="checkbox" checked={roleFilter.includes(r)} onChange={(e: ChangeEvent<HTMLInputElement>) => setRoleFilter((prev) => (e.target.checked ? [...prev, r] : prev.filter((x) => x !== r)))} />{r}</label>
                 ))}
               </div>
               <div style={{ marginTop: 8 }}>
                 <strong>Studio filters</strong>
                 {studioCategories.map((s) => (
-                  <label key={s} style={{ display: 'block' }}><input type="checkbox" checked={studioFilter.includes(s)} onChange={(e) => setStudioFilter((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))} />{s}</label>
+                  <label key={s} style={{ display: 'block' }}><input type="checkbox" checked={studioFilter.includes(s)} onChange={(e: ChangeEvent<HTMLInputElement>) => setStudioFilter((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))} />{s}</label>
                 ))}
               </div>
             </div>

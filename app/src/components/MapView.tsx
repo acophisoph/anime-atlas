@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import type { MouseEvent, WheelEvent } from 'react';
 
 type ViewState = { x: number; y: number; scale: number; dragging: boolean; startX: number; startY: number };
 
@@ -14,17 +15,17 @@ export function MapView({ points, onClick, getFillColor, edges = [] }: any & { e
     <svg
       viewBox="-1 -1 2 2"
       style={{ width: '100%', height: '100%', background: '#0f1117', cursor: view.dragging ? 'grabbing' : 'grab' }}
-      onWheel={(e) => {
+      onWheel={(e: WheelEvent<SVGSVGElement>) => {
         e.preventDefault();
         const nextScale = Math.min(20, Math.max(0.25, view.scale * (e.deltaY > 0 ? 0.9 : 1.1)));
         setView((prev) => ({ ...prev, scale: nextScale }));
       }}
       onDoubleClick={() => setView((prev) => ({ ...prev, scale: Math.min(20, prev.scale * 1.5) }))}
-      onMouseDown={(e) => {
+      onMouseDown={(e: MouseEvent<SVGSVGElement>) => {
         dragDistanceRef.current = 0;
         setView((prev) => ({ ...prev, dragging: true, startX: e.clientX, startY: e.clientY }));
       }}
-      onMouseMove={(e) => {
+      onMouseMove={(e: MouseEvent<SVGSVGElement>) => {
         if (!view.dragging) return;
         const dxPx = e.clientX - view.startX;
         const dyPx = e.clientY - view.startY;
@@ -37,7 +38,7 @@ export function MapView({ points, onClick, getFillColor, edges = [] }: any & { e
       onMouseLeave={() => setView((prev) => ({ ...prev, dragging: false }))}
     >
       <g transform={transform}>
-        {edges.map((e, idx) => (
+        {edges.map((e: Edge, idx: number) => (
           <line
             key={`edge-${idx}`}
             x1={e.from.x}

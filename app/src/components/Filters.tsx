@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { ChangeEvent } from 'react';
 
 export function Filters({ tags, selectedTags, setSelectedTags }: any) {
   const [query, setQuery] = useState('');
@@ -15,7 +16,7 @@ export function Filters({ tags, selectedTags, setSelectedTags }: any) {
         style={{ width: '100%', margin: '6px 0', padding: 6 }}
         placeholder="Filter tags"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
       />
       {selectedTags.length > 0 && (
         <div style={{ marginBottom: 8 }}>
@@ -35,7 +36,7 @@ export function Filters({ tags, selectedTags, setSelectedTags }: any) {
             <input
               type="checkbox"
               checked={selectedTags.includes(tag)}
-              onChange={(e) =>
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 setSelectedTags((prev: string[]) =>
                   e.target.checked ? [...prev, tag] : prev.filter((x) => x !== tag)
                 )
