@@ -32,7 +32,7 @@ jobs:
           key: anilist-cache-${{ runner.os }}-${{ hashFiles('scripts/src/**/*.ts') }}
           restore-keys: |
             anilist-cache-${{ runner.os }}-
-      - run: npm ci
+      - run: npm install
       - run: npm run ingest:mvp
       - run: npm run build:artifacts
       - run: npm run sanity:artifacts
