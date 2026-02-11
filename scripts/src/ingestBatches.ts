@@ -318,9 +318,22 @@ async function persist(state: StateFile, mediaById: Map<number, MediaRecord>, pe
 }
 
 async function buildArtifacts(): Promise<void> {
-  if (DRY_RUN) return;
+  if (DRY_RUN || ARTIFACT_BUILD_INTERVAL <= 0) return;
   const cmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   await execFileAsync(cmd, ['run', 'build:artifacts'], { cwd: process.cwd(), env: process.env });
+}
+
+async function buildArtifactsSafely(context: Record<string, unknown>): Promise<boolean> {
+  try {
+    await buildArtifacts();
+    return true;
+  } catch (error) {
+    logger.warn('artifact build failed; progress already checkpointed and will resume next run', {
+      ...context,
+      error: String(error)
+    });
+    return false;
+  }
 }
 
 async function resolveAniListMedia(seed: Seed): Promise<any | null> {
@@ -517,7 +530,10 @@ async function main() {
       if (RUN_BATCH_LIMIT > 0 && processedThisRun >= RUN_BATCH_LIMIT) {
         logger.info('run batch limit reached', { RUN_BATCH_LIMIT, processedThisRun });
         await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
-        if (artifactsSinceBuild > 0) await buildArtifacts();
+        if (artifactsSinceBuild > 0) {
+          const built = await buildArtifactsSafely({ phase: 'run-batch-limit', artifactsSinceBuild });
+          if (built) artifactsSinceBuild = 0;
+        }
         return;
       }
 
@@ -532,8 +548,8 @@ async function main() {
         artifactsSinceBuild += 1;
         await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
         if (artifactsSinceBuild >= Math.max(1, ARTIFACT_BUILD_INTERVAL)) {
-          await buildArtifacts();
-          artifactsSinceBuild = 0;
+          const built = await buildArtifactsSafely({ phase: 'batch-interval', batchId: batch.batchId, artifactsSinceBuild });
+          if (built) artifactsSinceBuild = 0;
         }
       } catch (error) {
         batch.status = 'failed';
@@ -548,7 +564,10 @@ async function main() {
     });
   }
 
-  if (artifactsSinceBuild > 0) await buildArtifacts();
+  if (artifactsSinceBuild > 0) {
+    const built = await buildArtifactsSafely({ phase: 'finalize', artifactsSinceBuild });
+    if (built) artifactsSinceBuild = 0;
+  }
 
   const done = state.batches.filter((b) => b.status === 'done').length;
   const failed = state.batches.filter((b) => b.status !== 'done').length;

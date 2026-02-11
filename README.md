@@ -51,6 +51,7 @@ Behavior:
 - automatically retries failed batches (up to `BATCH_MAX_RETRIES`, default 6)
 - supports resume/restart without redoing completed batches
 - checkpoints are mirrored into `scripts/.cache/batch-progress` so GitHub Actions cache can resume across runs
+- every batch is checkpointed before any artifact rebuild, so ingestion progress survives artifact/build failures
 
 Useful env overrides:
 
@@ -65,6 +66,12 @@ Useful env overrides:
 - `MAX_SEED_SKIPS_PER_BATCH` (default `1`)
 - `RUN_BATCH_LIMIT` (max batches per run; lets CI continue over multiple runs without restarting)
 - `ARTIFACT_BUILD_INTERVAL` (rebuild artifacts every N successful batches)
+
+Recommended for GitHub Actions 5-hour limits:
+
+- run bounded ingest windows with `RUN_BATCH_LIMIT` (e.g. `20`) so each workflow completes well under timeout
+- set `ARTIFACT_BUILD_INTERVAL=0` during ingest to focus on checkpointing; run `npm run build:artifacts` once after ingest step
+- keep cache save enabled with `if: always()` so checkpoints are preserved even when later steps fail
 
 Dry run (no artifact rebuilds):
 
