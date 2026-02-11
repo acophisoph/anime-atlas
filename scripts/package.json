@@ -10,8 +10,7 @@
     "ingest:batched": "tsx src/ingestBatches.ts"
   },
   "dependencies": {
-    "minisearch": "^7.1.0",
-    "pg": "^8.13.1"
+    "minisearch": "^7.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

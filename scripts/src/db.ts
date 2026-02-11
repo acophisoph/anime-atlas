@@ -1,5 +1,8 @@
+import fs from 'node:fs/promises';
 import os from 'node:os';
-import { Pool, type PoolClient } from 'pg';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { CACHE_DIR } from './config.js';
 
 export type CheckpointStatus = 'running' | 'success' | 'failed';
 export type IngestCheckpoint = {
@@ -18,40 +21,68 @@ export type IngestCheckpoint = {
   updatedAt: string;
 };
 
-const DATABASE_URL = process.env.DATABASE_URL;
+let db: DatabaseSync | null = null;
+let resolvedDatabaseUrl = process.env.DATABASE_URL?.trim() || '';
+let initLogged = false;
 
-let pool: Pool | null = null;
+export async function initializeDatabaseDefaults(): Promise<void> {
+  if (resolvedDatabaseUrl) return;
+  await fs.mkdir(CACHE_DIR, { recursive: true });
+  const sqliteFilePath = path.join(CACHE_DIR, 'anime-atlas.sqlite');
+  resolvedDatabaseUrl = `sqlite:${sqliteFilePath}`;
+  process.env.DATABASE_URL = resolvedDatabaseUrl;
+  if (!initLogged) {
+    console.info(`[info] DATABASE_URL not set; defaulting to ${resolvedDatabaseUrl}`);
+    initLogged = true;
+  }
+}
+
+export function getResolvedDatabaseUrl(): string {
+  return resolvedDatabaseUrl || process.env.DATABASE_URL?.trim() || '';
+}
+
+export function getSqliteFilePath(): string | null {
+  const url = getResolvedDatabaseUrl();
+  if (!url.startsWith('sqlite:')) return null;
+  return url.slice('sqlite:'.length);
+}
 
 export function hasDatabase(): boolean {
-  return Boolean(DATABASE_URL);
+  const url = getResolvedDatabaseUrl();
+  return /^(sqlite:|postgres(?:ql)?:|file:)/i.test(url);
 }
 
 export function getLeaseOwner(): string {
   return process.env.GITHUB_RUN_ID ? `gha-${process.env.GITHUB_RUN_ID}` : `local-${os.hostname()}-${process.pid}`;
 }
 
-export function getPool(): Pool {
-  if (!DATABASE_URL) {
-    throw new Error('DATABASE_URL is required for durable ingest mode.');
+function getDb(): DatabaseSync {
+  const url = getResolvedDatabaseUrl();
+  if (!url) throw new Error('DATABASE_URL is required for durable ingest mode.');
+  if (!url.startsWith('sqlite:')) {
+    throw new Error(`Only sqlite: DATABASE_URL is supported in this environment. Received: ${url}`);
   }
-  if (!pool) {
-    pool = new Pool({ connectionString: DATABASE_URL, max: 4 });
+  if (!db) {
+    const file = url.slice('sqlite:'.length);
+    db = new DatabaseSync(file);
+    db.exec('PRAGMA journal_mode=WAL;');
+    db.exec('PRAGMA busy_timeout=5000;');
   }
-  return pool;
+  return db;
 }
 
 export async function closePool(): Promise<void> {
-  if (pool) {
-    await pool.end();
-    pool = null;
+  if (db) {
+    db.close();
+    db = null;
   }
 }
 
 export async function ensureDbSchema(): Promise<void> {
-  const p = getPool();
-  await p.query(`
+  const d = getDb();
+  d.exec(`
     CREATE TABLE IF NOT EXISTS ingest_checkpoints (
-      id BIGSERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       source_provider TEXT NOT NULL,
       dataset TEXT NOT NULL,
       config_key TEXT NOT NULL,
@@ -62,52 +93,44 @@ export async function ensureDbSchema(): Promise<void> {
       status TEXT NOT NULL DEFAULT 'running',
       last_error TEXT,
       lease_owner TEXT,
-      lease_expires_at TIMESTAMPTZ,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      lease_expires_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE (source_provider, dataset, config_key)
     );
-  `);
 
-  await p.query(`
     CREATE TABLE IF NOT EXISTS ingest_media (
       source_provider TEXT NOT NULL,
       config_key TEXT NOT NULL,
-      id BIGINT NOT NULL,
-      payload JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id INTEGER NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (source_provider, config_key, id)
     );
-  `);
 
-  await p.query(`
     CREATE TABLE IF NOT EXISTS ingest_people (
       source_provider TEXT NOT NULL,
       config_key TEXT NOT NULL,
-      id BIGINT NOT NULL,
-      payload JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id INTEGER NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (source_provider, config_key, id)
     );
-  `);
 
-  await p.query(`
     CREATE TABLE IF NOT EXISTS ingest_characters (
       source_provider TEXT NOT NULL,
       config_key TEXT NOT NULL,
-      id BIGINT NOT NULL,
-      payload JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id INTEGER NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (source_provider, config_key, id)
     );
-  `);
 
-  await p.query(`
     CREATE TABLE IF NOT EXISTS ingest_relations (
       source_provider TEXT NOT NULL,
       config_key TEXT NOT NULL,
-      id BIGINT NOT NULL,
-      payload JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id INTEGER NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (source_provider, config_key, id)
     );
   `);
@@ -119,14 +142,14 @@ function mapCheckpoint(row: any): IngestCheckpoint {
     sourceProvider: row.source_provider,
     dataset: row.dataset,
     configKey: row.config_key,
-    topAnime: row.top_anime,
-    topManga: row.top_manga,
-    nextBatchId: row.next_batch_id,
-    lastCompletedBatchId: row.last_completed_batch_id,
+    topAnime: Number(row.top_anime),
+    topManga: Number(row.top_manga),
+    nextBatchId: Number(row.next_batch_id),
+    lastCompletedBatchId: Number(row.last_completed_batch_id),
     status: row.status,
-    lastError: row.last_error,
-    leaseOwner: row.lease_owner,
-    leaseExpiresAt: row.lease_expires_at,
+    lastError: row.last_error ?? null,
+    leaseOwner: row.lease_owner ?? null,
+    leaseExpiresAt: row.lease_expires_at ?? null,
     updatedAt: row.updated_at
   };
 }
@@ -138,67 +161,68 @@ export async function loadOrCreateCheckpoint(params: {
   topAnime: number;
   topManga: number;
 }): Promise<IngestCheckpoint> {
-  const p = getPool();
-  await p.query(
-    `INSERT INTO ingest_checkpoints (source_provider, dataset, config_key, top_anime, top_manga, status)
-     VALUES ($1,$2,$3,$4,$5,'running')
-     ON CONFLICT (source_provider, dataset, config_key) DO NOTHING`,
-    [params.sourceProvider, params.dataset, params.configKey, params.topAnime, params.topManga]
-  );
-  const res = await p.query(
-    `SELECT * FROM ingest_checkpoints WHERE source_provider=$1 AND dataset=$2 AND config_key=$3`,
-    [params.sourceProvider, params.dataset, params.configKey]
-  );
-  return mapCheckpoint(res.rows[0]);
+  const d = getDb();
+  d.prepare(`
+    INSERT INTO ingest_checkpoints (source_provider, dataset, config_key, top_anime, top_manga, status)
+    VALUES (?, ?, ?, ?, ?, 'running')
+    ON CONFLICT(source_provider, dataset, config_key) DO NOTHING
+  `).run(params.sourceProvider, params.dataset, params.configKey, params.topAnime, params.topManga);
+
+  const row = d.prepare(`
+    SELECT * FROM ingest_checkpoints WHERE source_provider=? AND dataset=? AND config_key=?
+  `).get(params.sourceProvider, params.dataset, params.configKey);
+  return mapCheckpoint(row);
+}
+
+function isExpired(expiresAt: string | null | undefined): boolean {
+  if (!expiresAt) return true;
+  return new Date(expiresAt).getTime() < Date.now();
+}
+
+function nextLeaseIso(minutes: number): string {
+  return new Date(Date.now() + minutes * 60_000).toISOString();
 }
 
 export async function tryAcquireLease(id: number, leaseOwner: string, leaseMinutes = 30): Promise<boolean> {
-  const p = getPool();
-  const res = await p.query(
-    `UPDATE ingest_checkpoints
-       SET lease_owner=$2,
-           lease_expires_at=NOW() + ($3 || ' minutes')::interval,
-           status='running',
-           updated_at=NOW()
-     WHERE id=$1
-       AND (lease_expires_at IS NULL OR lease_expires_at < NOW() OR lease_owner=$2)`,
-    [id, leaseOwner, String(leaseMinutes)]
-  );
-  return res.rowCount > 0;
+  const d = getDb();
+  const row: any = d.prepare(`SELECT lease_owner, lease_expires_at FROM ingest_checkpoints WHERE id=?`).get(id);
+  if (!row) return false;
+  if (row.lease_owner && row.lease_owner !== leaseOwner && !isExpired(row.lease_expires_at)) {
+    return false;
+  }
+  d.prepare(`
+    UPDATE ingest_checkpoints
+    SET lease_owner=?, lease_expires_at=?, status='running', updated_at=datetime('now')
+    WHERE id=?
+  `).run(leaseOwner, nextLeaseIso(leaseMinutes), id);
+  return true;
 }
 
 export async function renewLease(id: number, leaseOwner: string, leaseMinutes = 30): Promise<void> {
-  const p = getPool();
-  await p.query(
-    `UPDATE ingest_checkpoints
-     SET lease_expires_at=NOW() + ($3 || ' minutes')::interval, updated_at=NOW()
-     WHERE id=$1 AND lease_owner=$2`,
-    [id, leaseOwner, String(leaseMinutes)]
-  );
+  const d = getDb();
+  d.prepare(`
+    UPDATE ingest_checkpoints
+    SET lease_expires_at=?, updated_at=datetime('now')
+    WHERE id=? AND lease_owner=?
+  `).run(nextLeaseIso(leaseMinutes), id, leaseOwner);
 }
 
 export async function updateCheckpointProgress(id: number, nextBatchId: number, lastCompletedBatchId: number, status: CheckpointStatus, lastError: string | null): Promise<void> {
-  const p = getPool();
-  await p.query(
-    `UPDATE ingest_checkpoints
-      SET next_batch_id=$2,
-          last_completed_batch_id=$3,
-          status=$4,
-          last_error=$5,
-          updated_at=NOW()
-      WHERE id=$1`,
-    [id, nextBatchId, lastCompletedBatchId, status, lastError]
-  );
+  const d = getDb();
+  d.prepare(`
+    UPDATE ingest_checkpoints
+    SET next_batch_id=?, last_completed_batch_id=?, status=?, last_error=?, updated_at=datetime('now')
+    WHERE id=?
+  `).run(nextBatchId, lastCompletedBatchId, status, lastError, id);
 }
 
 export async function releaseLease(id: number, leaseOwner: string): Promise<void> {
-  const p = getPool();
-  await p.query(
-    `UPDATE ingest_checkpoints
-       SET lease_owner=NULL, lease_expires_at=NULL, updated_at=NOW()
-     WHERE id=$1 AND lease_owner=$2`,
-    [id, leaseOwner]
-  );
+  const d = getDb();
+  d.prepare(`
+    UPDATE ingest_checkpoints
+    SET lease_owner=NULL, lease_expires_at=NULL, updated_at=datetime('now')
+    WHERE id=? AND lease_owner=?
+  `).run(id, leaseOwner);
 }
 
 export async function loadEntityMaps(config: { sourceProvider: string; configKey: string }): Promise<{
@@ -207,40 +231,35 @@ export async function loadEntityMaps(config: { sourceProvider: string; configKey
   characters: any[];
   relationLookup: Record<number, any>;
 }> {
-  const p = getPool();
-  const [mediaRows, peopleRows, charRows, relRows] = await Promise.all([
-    p.query(`SELECT payload FROM ingest_media WHERE source_provider=$1 AND config_key=$2`, [config.sourceProvider, config.configKey]),
-    p.query(`SELECT payload FROM ingest_people WHERE source_provider=$1 AND config_key=$2`, [config.sourceProvider, config.configKey]),
-    p.query(`SELECT payload FROM ingest_characters WHERE source_provider=$1 AND config_key=$2`, [config.sourceProvider, config.configKey]),
-    p.query(`SELECT id, payload FROM ingest_relations WHERE source_provider=$1 AND config_key=$2`, [config.sourceProvider, config.configKey])
-  ]);
+  const d = getDb();
+  const mediaRows: any[] = d.prepare(`SELECT payload FROM ingest_media WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
+  const peopleRows: any[] = d.prepare(`SELECT payload FROM ingest_people WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
+  const charRows: any[] = d.prepare(`SELECT payload FROM ingest_characters WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
+  const relRows: any[] = d.prepare(`SELECT id, payload FROM ingest_relations WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
 
   const relationLookup: Record<number, any> = {};
-  for (const row of relRows.rows) relationLookup[Number(row.id)] = row.payload;
+  for (const row of relRows) relationLookup[Number(row.id)] = JSON.parse(row.payload);
 
   return {
-    media: mediaRows.rows.map((r) => r.payload),
-    people: peopleRows.rows.map((r) => r.payload),
-    characters: charRows.rows.map((r) => r.payload),
+    media: mediaRows.map((r) => JSON.parse(r.payload)),
+    people: peopleRows.map((r) => JSON.parse(r.payload)),
+    characters: charRows.map((r) => JSON.parse(r.payload)),
     relationLookup
   };
 }
 
-async function upsertRows(client: PoolClient, table: string, sourceProvider: string, configKey: string, rows: Array<{ id: number; payload: unknown }>): Promise<void> {
+function upsertRows(table: string, sourceProvider: string, configKey: string, rows: Array<{ id: number; payload: unknown }>): void {
   if (!rows.length) return;
-  const values: string[] = [];
-  const params: unknown[] = [];
-  let i = 1;
+  const d = getDb();
+  const stmt = d.prepare(`
+    INSERT INTO ${table} (source_provider, config_key, id, payload, updated_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(source_provider, config_key, id)
+    DO UPDATE SET payload=excluded.payload, updated_at=datetime('now')
+  `);
   for (const row of rows) {
-    values.push(`($${i++},$${i++},$${i++},$${i++}::jsonb,NOW())`);
-    params.push(sourceProvider, configKey, row.id, JSON.stringify(row.payload));
+    stmt.run(sourceProvider, configKey, row.id, JSON.stringify(row.payload));
   }
-  await client.query(
-    `INSERT INTO ${table} (source_provider, config_key, id, payload, updated_at) VALUES ${values.join(',')}
-     ON CONFLICT (source_provider, config_key, id)
-     DO UPDATE SET payload=EXCLUDED.payload, updated_at=NOW()`,
-    params
-  );
 }
 
 export async function upsertBatchSnapshot(params: {
@@ -256,29 +275,21 @@ export async function upsertBatchSnapshot(params: {
   checkpointStatus: CheckpointStatus;
   lastError: string | null;
 }): Promise<void> {
-  const p = getPool();
-  const client = await p.connect();
+  const d = getDb();
+  d.exec('BEGIN');
   try {
-    await client.query('BEGIN');
-    await upsertRows(client, 'ingest_media', params.sourceProvider, params.configKey, params.media);
-    await upsertRows(client, 'ingest_people', params.sourceProvider, params.configKey, params.people);
-    await upsertRows(client, 'ingest_characters', params.sourceProvider, params.configKey, params.characters);
-    await upsertRows(client, 'ingest_relations', params.sourceProvider, params.configKey, params.relations);
-    await client.query(
-      `UPDATE ingest_checkpoints
-         SET next_batch_id=$2,
-             last_completed_batch_id=$3,
-             status=$4,
-             last_error=$5,
-             updated_at=NOW()
-       WHERE id=$1`,
-      [params.checkpointId, params.nextBatchId, params.lastCompletedBatchId, params.checkpointStatus, params.lastError]
-    );
-    await client.query('COMMIT');
+    upsertRows('ingest_media', params.sourceProvider, params.configKey, params.media);
+    upsertRows('ingest_people', params.sourceProvider, params.configKey, params.people);
+    upsertRows('ingest_characters', params.sourceProvider, params.configKey, params.characters);
+    upsertRows('ingest_relations', params.sourceProvider, params.configKey, params.relations);
+    d.prepare(`
+      UPDATE ingest_checkpoints
+      SET next_batch_id=?, last_completed_batch_id=?, status=?, last_error=?, updated_at=datetime('now')
+      WHERE id=?
+    `).run(params.nextBatchId, params.lastCompletedBatchId, params.checkpointStatus, params.lastError, params.checkpointId);
+    d.exec('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK');
+    d.exec('ROLLBACK');
     throw error;
-  } finally {
-    client.release();
   }
 }
