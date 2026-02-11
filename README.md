@@ -57,6 +57,7 @@ Useful env overrides:
 - `BATCH_ANIME`, `BATCH_MANGA`
 - `BATCH_MAX_RETRIES`
 - `REQUESTS_PER_SECOND` (supports fractional values like `0.35` to reduce 429s)
+- `SOURCE_PROVIDER` (`JIKAN` default, `ANILIST` optional)
 
 Dry run (no artifact rebuilds):
 

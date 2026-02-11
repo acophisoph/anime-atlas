@@ -32,7 +32,7 @@ jobs:
           restore-keys: |
             anilist-cache-${{ runner.os }}-
       - run: npm install
-      - run: TOP_ANIME=50000 TOP_MANGA=50000 BATCH_ANIME=50 BATCH_MANGA=50 BATCH_MAX_RETRIES=6 REQUESTS_PER_SECOND=0.35 npm run ingest:batched -w scripts
+      - run: SOURCE_PROVIDER=JIKAN TOP_ANIME=50000 TOP_MANGA=50000 BATCH_ANIME=50 BATCH_MANGA=50 BATCH_MAX_RETRIES=6 REQUESTS_PER_SECOND=0.35 npm run ingest:batched -w scripts
       - run: npm run build:artifacts
       - run: npm run sanity:artifacts
       - run: npm run sync:data

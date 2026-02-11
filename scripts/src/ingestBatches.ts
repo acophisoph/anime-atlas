@@ -6,7 +6,7 @@ import { BUILD_CONFIG, TMP_DIR } from './config.js';
 import { queryAniList } from './anilistClient.js';
 import { normalizeRole } from './roleNormalize.js';
 import { logger } from './utils/logger.js';
-import { fetchJikanFallback } from './jikanClient.js';
+import { fetchJikanFallback, fetchJikanMediaDetail, fetchJikanTopIds } from './jikanClient.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -17,6 +17,7 @@ const TOP_ANIME = Number(process.env.TOP_ANIME ?? 50_000);
 const TOP_MANGA = Number(process.env.TOP_MANGA ?? 50_000);
 const MAX_BATCH_RETRIES = Number(process.env.BATCH_MAX_RETRIES ?? 6);
 const DRY_RUN = process.argv.includes('--dry-run');
+const SOURCE_PROVIDER = (process.env.SOURCE_PROVIDER ?? 'JIKAN').toUpperCase();
 
 const statePath = path.join(TMP_DIR, 'batchState.json');
 const mediaPath = path.join(TMP_DIR, 'mediaDetails.json');
@@ -32,8 +33,8 @@ query TopMedia($page:Int!,$perPage:Int!,$type:MediaType!){
 }`;
 
 const mediaQuery = `
-query MediaDetail($id:Int!){
-  Media(id:$id){
+query MediaDetail($id:Int,$idMal:Int,$type:MediaType){
+  Media(id:$id,idMal:$idMal,type:$type){
     id idMal type format popularity averageScore siteUrl
     studios{ nodes{ id name siteUrl isAnimationStudio } }
     title{romaji english native}
@@ -64,8 +65,9 @@ query RelationLite($id:Int!){
 }`;
 
 type BatchStatus = 'pending' | 'done' | 'failed';
-type BatchState = { batchId: number; animeIds: number[]; mangaIds: number[]; status: BatchStatus; attempts: number; lastError?: string };
-type StateFile = { createdAt: string; updatedAt: string; config: Record<string, number>; batches: BatchState[] };
+type Seed = { anilistId?: number; malId?: number; type: 'ANIME' | 'MANGA' };
+type BatchState = { batchId: number; animeSeeds: Seed[]; mangaSeeds: Seed[]; status: BatchStatus; attempts: number; lastError?: string };
+type StateFile = { createdAt: string; updatedAt: string; config: Record<string, number | string>; batches: BatchState[] };
 
 type Person = { id: number; name: unknown; siteUrl?: string; works: number[]; socialLinks: Array<{ label: string; url: string }> };
 type Character = { id: number; name: unknown; siteUrl?: string };
@@ -174,28 +176,37 @@ async function readJsonOr<T>(filePath: string, fallback: T): Promise<T> {
   }
 }
 
-async function fetchTop(type: 'ANIME' | 'MANGA', targetCount: number): Promise<number[]> {
+function canonicalId(type: 'ANIME' | 'MANGA', rawId: number): number {
+  return type === 'MANGA' ? rawId + 1_000_000_000 : rawId;
+}
+
+async function fetchTop(type: 'ANIME' | 'MANGA', targetCount: number): Promise<Seed[]> {
+  if (SOURCE_PROVIDER === 'JIKAN') {
+    const malIds = await fetchJikanTopIds(type, targetCount);
+    return malIds.map((malId) => ({ malId, type }));
+  }
+
   const pages = Math.ceil(targetCount / BUILD_CONFIG.pageSize);
-  const ids: number[] = [];
+  const seeds: Seed[] = [];
   for (let page = 1; page <= pages; page += 1) {
     const data = await queryAniList<{ Page: { media: Array<{ id: number }> } }>(topQuery, {
       page,
       perPage: BUILD_CONFIG.pageSize,
       type
     });
-    ids.push(...data.Page.media.map((m) => m.id));
+    seeds.push(...data.Page.media.map((m) => ({ anilistId: m.id, type })));
   }
-  return ids.slice(0, targetCount);
+  return seeds.slice(0, targetCount);
 }
 
-function makeBatches(animeIds: number[], mangaIds: number[]): BatchState[] {
-  const batchCount = Math.max(Math.ceil(animeIds.length / BATCH_ANIME), Math.ceil(mangaIds.length / BATCH_MANGA));
+function makeBatches(animeSeeds: Seed[], mangaSeeds: Seed[]): BatchState[] {
+  const batchCount = Math.max(Math.ceil(animeSeeds.length / BATCH_ANIME), Math.ceil(mangaSeeds.length / BATCH_MANGA));
   const batches: BatchState[] = [];
   for (let i = 0; i < batchCount; i += 1) {
     batches.push({
       batchId: i,
-      animeIds: animeIds.slice(i * BATCH_ANIME, (i + 1) * BATCH_ANIME),
-      mangaIds: mangaIds.slice(i * BATCH_MANGA, (i + 1) * BATCH_MANGA),
+      animeSeeds: animeSeeds.slice(i * BATCH_ANIME, (i + 1) * BATCH_ANIME),
+      mangaSeeds: mangaSeeds.slice(i * BATCH_MANGA, (i + 1) * BATCH_MANGA),
       status: 'pending',
       attempts: 0
     });
@@ -223,12 +234,48 @@ async function buildArtifacts(): Promise<void> {
 }
 
 async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById: Map<number, any>, peopleMap: Map<number, Person>, charMap: Map<number, Character>, relationLookup: Record<number, any>): Promise<void> {
-  const ids = [...batch.animeIds, ...batch.mangaIds];
+  const seeds = [...batch.animeSeeds, ...batch.mangaSeeds];
   const relationIds = new Set<number>();
 
-  for (const id of ids) {
-    const data = await queryAniList<{ Media: any }>(mediaQuery, { id });
-    const m = data.Media;
+  for (const seed of seeds) {
+    let m: any = null;
+    if (SOURCE_PROVIDER === 'JIKAN' && seed.malId) {
+      const detail = await fetchJikanMediaDetail(seed.type, seed.malId);
+      if (!detail) continue;
+      const id = canonicalId(seed.type, detail.malId);
+      const relations = detail.relations.map((r) => ({ id: canonicalId(r.type, r.idMal), relationType: r.relationType }));
+      mediaById.set(id, {
+        id,
+        idMal: detail.malId,
+        type: seed.type,
+        title: detail.title,
+        year: detail.year,
+        format: detail.format,
+        popularity: detail.popularity,
+        averageScore: detail.averageScore,
+        siteUrl: detail.siteUrl,
+        genres: detail.genres,
+        tags: detail.tags,
+        studios: detail.studios,
+        staff: [],
+        characters: [],
+        relations
+      });
+      for (const rel of relations) relationIds.add(rel.id);
+      continue;
+    }
+
+    const data = await queryAniList<{ Media: any }>(mediaQuery, { id: seed.anilistId, idMal: seed.malId, type: seed.type });
+    m = data.Media;
+    if (!m && seed.malId) {
+      const fallback = await fetchJikanMediaDetail(seed.type, seed.malId);
+      if (!fallback) continue;
+      const id = canonicalId(seed.type, fallback.malId);
+      const relations = fallback.relations.map((r) => ({ id: canonicalId(r.type, r.idMal), relationType: r.relationType }));
+      mediaById.set(id, { id, idMal: fallback.malId, type: seed.type, title: fallback.title, year: fallback.year, format: fallback.format, popularity: fallback.popularity, averageScore: fallback.averageScore, siteUrl: fallback.siteUrl, genres: fallback.genres, tags: fallback.tags, studios: fallback.studios, staff: [], characters: [], relations });
+      for (const rel of relations) relationIds.add(rel.id);
+      continue;
+    }
     if (!m) continue;
 
     const jikanFallback = await fetchJikanFallback(m.type, m.idMal ?? undefined);
@@ -245,7 +292,7 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
             id: person.id,
             name: person.name,
             siteUrl: person.siteUrl,
-            works: [m.id],
+            works: [mediaId],
             socialLinks: toSocialLinks(person)
           };
           peopleMap.set(person.id, mergePerson(peopleMap.get(person.id), nextPerson));
@@ -276,7 +323,7 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
           id: va.id,
           name: va.name,
           siteUrl: va.siteUrl,
-          works: [m.id],
+          works: [mediaId],
           socialLinks: peopleMap.get(va.id)?.socialLinks ?? []
         };
         peopleMap.set(va.id, mergePerson(peopleMap.get(va.id), nextPerson));
@@ -290,13 +337,20 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
       };
     });
 
-    const relations = (m.relations?.edges ?? []).map((edge: any) => {
-      relationIds.add(edge.node.id);
-      return { id: edge.node.id, relationType: edge.relationType };
-    });
+    const resolvedType = m.type as 'ANIME' | 'MANGA';
+    const mediaId = m.id ?? (m.idMal ? canonicalId(resolvedType, m.idMal) : undefined);
+    if (!mediaId) continue;
 
-    mediaById.set(m.id, {
-      id: m.id,
+    const relations = (m.relations?.edges ?? []).map((edge: any) => {
+      const relType = String(edge.node?.type ?? '').toUpperCase().includes('MANGA') ? 'MANGA' : 'ANIME';
+      const relId = edge.node?.id ?? (edge.node?.idMal ? canonicalId(relType as 'ANIME' | 'MANGA', edge.node.idMal) : undefined);
+      if (!relId) return null;
+      relationIds.add(relId);
+      return { id: relId, relationType: edge.relationType };
+    }).filter(Boolean);
+
+    mediaById.set(mediaId, {
+      id: mediaId,
       idMal: m.idMal ?? null,
       type: m.type,
       title,
@@ -314,19 +368,21 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
     });
   }
 
-  const missingRelationIds = [...relationIds].filter((id) => !topIdSet.has(id) && !relationLookup[id]);
-  for (const id of missingRelationIds) {
-    const relData = await queryAniList<{ Media: any }>(relationLookupQuery, { id });
-    const rel = relData.Media;
-    if (!rel) continue;
-    relationLookup[id] = {
-      id: rel.id,
-      type: rel.type,
-      title: rel.title,
-      year: rel.startDate?.year ?? 0,
-      format: rel.format,
-      siteUrl: rel.siteUrl
-    };
+  if (SOURCE_PROVIDER !== 'JIKAN') {
+    const missingRelationIds = [...relationIds].filter((id) => !topIdSet.has(id) && !relationLookup[id] && id < 1_000_000_000);
+    for (const id of missingRelationIds) {
+      const relData = await queryAniList<{ Media: any }>(relationLookupQuery, { id });
+      const rel = relData.Media;
+      if (!rel) continue;
+      relationLookup[id] = {
+        id: rel.id,
+        type: rel.type,
+        title: rel.title,
+        year: rel.startDate?.year ?? 0,
+        format: rel.format,
+        siteUrl: rel.siteUrl
+      };
+    }
   }
 }
 
@@ -349,15 +405,15 @@ async function persist(state: StateFile, mediaById: Map<number, any>, peopleMap:
 async function main() {
   await fs.mkdir(TMP_DIR, { recursive: true });
 
-  const [animeIds, mangaIds] = await Promise.all([fetchTop('ANIME', TOP_ANIME), fetchTop('MANGA', TOP_MANGA)]);
-  logger.info('top lists fetched', { anime: animeIds.length, manga: mangaIds.length, batchSize: BATCH_SIZE });
+  const [animeSeeds, mangaSeeds] = await Promise.all([fetchTop('ANIME', TOP_ANIME), fetchTop('MANGA', TOP_MANGA)]);
+  logger.info('top lists fetched', { anime: animeSeeds.length, manga: mangaSeeds.length, batchSize: BATCH_SIZE, source: SOURCE_PROVIDER });
 
   const existingState = await readJsonOr<StateFile | null>(statePath, null);
-  const targetBatches = makeBatches(animeIds, mangaIds);
+  const targetBatches = makeBatches(animeSeeds, mangaSeeds);
   const state: StateFile = existingState ?? {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    config: { TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA, BATCH_SIZE, MAX_BATCH_RETRIES },
+    config: { TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA, BATCH_SIZE, MAX_BATCH_RETRIES, SOURCE_PROVIDER },
     batches: targetBatches
   };
 
@@ -377,7 +433,7 @@ async function main() {
   const mediaById = new Map<number, any>(media.map((m) => [m.id, m]));
   const peopleMap = new Map<number, Person>(people.map((p) => [p.id, p]));
   const charMap = new Map<number, Character>(characters.map((c) => [c.id, c]));
-  const topIdSet = new Set<number>([...animeIds, ...mangaIds]);
+  const topIdSet = new Set<number>([...animeSeeds, ...mangaSeeds].map((s) => s.anilistId ?? (s.malId ? canonicalId(s.type, s.malId) : 0)).filter(Boolean));
 
   let progress = true;
   while (progress) {
@@ -387,7 +443,7 @@ async function main() {
 
     for (const batch of pending) {
       batch.attempts += 1;
-      logger.info('processing batch', { batchId: batch.batchId, attempts: batch.attempts, size: batch.animeIds.length + batch.mangaIds.length });
+      logger.info('processing batch', { batchId: batch.batchId, attempts: batch.attempts, size: batch.animeSeeds.length + batch.mangaSeeds.length });
       try {
         await processBatch(batch, topIdSet, mediaById, peopleMap, charMap, relationLookup);
         batch.status = 'done';
