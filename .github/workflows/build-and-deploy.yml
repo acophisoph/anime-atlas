@@ -1,0 +1,58 @@
+name: Build and Deploy Anime Atlas
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Restore ingest cache
+        uses: actions/cache/restore@v4
+        with:
+          path: scripts/.cache
+          key: ingest-cache-${{ runner.os }}-${{ hashFiles('scripts/src/**/*.ts') }}-${{ github.run_id }}
+          restore-keys: |
+            ingest-cache-${{ runner.os }}-${{ hashFiles('scripts/src/**/*.ts') }}-
+      - run: npm install
+      - run: SOURCE_PROVIDER=JIKAN TOP_ANIME=50000 TOP_MANGA=50000 BATCH_ANIME=50 BATCH_MANGA=50 BATCH_MAX_RETRIES=6 MAX_SEED_SKIPS_PER_BATCH=1 JIKAN_REQUESTS_PER_SECOND=2.4 JIKAN_REQUESTS_PER_MINUTE=55 JIKAN_MAX_RETRIES=8 REQUESTS_PER_SECOND=0.35 ARTIFACT_BUILD_INTERVAL=5 RUN_BATCH_LIMIT=120 npm run ingest:batched -w scripts
+      - run: npm run build:artifacts
+      - run: npm run sanity:artifacts
+      - run: npm run sync:data
+      - run: BASE_PATH=/${{ github.event.repository.name }}/ npm run build:site
+      - name: Save ingest cache
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/.cache
+          key: ingest-cache-${{ runner.os }}-${{ hashFiles('scripts/src/**/*.ts') }}-${{ github.run_id }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
