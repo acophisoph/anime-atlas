@@ -323,6 +323,7 @@ async function persist(state: StateFile, mediaById: Map<number, MediaRecord>, pe
   await writeJsonArrayStream(charsPath, charMap.values());
   await writeJsonObjectStream(relPath, relationLookup);
   await syncToCheckpoint();
+  logger.info('batch persistence checkpoint synced', { checkpointDir: CHECKPOINT_DIR });
 }
 
 

@@ -1,10 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { BASE_PATH, BUILD_CONFIG, DATA_DIR, TMP_DIR } from './config.js';
+import { BASE_PATH, BUILD_CONFIG, CACHE_DIR, DATA_DIR, TMP_DIR } from './config.js';
 import { closePool, hasDatabase, loadEntityMaps } from './db.js';
 import { buildMapCoords } from './buildMapCoords.js';
 import { buildIndices } from './buildIndices.js';
 import { packGraphEdges, packPoints } from './packBinary.js';
+
+const CHECKPOINT_DIR = path.join(CACHE_DIR, 'batch-progress');
+
+type IngestInputSource = 'TMP_DIR' | 'CHECKPOINT_DIR' | 'DATABASE';
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -34,14 +38,55 @@ async function main() {
   let people: any[] = [];
   let characters: any[] = [];
   let relationLookup: Record<number, any> = {};
+  let inputSource: IngestInputSource | null = null;
 
-  try {
-    media = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'mediaDetails.json'), 'utf-8'));
-    people = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'people.json'), 'utf-8'));
-    characters = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'characters.json'), 'utf-8'));
-    relationLookup = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'relationLookup.json'), 'utf-8').catch(() => '{}'));
-  } catch {
-    if (!hasDatabase()) throw new Error('TMP ingest files not found and DATABASE_URL is not configured.');
+  async function canRead(filePath: string): Promise<boolean> {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function readJsonFile<T>(filePath: string, label: string): Promise<T> {
+    let raw: string;
+    try {
+      raw = await fs.readFile(filePath, 'utf-8');
+    } catch (error) {
+      throw new Error(`Failed reading ${label} at ${filePath}: ${String(error)}`);
+    }
+    try {
+      return JSON.parse(raw) as T;
+    } catch (error) {
+      throw new Error(`Failed parsing JSON for ${label} at ${filePath}: ${String(error)}`);
+    }
+  }
+
+  async function loadFromDirectory(dirPath: string, source: IngestInputSource): Promise<boolean> {
+    const mediaFile = path.join(dirPath, 'mediaDetails.json');
+    const peopleFile = path.join(dirPath, 'people.json');
+    const charsFile = path.join(dirPath, 'characters.json');
+    const relFile = path.join(dirPath, 'relationLookup.json');
+
+    const hasCore = await Promise.all([canRead(mediaFile), canRead(peopleFile), canRead(charsFile)]);
+    if (!hasCore.every(Boolean)) return false;
+
+    media = await readJsonFile<any[]>(mediaFile, 'mediaDetails');
+    people = await readJsonFile<any[]>(peopleFile, 'people');
+    characters = await readJsonFile<any[]>(charsFile, 'characters');
+    relationLookup = (await canRead(relFile)) ? await readJsonFile<Record<number, any>>(relFile, 'relationLookup') : {};
+    inputSource = source;
+    return true;
+  }
+
+  const loadedFromTmp = await loadFromDirectory(TMP_DIR, 'TMP_DIR');
+  const loadedFromCheckpoint = loadedFromTmp ? false : await loadFromDirectory(CHECKPOINT_DIR, 'CHECKPOINT_DIR');
+
+  if (!loadedFromTmp && !loadedFromCheckpoint) {
+    if (!hasDatabase()) {
+      throw new Error(`TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and DATABASE_URL is not configured.`);
+    }
     const sourceProvider = (process.env.SOURCE_PROVIDER ?? 'ANILIST').toUpperCase();
     const topAnime = Number(process.env.TOP_ANIME ?? 2500);
     const topManga = Number(process.env.TOP_MANGA ?? 2500);
@@ -53,7 +98,15 @@ async function main() {
     people = dbData.people;
     characters = dbData.characters;
     relationLookup = dbData.relationLookup;
+    inputSource = 'DATABASE';
   }
+
+  console.info('[info] buildArtifacts ingest input source', {
+    source: inputSource,
+    media: media.length,
+    people: people.length,
+    characters: characters.length
+  });
 
   await fs.mkdir(path.join(DATA_DIR, 'indices'), { recursive: true });
   await fs.mkdir(path.join(DATA_DIR, 'meta'), { recursive: true });
