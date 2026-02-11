@@ -33,13 +33,13 @@ BASE_PATH=/anime-atlas/ npm run build:site
 ```
 
 
-## Automated 100k batched ingestion (self-healing)
+## Automated batched ingestion (self-healing)
 
-Use the batched ingester to process **50k anime + 50k manga** in **1,000 batches** of 100 entries (50 anime + 50 manga):
+Use the batched ingester to process **2.5k anime + 2.5k manga** in **50 batches** of 100 entries (50 anime + 50 manga):
 
 ```bash
 # optional fallback enrichment comes from public Jikan API (no signup needed) when AniList is missing fields
-# default: 50k anime + 50k manga, chunked into 1000 auto-retried batches
+# default: 2.5k anime + 2.5k manga, chunked into 50 auto-retried batches (AniList primary, Jikan fallback)
 npm run ingest:batched -w scripts
 ```
 
@@ -58,7 +58,7 @@ Useful env overrides:
 - `BATCH_ANIME`, `BATCH_MANGA`
 - `BATCH_MAX_RETRIES`
 - `REQUESTS_PER_SECOND` (supports fractional values like `0.35` to reduce 429s)
-- `SOURCE_PROVIDER` (`JIKAN` default, `ANILIST` optional)
+- `SOURCE_PROVIDER` (`ANILIST` default, `JIKAN` optional)
 - `JIKAN_REQUESTS_PER_SECOND` (default `1.2`)
 - `JIKAN_REQUESTS_PER_MINUTE` (default `40`)
 - `JIKAN_MAX_RETRIES` (default `8`)
