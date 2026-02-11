@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { BASE_PATH, BUILD_CONFIG, DATA_DIR, TMP_DIR } from './config.js';
+import { closePool, hasDatabase, loadEntityMaps } from './db.js';
 import { buildMapCoords } from './buildMapCoords.js';
 import { buildIndices } from './buildIndices.js';
 import { packGraphEdges, packPoints } from './packBinary.js';
@@ -29,10 +30,30 @@ function deriveCollab(media: any[]): Array<[number, number, number]> {
 }
 
 async function main() {
-  const media = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'mediaDetails.json'), 'utf-8'));
-  const people = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'people.json'), 'utf-8'));
-  const characters = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'characters.json'), 'utf-8'));
-  const relationLookup = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'relationLookup.json'), 'utf-8').catch(() => '{}'));
+  let media: any[] = [];
+  let people: any[] = [];
+  let characters: any[] = [];
+  let relationLookup: Record<number, any> = {};
+
+  try {
+    media = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'mediaDetails.json'), 'utf-8'));
+    people = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'people.json'), 'utf-8'));
+    characters = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'characters.json'), 'utf-8'));
+    relationLookup = JSON.parse(await fs.readFile(path.join(TMP_DIR, 'relationLookup.json'), 'utf-8').catch(() => '{}'));
+  } catch {
+    if (!hasDatabase()) throw new Error('TMP ingest files not found and DATABASE_URL is not configured.');
+    const sourceProvider = (process.env.SOURCE_PROVIDER ?? 'ANILIST').toUpperCase();
+    const topAnime = Number(process.env.TOP_ANIME ?? 2500);
+    const topManga = Number(process.env.TOP_MANGA ?? 2500);
+    const batchAnime = Number(process.env.BATCH_ANIME ?? 50);
+    const batchManga = Number(process.env.BATCH_MANGA ?? 50);
+    const cfgKey = [sourceProvider, topAnime, topManga, batchAnime, batchManga].join(':');
+    const dbData = await loadEntityMaps({ sourceProvider, configKey: cfgKey });
+    media = dbData.media;
+    people = dbData.people;
+    characters = dbData.characters;
+    relationLookup = dbData.relationLookup;
+  }
 
   await fs.mkdir(path.join(DATA_DIR, 'indices'), { recursive: true });
   await fs.mkdir(path.join(DATA_DIR, 'meta'), { recursive: true });
@@ -81,7 +102,10 @@ async function main() {
   await fs.writeFile(path.join(DATA_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));
 }
 
-main().catch((error) => {
+main().then(async () => {
+  await closePool();
+}).catch(async (error) => {
   console.error(error);
+  await closePool();
   process.exit(1);
 });

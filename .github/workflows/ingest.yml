@@ -1,0 +1,41 @@
+name: Durable Batched Ingest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Run batched ingest (DB checkpointed)
+        run: npm run ingest:batched -w scripts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TIME_BUDGET_MINUTES: 320
+          SOURCE_PROVIDER: ANILIST
+          TOP_ANIME: 2500
+          TOP_MANGA: 2500
+          BATCH_ANIME: 50
+          BATCH_MANGA: 50
+          BATCH_MAX_RETRIES: 6
+          MAX_SEED_SKIPS_PER_BATCH: 1
+          REQUESTS_PER_SECOND: 0.35
+          JIKAN_REQUESTS_PER_SECOND: 1.2
+          JIKAN_REQUESTS_PER_MINUTE: 40
+          JIKAN_MAX_RETRIES: 8
+          RUN_BATCH_LIMIT: 120

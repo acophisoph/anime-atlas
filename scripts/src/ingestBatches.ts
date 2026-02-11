@@ -1,14 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { BUILD_CONFIG, CACHE_DIR, TMP_DIR } from './config.js';
+import { closePool, ensureDbSchema, getLeaseOwner, hasDatabase, loadEntityMaps, loadOrCreateCheckpoint, releaseLease, renewLease, tryAcquireLease, updateCheckpointProgress, upsertBatchSnapshot } from './db.js';
 import { queryAniList } from './anilistClient.js';
 import { normalizeRole } from './roleNormalize.js';
 import { logger } from './utils/logger.js';
 import { fetchJikanFallback, fetchJikanMediaDetail, fetchJikanTopIds } from './jikanClient.js';
-
-const execFileAsync = promisify(execFile);
 
 const BATCH_ANIME = Number(process.env.BATCH_ANIME ?? 50);
 const BATCH_MANGA = Number(process.env.BATCH_MANGA ?? 50);
@@ -19,8 +16,7 @@ const MAX_BATCH_RETRIES = Number(process.env.BATCH_MAX_RETRIES ?? 6);
 const MAX_SEED_SKIPS_PER_BATCH = Number(process.env.MAX_SEED_SKIPS_PER_BATCH ?? 1);
 const SOURCE_PROVIDER = (process.env.SOURCE_PROVIDER ?? 'ANILIST').toUpperCase();
 const RUN_BATCH_LIMIT = Number(process.env.RUN_BATCH_LIMIT ?? 0);
-const ARTIFACT_BUILD_INTERVAL = Number(process.env.ARTIFACT_BUILD_INTERVAL ?? 1);
-const DRY_RUN = process.argv.includes('--dry-run');
+const TIME_BUDGET_MINUTES = Number(process.env.TIME_BUDGET_MINUTES ?? 0);
 
 const CHECKPOINT_DIR = path.join(CACHE_DIR, 'batch-progress');
 const statePath = path.join(TMP_DIR, 'batchState.json');
@@ -303,6 +299,18 @@ function makeBatches(animeSeeds: Seed[], mangaSeeds: Seed[]): BatchState[] {
   return batches;
 }
 
+
+
+function configKey(): string {
+  return [SOURCE_PROVIDER, TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA].join(':');
+}
+
+function shouldStopForTimeBudget(startMs: number): boolean {
+  if (TIME_BUDGET_MINUTES <= 0) return false;
+  const elapsedMs = Date.now() - startMs;
+  const thresholdMs = Math.max(1, TIME_BUDGET_MINUTES - 5) * 60_000;
+  return elapsedMs >= thresholdMs;
+}
 async function persist(state: StateFile, mediaById: Map<number, MediaRecord>, peopleMap: Map<number, Person>, charMap: Map<number, Character>, relationLookup: Record<number, any>, seedCatalog: SeedCatalog): Promise<void> {
   state.updatedAt = new Date().toISOString();
   seedCatalog.updatedAt = new Date().toISOString();
@@ -317,25 +325,35 @@ async function persist(state: StateFile, mediaById: Map<number, MediaRecord>, pe
   await syncToCheckpoint();
 }
 
-async function buildArtifacts(): Promise<void> {
-  if (DRY_RUN || ARTIFACT_BUILD_INTERVAL <= 0) return;
-  const cmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  await execFileAsync(cmd, ['run', 'build:artifacts'], { cwd: process.cwd(), env: process.env });
-}
 
-async function buildArtifactsSafely(context: Record<string, unknown>): Promise<boolean> {
-  try {
-    await buildArtifacts();
-    return true;
-  } catch (error) {
-    logger.warn('artifact build failed; progress already checkpointed and will resume next run', {
-      ...context,
-      error: String(error)
-    });
-    return false;
-  }
-}
 
+async function persistToDatabase(params: {
+  cfgKey: string;
+  checkpointId: number;
+  nextBatchId: number;
+  lastCompletedBatchId: number;
+  status: 'running' | 'success' | 'failed';
+  lastError: string | null;
+  mediaById: Map<number, MediaRecord>;
+  peopleMap: Map<number, Person>;
+  charMap: Map<number, Character>;
+  relationLookup: Record<number, any>;
+}): Promise<void> {
+  if (!hasDatabase()) return;
+  await upsertBatchSnapshot({
+    sourceProvider: SOURCE_PROVIDER,
+    configKey: params.cfgKey,
+    checkpointId: params.checkpointId,
+    nextBatchId: params.nextBatchId,
+    lastCompletedBatchId: params.lastCompletedBatchId,
+    checkpointStatus: params.status,
+    lastError: params.lastError,
+    media: [...params.mediaById.values()].map((item) => ({ id: item.id, payload: item })),
+    people: [...params.peopleMap.values()].map((item) => ({ id: item.id, payload: item })),
+    characters: [...params.charMap.values()].map((item) => ({ id: item.id, payload: item })),
+    relations: Object.entries(params.relationLookup).map(([id, payload]) => ({ id: Number(id), payload }))
+  });
+}
 async function resolveAniListMedia(seed: Seed): Promise<any | null> {
   const data = await queryAniList<{ Media: any }>(mediaQuery, { id: seed.anilistId, idMal: seed.malId, type: seed.type });
   return data.Media ?? null;
@@ -479,8 +497,29 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
   }
 }
 
+
 async function main() {
+  const startedAtMs = Date.now();
+  let shutdownRequested = false;
+  const cfgKey = configKey();
+  const leaseOwner = getLeaseOwner();
+  let checkpointId: number | null = null;
+  let leaseAcquired = false;
+
+  const requestShutdown = (signal: string) => {
+    logger.warn('shutdown signal received; will stop before starting next batch', { signal });
+    shutdownRequested = true;
+  };
+  process.once('SIGTERM', () => requestShutdown('SIGTERM'));
+  process.once('SIGINT', () => requestShutdown('SIGINT'));
+
   await restoreFromCheckpointIfNeeded();
+
+  if (!hasDatabase()) {
+    throw new Error('DATABASE_URL must be set. Durable checkpointing requires a real database.');
+  }
+
+  await ensureDbSchema();
 
   const existingSeedCatalog = await readJsonOr<SeedCatalog>(seedPath, { anime: [], manga: [], source: SOURCE_PROVIDER, updatedAt: new Date().toISOString() });
   const animeSeeds = await fetchTop('ANIME', TOP_ANIME, existingSeedCatalog.source === SOURCE_PROVIDER ? existingSeedCatalog.anime : []);
@@ -489,96 +528,118 @@ async function main() {
   const seedCatalog: SeedCatalog = { anime: animeSeeds, manga: mangaSeeds, source: SOURCE_PROVIDER, updatedAt: new Date().toISOString() };
   logger.info('top lists fetched', { anime: animeSeeds.length, manga: mangaSeeds.length, batchSize: BATCH_SIZE, source: SOURCE_PROVIDER });
 
-  const existingState = await readJsonOr<StateFile | null>(statePath, null);
+  const checkpoint = await loadOrCreateCheckpoint({
+    sourceProvider: SOURCE_PROVIDER,
+    dataset: 'anime_manga',
+    configKey: cfgKey,
+    topAnime: TOP_ANIME,
+    topManga: TOP_MANGA
+  });
+
+  checkpointId = checkpoint.id;
+  leaseAcquired = await tryAcquireLease(checkpoint.id, leaseOwner, 30);
+  if (!leaseAcquired) {
+    logger.info('ingest lease is held by another runner; exiting cleanly', { checkpointId: checkpoint.id });
+    return;
+  }
+
   const targetBatches = makeBatches(animeSeeds, mangaSeeds);
-  const state: StateFile = existingState ?? {
+  const state: StateFile = {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     config: { TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA, BATCH_SIZE, MAX_BATCH_RETRIES, MAX_SEED_SKIPS_PER_BATCH, SOURCE_PROVIDER },
-    batches: targetBatches
+    batches: targetBatches.map((b) => ({ ...b, status: b.batchId < checkpoint.nextBatchId ? 'done' : 'pending' }))
   };
 
-  if (existingState) {
-    const statusById = new Map(existingState.batches.map((b) => [b.batchId, b]));
-    state.batches = targetBatches.map((b) => {
-      const prev = statusById.get(b.batchId);
-      return prev ? { ...b, status: prev.status, attempts: prev.attempts, lastError: prev.lastError } : b;
-    });
-    state.config = { ...state.config, TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA, BATCH_SIZE, MAX_BATCH_RETRIES, MAX_SEED_SKIPS_PER_BATCH, SOURCE_PROVIDER };
-  }
-
-  const media = await readJsonOr<MediaRecord[]>(mediaPath, []);
-  const people = await readJsonOr<Person[]>(peoplePath, []);
-  const characters = await readJsonOr<Character[]>(charsPath, []);
-  const relationLookup = await readJsonOr<Record<number, any>>(relPath, {});
+  const existingDbData = await loadEntityMaps({ sourceProvider: SOURCE_PROVIDER, configKey: cfgKey });
+  const media = existingDbData.media as MediaRecord[];
+  const people = existingDbData.people as Person[];
+  const characters = existingDbData.characters as Character[];
+  const relationLookup = existingDbData.relationLookup;
 
   const mediaById = new Map<number, MediaRecord>(media.map((m) => [m.id, m]));
   const peopleMap = new Map<number, Person>(people.map((p) => [p.id, p]));
   const charMap = new Map<number, Character>(characters.map((c) => [c.id, c]));
-  const topIdSet = new Set<number>([...animeSeeds, ...mangaSeeds].map((s) => s.anilistId ?? (s.malId ? canonicalId(s.type, s.malId) : 0)).filter(Boolean));
+  const topIdSet = new Set<number>([...animeSeeds, ...mangaSeeds].map((seed) => seed.anilistId ?? (seed.malId ? canonicalId(seed.type, seed.malId) : 0)).filter(Boolean));
 
   let processedThisRun = 0;
-  let artifactsSinceBuild = 0;
-  let progress = true;
+  let lastCompleted = Math.max(-1, checkpoint.lastCompletedBatchId);
 
-  while (progress) {
-    progress = false;
-    const pending = state.batches.filter((b) => b.status !== 'done' && b.attempts < MAX_BATCH_RETRIES);
-    if (!pending.length) break;
+  for (const batch of state.batches) {
+    if (batch.batchId < checkpoint.nextBatchId) continue;
 
-    for (const batch of pending) {
-      if (RUN_BATCH_LIMIT > 0 && processedThisRun >= RUN_BATCH_LIMIT) {
-        logger.info('run batch limit reached', { RUN_BATCH_LIMIT, processedThisRun });
-        await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
-        if (artifactsSinceBuild > 0) {
-          const built = await buildArtifactsSafely({ phase: 'run-batch-limit', artifactsSinceBuild });
-          if (built) artifactsSinceBuild = 0;
-        }
-        return;
-      }
-
-      batch.attempts += 1;
-      logger.info('processing batch', { batchId: batch.batchId, attempts: batch.attempts, size: batch.animeSeeds.length + batch.mangaSeeds.length });
-      try {
-        await processBatch(batch, topIdSet, mediaById, peopleMap, charMap, relationLookup);
-        batch.status = 'done';
-        delete batch.lastError;
-        progress = true;
-        processedThisRun += 1;
-        artifactsSinceBuild += 1;
-        await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
-        if (artifactsSinceBuild >= Math.max(1, ARTIFACT_BUILD_INTERVAL)) {
-          const built = await buildArtifactsSafely({ phase: 'batch-interval', batchId: batch.batchId, artifactsSinceBuild });
-          if (built) artifactsSinceBuild = 0;
-        }
-      } catch (error) {
-        batch.status = 'failed';
-        batch.lastError = String(error);
-        logger.warn('batch failed', { batchId: batch.batchId, error: batch.lastError });
-        await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
-      }
+    if (RUN_BATCH_LIMIT > 0 && processedThisRun >= RUN_BATCH_LIMIT) {
+      logger.info('run batch limit reached', { RUN_BATCH_LIMIT, processedThisRun });
+      break;
     }
 
-    state.batches.forEach((b) => {
-      if (b.status === 'failed' && b.attempts < MAX_BATCH_RETRIES) b.status = 'pending';
-    });
-  }
+    if (shutdownRequested || shouldStopForTimeBudget(startedAtMs)) {
+      logger.info('graceful stop before next batch', { shutdownRequested, TIME_BUDGET_MINUTES });
+      break;
+    }
 
-  if (artifactsSinceBuild > 0) {
-    const built = await buildArtifactsSafely({ phase: 'finalize', artifactsSinceBuild });
-    if (built) artifactsSinceBuild = 0;
+    batch.attempts += 1;
+    logger.info('processing batch', { batchId: batch.batchId, attempts: batch.attempts, size: batch.animeSeeds.length + batch.mangaSeeds.length });
+
+    try {
+      await processBatch(batch, topIdSet, mediaById, peopleMap, charMap, relationLookup);
+      batch.status = 'done';
+      delete batch.lastError;
+      processedThisRun += 1;
+      lastCompleted = batch.batchId;
+
+      await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
+      await persistToDatabase({
+        cfgKey,
+        checkpointId: checkpoint.id,
+        nextBatchId: batch.batchId + 1,
+        lastCompletedBatchId: batch.batchId,
+        status: 'running',
+        lastError: null,
+        mediaById,
+        peopleMap,
+        charMap,
+        relationLookup
+      });
+      await renewLease(checkpoint.id, leaseOwner, 30);
+    } catch (error) {
+      batch.status = 'failed';
+      batch.lastError = String(error);
+      logger.warn('batch failed', { batchId: batch.batchId, error: batch.lastError });
+      await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
+      await updateCheckpointProgress(checkpoint.id, batch.batchId, lastCompleted, 'failed', batch.lastError);
+      await renewLease(checkpoint.id, leaseOwner, 30);
+
+      if (batch.attempts >= MAX_BATCH_RETRIES) {
+        throw error;
+      }
+    }
   }
 
   const done = state.batches.filter((b) => b.status === 'done').length;
-  const failed = state.batches.filter((b) => b.status !== 'done').length;
+  const failed = state.batches.filter((b) => b.status === 'failed').length;
   logger.info('batch ingest summary', { done, failed, total: state.batches.length, media: mediaById.size, people: peopleMap.size, characters: charMap.size });
 
-  if (failed > 0) {
-    throw new Error(`Incomplete ingestion. Failed batches remaining: ${failed}`);
-  }
+  const nextBatchId = Math.max(lastCompleted + 1, checkpoint.nextBatchId);
+  const allDone = nextBatchId >= state.batches.length;
+  await updateCheckpointProgress(checkpoint.id, nextBatchId, lastCompleted, allDone ? 'success' : 'running', null);
+  await releaseLease(checkpoint.id, leaseOwner);
+  await closePool();
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.error(error);
+  try {
+    const leaseOwner = getLeaseOwner();
+    // best effort release when id can be inferred from env-driven single checkpoint
+    if (hasDatabase()) {
+      // no-op if lease owner doesn't match
+      const checkpoint = await loadOrCreateCheckpoint({ sourceProvider: SOURCE_PROVIDER, dataset: 'anime_manga', configKey: configKey(), topAnime: TOP_ANIME, topManga: TOP_MANGA });
+      await releaseLease(checkpoint.id, leaseOwner);
+    }
+    await closePool();
+  } catch {
+    // ignore shutdown error
+  }
   process.exit(1);
 });

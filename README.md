@@ -7,13 +7,14 @@ Anime/Manga Atlas + Networking-lite built with **Vite + React + TypeScript**, ba
 - `scripts/`: ingest and build pipeline (anonymous AniList GraphQL -> minimal artifacts).
 - `data/`: generated artifacts (`manifest`, `points.bin` or `points.json`, graph artifacts, indices, chunked metadata).
 - `app/`: static client that only downloads `/data/*` artifacts (never calls AniList).
-- `.github/workflows/build-and-deploy.yml`: scheduled/dispatch ingestion + build + Pages deploy.
+- `.github/workflows/ingest.yml`: durable DB-backed batched ingestion (scheduled/manual).
+- `.github/workflows/build-and-deploy.yml`: Pages build/deploy from already ingested DB data.
 
-## Static-only compliance
+## Runtime model
 
-- No database, no server runtime.
-- Browser consumes only local artifacts from `app/public/data`.
-- AniList API calls happen only in scripts (CI/local ingestion).
+- Browser remains static and consumes only local artifacts from `app/public/data`.
+- Ingestion scripts use AniList/Jikan and persist durable progress/data in Postgres (`DATABASE_URL`).
+- Pages workflow only builds static artifacts/site; it does not perform heavy ingestion.
 
 ## Local development
 
@@ -33,50 +34,48 @@ BASE_PATH=/anime-atlas/ npm run build:site
 ```
 
 
-## Automated batched ingestion (self-healing)
+## Automated batched ingestion (durable + resumable)
 
-Use the batched ingester to process **2.5k anime + 2.5k manga** in **50 batches** of 100 entries (50 anime + 50 manga):
+Ingestion now commits each successful batch to Postgres and advances a DB checkpoint (`ingest_checkpoints`) so progress survives workflow failures/cancellations.
+
+Local run:
 
 ```bash
-# optional fallback enrichment comes from public Jikan API (no signup needed) when AniList is missing fields
-# default: 2.5k anime + 2.5k manga, chunked into 50 auto-retried batches (AniList primary, Jikan fallback)
+DATABASE_URL=postgres://... \
+TIME_BUDGET_MINUTES=320 \
+SOURCE_PROVIDER=ANILIST TOP_ANIME=2500 TOP_MANGA=2500 \
 npm run ingest:batched -w scripts
 ```
 
 Behavior:
 
-- persists per-batch state in `data/_tmp/batchState.json`
-- writes merged intermediate metadata (`mediaDetails.json`, `people.json`, `characters.json`, `relationLookup.json`) after every batch
-- rebuilds artifacts after each successful batch so the site data updates incrementally
-- automatically retries failed batches (up to `BATCH_MAX_RETRIES`, default 6)
-- supports resume/restart without redoing completed batches
-- checkpoints are mirrored into `scripts/.cache/batch-progress` so GitHub Actions cache can resume across runs
-- every batch is checkpointed before any artifact rebuild, so ingestion progress survives artifact/build failures
+- acquires a lease on checkpoint row to prevent overlapping runners
+- processes batches sequentially, upserting media/people/characters/relations each batch
+- advances `next_batch_id` only after DB writes complete
+- exits cleanly on `SIGTERM`/`SIGINT` or near `TIME_BUDGET_MINUTES`
+- next run resumes from checkpoint `next_batch_id`
 
-Useful env overrides:
+Inspect checkpoint progress:
 
-- `TOP_ANIME`, `TOP_MANGA`
-- `BATCH_ANIME`, `BATCH_MANGA`
-- `BATCH_MAX_RETRIES`
-- `REQUESTS_PER_SECOND` (supports fractional values like `0.35` to reduce 429s)
-- `SOURCE_PROVIDER` (`ANILIST` default, `JIKAN` optional)
-- `JIKAN_REQUESTS_PER_SECOND` (default `1.2`)
-- `JIKAN_REQUESTS_PER_MINUTE` (default `40`)
-- `JIKAN_MAX_RETRIES` (default `8`)
-- `MAX_SEED_SKIPS_PER_BATCH` (default `1`)
-- `RUN_BATCH_LIMIT` (max batches per run; lets CI continue over multiple runs without restarting)
-- `ARTIFACT_BUILD_INTERVAL` (rebuild artifacts every N successful batches)
+```sql
+SELECT id, source_provider, config_key, next_batch_id, last_completed_batch_id, status, last_error, lease_owner, lease_expires_at, updated_at
+FROM ingest_checkpoints
+ORDER BY updated_at DESC;
+```
 
-Recommended for GitHub Actions 5-hour limits:
+Reset a checkpoint safely:
 
-- run bounded ingest windows with `RUN_BATCH_LIMIT` (e.g. `20`) so each workflow completes well under timeout
-- set `ARTIFACT_BUILD_INTERVAL=0` during ingest to focus on checkpointing; run `npm run build:artifacts` once after ingest step
-- keep cache save enabled with `if: always()` so checkpoints are preserved even when later steps fail
-
-Dry run (no artifact rebuilds):
-
-```bash
-npm run ingest:batched -w scripts -- --dry-run
+```sql
+UPDATE ingest_checkpoints
+SET next_batch_id = 0,
+    last_completed_batch_id = -1,
+    status = 'running',
+    last_error = NULL,
+    lease_owner = NULL,
+    lease_expires_at = NULL,
+    updated_at = NOW()
+WHERE source_provider = 'ANILIST'
+  AND config_key = 'ANILIST:2500:2500:50:50';
 ```
 
 ## Scaling to 100k
@@ -104,9 +103,9 @@ Edit `scripts/src/config.ts`:
 
 ## GitHub Pages deployment flow
 
-1. checkout + setup Node 20
-2. restore `scripts/.cache`
-3. ingest AniList + build artifacts
+1. ingest workflow (`ingest.yml`) runs every 30 min / manual and writes durable DB checkpoints
+2. pages workflow checks out + installs deps
+3. `build:artifacts` reads from DB-backed ingest tables
 4. copy artifacts to `app/public/data`
 5. Vite build with `BASE_PATH=/${REPO}/`
 6. `actions/upload-pages-artifact@v3`
