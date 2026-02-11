@@ -18,6 +18,7 @@ const TOP_MANGA = Number(process.env.TOP_MANGA ?? 50_000);
 const MAX_BATCH_RETRIES = Number(process.env.BATCH_MAX_RETRIES ?? 6);
 const DRY_RUN = process.argv.includes('--dry-run');
 const SOURCE_PROVIDER = (process.env.SOURCE_PROVIDER ?? 'JIKAN').toUpperCase();
+const MAX_SEED_SKIPS_PER_BATCH = Number(process.env.MAX_SEED_SKIPS_PER_BATCH ?? 1);
 
 const statePath = path.join(TMP_DIR, 'batchState.json');
 const mediaPath = path.join(TMP_DIR, 'mediaDetails.json');
@@ -183,6 +184,9 @@ function canonicalId(type: 'ANIME' | 'MANGA', rawId: number): number {
 async function fetchTop(type: 'ANIME' | 'MANGA', targetCount: number): Promise<Seed[]> {
   if (SOURCE_PROVIDER === 'JIKAN') {
     const malIds = await fetchJikanTopIds(type, targetCount);
+    if (malIds.length < targetCount) {
+      throw new Error(`Jikan top ${type} returned ${malIds.length}/${targetCount}. Reduce target or retry later.`);
+    }
     return malIds.map((malId) => ({ malId, type }));
   }
 
@@ -236,12 +240,13 @@ async function buildArtifacts(): Promise<void> {
 async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById: Map<number, any>, peopleMap: Map<number, Person>, charMap: Map<number, Character>, relationLookup: Record<number, any>): Promise<void> {
   const seeds = [...batch.animeSeeds, ...batch.mangaSeeds];
   const relationIds = new Set<number>();
+  const unresolved: string[] = [];
 
   for (const seed of seeds) {
     let m: any = null;
     if (SOURCE_PROVIDER === 'JIKAN' && seed.malId) {
       const detail = await fetchJikanMediaDetail(seed.type, seed.malId);
-      if (!detail) continue;
+      if (!detail) { unresolved.push(`${seed.type}:${seed.malId}:jikan-full-missing`); continue; }
       const id = canonicalId(seed.type, detail.malId);
       const relations = detail.relations.map((r) => ({ id: canonicalId(r.type, r.idMal), relationType: r.relationType }));
       mediaById.set(id, {
@@ -269,14 +274,14 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
     m = data.Media;
     if (!m && seed.malId) {
       const fallback = await fetchJikanMediaDetail(seed.type, seed.malId);
-      if (!fallback) continue;
+      if (!fallback) { unresolved.push(`${seed.type}:${seed.malId}:fallback-missing`); continue; }
       const id = canonicalId(seed.type, fallback.malId);
       const relations = fallback.relations.map((r) => ({ id: canonicalId(r.type, r.idMal), relationType: r.relationType }));
       mediaById.set(id, { id, idMal: fallback.malId, type: seed.type, title: fallback.title, year: fallback.year, format: fallback.format, popularity: fallback.popularity, averageScore: fallback.averageScore, siteUrl: fallback.siteUrl, genres: fallback.genres, tags: fallback.tags, studios: fallback.studios, staff: [], characters: [], relations });
       for (const rel of relations) relationIds.add(rel.id);
       continue;
     }
-    if (!m) continue;
+    if (!m) { unresolved.push(`${seed.type}:${seed.anilistId ?? seed.malId}:anilist-missing`); continue; }
 
     const jikanFallback = await fetchJikanFallback(m.type, m.idMal ?? undefined);
     const studios = (m.studios?.nodes?.length ? m.studios.nodes : jikanFallback?.studios ?? []) as any[];
@@ -339,7 +344,7 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
 
     const resolvedType = m.type as 'ANIME' | 'MANGA';
     const mediaId = m.id ?? (m.idMal ? canonicalId(resolvedType, m.idMal) : undefined);
-    if (!mediaId) continue;
+    if (!mediaId) { unresolved.push(`${seed.type}:${seed.anilistId ?? seed.malId}:media-id-missing`); continue; }
 
     const relations = (m.relations?.edges ?? []).map((edge: any) => {
       const relType = String(edge.node?.type ?? '').toUpperCase().includes('MANGA') ? 'MANGA' : 'ANIME';
@@ -367,6 +372,11 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
       relations
     });
   }
+
+  if (unresolved.length > MAX_SEED_SKIPS_PER_BATCH) {
+    throw new Error(`Batch ${batch.batchId} unresolved seeds ${unresolved.length}/${seeds.length}: ${unresolved.slice(0, 8).join(',')}`);
+  }
+
 
   if (SOURCE_PROVIDER !== 'JIKAN') {
     const missingRelationIds = [...relationIds].filter((id) => !topIdSet.has(id) && !relationLookup[id] && id < 1_000_000_000);
@@ -413,7 +423,7 @@ async function main() {
   const state: StateFile = existingState ?? {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    config: { TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA, BATCH_SIZE, MAX_BATCH_RETRIES, SOURCE_PROVIDER },
+    config: { TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA, BATCH_SIZE, MAX_BATCH_RETRIES, MAX_SEED_SKIPS_PER_BATCH, SOURCE_PROVIDER },
     batches: targetBatches
   };
 
