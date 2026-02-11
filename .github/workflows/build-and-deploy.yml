@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -24,12 +24,19 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: npm run build:artifacts
+      - name: Build artifacts when inputs are available
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SOURCE_PROVIDER: ANILIST
           TOP_ANIME: 2500
           TOP_MANGA: 2500
+        run: |
+          set -euo pipefail
+          if [ -d "data/_tmp" ] || [ -d "scripts/.cache/batch-progress" ] || [ -n "${DATABASE_URL:-}" ]; then
+            npm run build:artifacts
+          else
+            echo "[skip] build:artifacts skipped: no data/_tmp, no scripts/.cache/batch-progress, and DATABASE_URL is not configured"
+          fi
       - run: npm run sanity:artifacts
       - run: npm run sync:data
       - run: BASE_PATH=/${{ github.event.repository.name }}/ npm run build:site

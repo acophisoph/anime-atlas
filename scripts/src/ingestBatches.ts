@@ -323,7 +323,7 @@ async function persist(state: StateFile, mediaById: Map<number, MediaRecord>, pe
   await writeJsonArrayStream(charsPath, charMap.values());
   await writeJsonObjectStream(relPath, relationLookup);
   await syncToCheckpoint();
-  logger.info('batch persistence checkpoint synced', { checkpointDir: CHECKPOINT_DIR });
+  logger.info('batch persistence checkpoint synced', { tmpDir: TMP_DIR, checkpointDir: CHECKPOINT_DIR });
 }
 
 
@@ -562,6 +562,9 @@ async function main() {
   const peopleMap = new Map<number, Person>(people.map((p) => [p.id, p]));
   const charMap = new Map<number, Character>(characters.map((c) => [c.id, c]));
   const topIdSet = new Set<number>([...animeSeeds, ...mangaSeeds].map((seed) => seed.anilistId ?? (seed.malId ? canonicalId(seed.type, seed.malId) : 0)).filter(Boolean));
+
+  await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
+  logger.info('initial ingest snapshot persisted', { tmpDir: TMP_DIR, checkpointDir: CHECKPOINT_DIR, nextBatchId: checkpoint.nextBatchId });
 
   let processedThisRun = 0;
   let lastCompleted = Math.max(-1, checkpoint.lastCompletedBatchId);

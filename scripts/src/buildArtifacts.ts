@@ -85,7 +85,10 @@ async function main() {
 
   if (!loadedFromTmp && !loadedFromCheckpoint) {
     if (!hasDatabase()) {
-      throw new Error(`TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and DATABASE_URL is not configured.`);
+      throw new Error(
+        `TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and DATABASE_URL is not configured. ` +
+        'This can happen when ingest was canceled before first persist; ensure checkpoint restore is configured and use non-canceling workflow concurrency.'
+      );
     }
     const sourceProvider = (process.env.SOURCE_PROVIDER ?? 'ANILIST').toUpperCase();
     const topAnime = Number(process.env.TOP_ANIME ?? 2500);
