@@ -50,6 +50,7 @@ Behavior:
 - rebuilds artifacts after each successful batch so the site data updates incrementally
 - automatically retries failed batches (up to `BATCH_MAX_RETRIES`, default 6)
 - supports resume/restart without redoing completed batches
+- checkpoints are mirrored into `scripts/.cache/batch-progress` so GitHub Actions cache can resume across runs
 
 Useful env overrides:
 
@@ -62,6 +63,8 @@ Useful env overrides:
 - `JIKAN_REQUESTS_PER_MINUTE` (default `55`)
 - `JIKAN_MAX_RETRIES` (default `8`)
 - `MAX_SEED_SKIPS_PER_BATCH` (default `1`)
+- `RUN_BATCH_LIMIT` (max batches per run; lets CI continue over multiple runs without restarting)
+- `ARTIFACT_BUILD_INTERVAL` (rebuild artifacts every N successful batches)
 
 Dry run (no artifact rebuilds):
 
