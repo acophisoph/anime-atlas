@@ -4,7 +4,8 @@ let nextAllowed = 0;
 
 export async function throttle(rps: number): Promise<void> {
   const now = Date.now();
-  const minInterval = Math.ceil(1000 / Math.max(rps, 1));
+  const effectiveRps = Math.max(rps, 0.01);
+  const minInterval = Math.ceil(1000 / effectiveRps);
   if (now < nextAllowed) {
     await sleep(nextAllowed - now);
   }

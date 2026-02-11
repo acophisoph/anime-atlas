@@ -56,6 +56,7 @@ Useful env overrides:
 - `TOP_ANIME`, `TOP_MANGA`
 - `BATCH_ANIME`, `BATCH_MANGA`
 - `BATCH_MAX_RETRIES`
+- `REQUESTS_PER_SECOND` (supports fractional values like `0.35` to reduce 429s)
 
 Dry run (no artifact rebuilds):
 

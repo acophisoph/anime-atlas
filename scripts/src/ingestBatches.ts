@@ -123,6 +123,48 @@ function toSocialLinks(person: any): Array<{ label: string; url: string }> {
   }));
 }
 
+
+async function writeJsonArrayStream<T>(filePath: string, values: Iterable<T>): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const chunks: string[] = ['['];
+  let first = true;
+  for (const value of values) {
+    const serialized = JSON.stringify(value);
+    if (!serialized) continue;
+    if (!first) chunks.push(',');
+    chunks.push(serialized);
+    first = false;
+    if (chunks.length >= 2048) {
+      await fs.appendFile(filePath, chunks.join(''));
+      chunks.length = 0;
+    }
+  }
+  chunks.push(']');
+  if (chunks.length) {
+    await fs.appendFile(filePath, chunks.join(''));
+  }
+}
+
+async function writeJsonObjectStream(filePath: string, value: Record<number, any>): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const chunks: string[] = ['{'];
+  let first = true;
+  for (const [k, v] of Object.entries(value)) {
+    const serialized = JSON.stringify(v);
+    if (!serialized) continue;
+    if (!first) chunks.push(',');
+    chunks.push(JSON.stringify(k), ':', serialized);
+    first = false;
+    if (chunks.length >= 2048) {
+      await fs.appendFile(filePath, chunks.join(''));
+      chunks.length = 0;
+    }
+  }
+  chunks.push('}');
+  if (chunks.length) {
+    await fs.appendFile(filePath, chunks.join(''));
+  }
+}
 async function readJsonOr<T>(filePath: string, fallback: T): Promise<T> {
   try {
     const raw = await fs.readFile(filePath, 'utf-8');
@@ -292,10 +334,16 @@ async function persist(state: StateFile, mediaById: Map<number, any>, peopleMap:
   state.updatedAt = new Date().toISOString();
   await fs.mkdir(TMP_DIR, { recursive: true });
   await fs.writeFile(statePath, JSON.stringify(state, null, 2));
-  await fs.writeFile(mediaPath, JSON.stringify([...mediaById.values()], null, 2));
-  await fs.writeFile(peoplePath, JSON.stringify([...peopleMap.values()], null, 2));
-  await fs.writeFile(charsPath, JSON.stringify([...charMap.values()], null, 2));
-  await fs.writeFile(relPath, JSON.stringify(relationLookup, null, 2));
+
+  await fs.rm(mediaPath, { force: true });
+  await fs.rm(peoplePath, { force: true });
+  await fs.rm(charsPath, { force: true });
+  await fs.rm(relPath, { force: true });
+
+  await writeJsonArrayStream(mediaPath, mediaById.values());
+  await writeJsonArrayStream(peoplePath, peopleMap.values());
+  await writeJsonArrayStream(charsPath, charMap.values());
+  await writeJsonObjectStream(relPath, relationLookup);
 }
 
 async function main() {

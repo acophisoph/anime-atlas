@@ -9,7 +9,7 @@ export const BUILD_CONFIG = {
   topAnime: Number(process.env.TOP_ANIME ?? 100),
   topManga: Number(process.env.TOP_MANGA ?? 100),
   pageSize: 50,
-  requestPerSecond: 1,
+  requestPerSecond: Number(process.env.REQUESTS_PER_SECOND ?? 0.35),
   maxRetries: 5,
   seed: 1337,
   chunkSize: 200,
