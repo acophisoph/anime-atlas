@@ -26,12 +26,14 @@ type JikanMedia = {
 type JikanEnvelope<T> = { data?: T; pagination?: { has_next_page?: boolean } };
 
 const JIKAN_BASE = 'https://api.jikan.moe/v4';
-const JIKAN_RPS = Number(process.env.JIKAN_REQUESTS_PER_SECOND ?? 2.4);
-const JIKAN_RPM = Number(process.env.JIKAN_REQUESTS_PER_MINUTE ?? 55);
+const JIKAN_RPS = Number(process.env.JIKAN_REQUESTS_PER_SECOND ?? 1.2);
+const JIKAN_RPM = Number(process.env.JIKAN_REQUESTS_PER_MINUTE ?? 40);
 const JIKAN_MAX_RETRIES = Number(process.env.JIKAN_MAX_RETRIES ?? 8);
 
 let nextAllowedAt = 0;
 const reqTimestamps: number[] = [];
+let throttleGate: Promise<void> = Promise.resolve();
+let globalCooldownUntil = 0;
 
 function parseYear(fromDate?: string): number {
   if (!fromDate) return 0;
@@ -44,20 +46,30 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function throttleJikan(): Promise<void> {
-  const now = Date.now();
-  const perReqInterval = Math.ceil(1000 / Math.max(JIKAN_RPS, 0.05));
-  if (now < nextAllowedAt) {
-    await sleep(nextAllowedAt - now);
-  }
-  nextAllowedAt = Date.now() + perReqInterval;
+  const run = async () => {
+    const now = Date.now();
+    if (now < globalCooldownUntil) {
+      await sleep(globalCooldownUntil - now);
+    }
 
-  const minuteAgo = Date.now() - 60_000;
-  while (reqTimestamps.length && reqTimestamps[0] < minuteAgo) reqTimestamps.shift();
-  if (reqTimestamps.length >= Math.max(1, JIKAN_RPM)) {
-    const wait = 60_000 - (Date.now() - reqTimestamps[0]) + 50;
-    if (wait > 0) await sleep(wait);
-  }
-  reqTimestamps.push(Date.now());
+    const perReqInterval = Math.ceil(1000 / Math.max(JIKAN_RPS, 0.05));
+    const now2 = Date.now();
+    if (now2 < nextAllowedAt) {
+      await sleep(nextAllowedAt - now2);
+    }
+    nextAllowedAt = Date.now() + perReqInterval;
+
+    const minuteAgo = Date.now() - 60_000;
+    while (reqTimestamps.length && reqTimestamps[0] < minuteAgo) reqTimestamps.shift();
+    if (reqTimestamps.length >= Math.max(1, JIKAN_RPM)) {
+      const wait = 60_000 - (Date.now() - reqTimestamps[0]) + 100;
+      if (wait > 0) await sleep(wait);
+    }
+    reqTimestamps.push(Date.now());
+  };
+
+  throttleGate = throttleGate.then(run, run);
+  await throttleGate;
 }
 
 async function getJson<T>(url: string): Promise<T | null> {
@@ -77,6 +89,9 @@ async function getJson<T>(url: string): Promise<T | null> {
       retries += 1;
       const retryAfterMs = Number(resp.headers.get('retry-after') ?? 0) * 1000;
       const backoff = retryAfterMs > 0 ? retryAfterMs : wait;
+      if (resp.status === 429) {
+        globalCooldownUntil = Math.max(globalCooldownUntil, Date.now() + backoff + 500);
+      }
       logger.warn('Jikan retrying request', { url, status: resp.status, retries, backoff });
       if (retries > JIKAN_MAX_RETRIES) {
         throw new Error(`Jikan request failed after retries (${resp.status}): ${url}`);

@@ -59,8 +59,8 @@ Useful env overrides:
 - `BATCH_MAX_RETRIES`
 - `REQUESTS_PER_SECOND` (supports fractional values like `0.35` to reduce 429s)
 - `SOURCE_PROVIDER` (`JIKAN` default, `ANILIST` optional)
-- `JIKAN_REQUESTS_PER_SECOND` (default `2.4`)
-- `JIKAN_REQUESTS_PER_MINUTE` (default `55`)
+- `JIKAN_REQUESTS_PER_SECOND` (default `1.2`)
+- `JIKAN_REQUESTS_PER_MINUTE` (default `40`)
 - `JIKAN_MAX_RETRIES` (default `8`)
 - `MAX_SEED_SKIPS_PER_BATCH` (default `1`)
 - `RUN_BATCH_LIMIT` (max batches per run; lets CI continue over multiple runs without restarting)

@@ -470,10 +470,8 @@ async function main() {
   await restoreFromCheckpointIfNeeded();
 
   const existingSeedCatalog = await readJsonOr<SeedCatalog>(seedPath, { anime: [], manga: [], source: SOURCE_PROVIDER, updatedAt: new Date().toISOString() });
-  const [animeSeeds, mangaSeeds] = await Promise.all([
-    fetchTop('ANIME', TOP_ANIME, existingSeedCatalog.source === SOURCE_PROVIDER ? existingSeedCatalog.anime : []),
-    fetchTop('MANGA', TOP_MANGA, existingSeedCatalog.source === SOURCE_PROVIDER ? existingSeedCatalog.manga : [])
-  ]);
+  const animeSeeds = await fetchTop('ANIME', TOP_ANIME, existingSeedCatalog.source === SOURCE_PROVIDER ? existingSeedCatalog.anime : []);
+  const mangaSeeds = await fetchTop('MANGA', TOP_MANGA, existingSeedCatalog.source === SOURCE_PROVIDER ? existingSeedCatalog.manga : []);
 
   const seedCatalog: SeedCatalog = { anime: animeSeeds, manga: mangaSeeds, source: SOURCE_PROVIDER, updatedAt: new Date().toISOString() };
   logger.info('top lists fetched', { anime: animeSeeds.length, manga: mangaSeeds.length, batchSize: BATCH_SIZE, source: SOURCE_PROVIDER });

@@ -33,7 +33,7 @@ jobs:
           restore-keys: |
             ingest-cache-${{ runner.os }}-${{ hashFiles('scripts/src/**/*.ts') }}-
       - run: npm install
-      - run: SOURCE_PROVIDER=JIKAN TOP_ANIME=50000 TOP_MANGA=50000 BATCH_ANIME=50 BATCH_MANGA=50 BATCH_MAX_RETRIES=6 MAX_SEED_SKIPS_PER_BATCH=1 JIKAN_REQUESTS_PER_SECOND=2.4 JIKAN_REQUESTS_PER_MINUTE=55 JIKAN_MAX_RETRIES=8 REQUESTS_PER_SECOND=0.35 ARTIFACT_BUILD_INTERVAL=5 RUN_BATCH_LIMIT=120 npm run ingest:batched -w scripts
+      - run: SOURCE_PROVIDER=JIKAN TOP_ANIME=50000 TOP_MANGA=50000 BATCH_ANIME=50 BATCH_MANGA=50 BATCH_MAX_RETRIES=6 MAX_SEED_SKIPS_PER_BATCH=1 JIKAN_REQUESTS_PER_SECOND=1.2 JIKAN_REQUESTS_PER_MINUTE=40 JIKAN_MAX_RETRIES=8 REQUESTS_PER_SECOND=0.35 ARTIFACT_BUILD_INTERVAL=5 RUN_BATCH_LIMIT=120 npm run ingest:batched -w scripts
       - run: npm run build:artifacts
       - run: npm run sanity:artifacts
       - run: npm run sync:data
