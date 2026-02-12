@@ -1,7 +1,8 @@
-import fs from 'node:fs/promises';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import Database from 'better-sqlite3';
 import { CACHE_DIR } from './config.js';
 
 export type CheckpointStatus = 'running' | 'success' | 'failed';
@@ -21,52 +22,64 @@ export type IngestCheckpoint = {
   updatedAt: string;
 };
 
-let db: DatabaseSync | null = null;
-let resolvedDatabaseUrl = process.env.DATABASE_URL?.trim() || '';
+let db: any = null;
+let resolvedSqlitePath = '';
 let initLogged = false;
 
-export async function initializeDatabaseDefaults(): Promise<void> {
-  if (resolvedDatabaseUrl) return;
-  await fs.mkdir(CACHE_DIR, { recursive: true });
-  const sqliteFilePath = path.join(CACHE_DIR, 'anime-atlas.sqlite');
-  resolvedDatabaseUrl = `sqlite:${sqliteFilePath}`;
-  process.env.DATABASE_URL = resolvedDatabaseUrl;
+function resolveSqlitePath(): string {
+  if (resolvedSqlitePath) return resolvedSqlitePath;
+  resolvedSqlitePath = (process.env.SQLITE_PATH?.trim() || path.join(CACHE_DIR, 'anime-atlas.sqlite'));
+  return resolvedSqlitePath;
+}
+
+function ensureDefaultsSync(): void {
+  const sqlitePath = resolveSqlitePath();
+  fs.mkdirSync(path.dirname(sqlitePath), { recursive: true });
+  if (!process.env.SQLITE_PATH) process.env.SQLITE_PATH = sqlitePath;
   if (!initLogged) {
-    console.info(`[info] DATABASE_URL not set; defaulting to ${resolvedDatabaseUrl}`);
+    console.info(`[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`);
+    initLogged = true;
+  }
+}
+
+export async function initializeDatabaseDefaults(): Promise<void> {
+  const sqlitePath = resolveSqlitePath();
+  await fsp.mkdir(path.dirname(sqlitePath), { recursive: true });
+  if (!process.env.SQLITE_PATH) process.env.SQLITE_PATH = sqlitePath;
+  if (!initLogged) {
+    console.info(`[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`);
     initLogged = true;
   }
 }
 
 export function getResolvedDatabaseUrl(): string {
-  return resolvedDatabaseUrl || process.env.DATABASE_URL?.trim() || '';
+  return `sqlite:${resolveSqlitePath()}`;
 }
 
-export function getSqliteFilePath(): string | null {
-  const url = getResolvedDatabaseUrl();
-  if (!url.startsWith('sqlite:')) return null;
-  return url.slice('sqlite:'.length);
+export function getSqliteFilePath(): string {
+  return resolveSqlitePath();
 }
 
 export function hasDatabase(): boolean {
-  const url = getResolvedDatabaseUrl();
-  return /^(sqlite:|postgres(?:ql)?:|file:)/i.test(url);
+  try {
+    ensureDefaultsSync();
+    getDb();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function getLeaseOwner(): string {
   return process.env.GITHUB_RUN_ID ? `gha-${process.env.GITHUB_RUN_ID}` : `local-${os.hostname()}-${process.pid}`;
 }
 
-function getDb(): DatabaseSync {
-  const url = getResolvedDatabaseUrl();
-  if (!url) throw new Error('DATABASE_URL is required for durable ingest mode.');
-  if (!url.startsWith('sqlite:')) {
-    throw new Error(`Only sqlite: DATABASE_URL is supported in this environment. Received: ${url}`);
-  }
+function getDb(): any {
+  ensureDefaultsSync();
   if (!db) {
-    const file = url.slice('sqlite:'.length);
-    db = new DatabaseSync(file);
-    db.exec('PRAGMA journal_mode=WAL;');
-    db.exec('PRAGMA busy_timeout=5000;');
+    db = new Database(resolveSqlitePath());
+    db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 5000');
   }
   return db;
 }
@@ -168,9 +181,8 @@ export async function loadOrCreateCheckpoint(params: {
     ON CONFLICT(source_provider, dataset, config_key) DO NOTHING
   `).run(params.sourceProvider, params.dataset, params.configKey, params.topAnime, params.topManga);
 
-  const row = d.prepare(`
-    SELECT * FROM ingest_checkpoints WHERE source_provider=? AND dataset=? AND config_key=?
-  `).get(params.sourceProvider, params.dataset, params.configKey);
+  const row = d.prepare(`SELECT * FROM ingest_checkpoints WHERE source_provider=? AND dataset=? AND config_key=?`)
+    .get(params.sourceProvider, params.dataset, params.configKey);
   return mapCheckpoint(row);
 }
 
@@ -190,47 +202,30 @@ export async function tryAcquireLease(id: number, leaseOwner: string, leaseMinut
   if (row.lease_owner && row.lease_owner !== leaseOwner && !isExpired(row.lease_expires_at)) {
     return false;
   }
-  d.prepare(`
-    UPDATE ingest_checkpoints
-    SET lease_owner=?, lease_expires_at=?, status='running', updated_at=datetime('now')
-    WHERE id=?
-  `).run(leaseOwner, nextLeaseIso(leaseMinutes), id);
+  d.prepare(`UPDATE ingest_checkpoints SET lease_owner=?, lease_expires_at=?, status='running', updated_at=datetime('now') WHERE id=?`)
+    .run(leaseOwner, nextLeaseIso(leaseMinutes), id);
   return true;
 }
 
 export async function renewLease(id: number, leaseOwner: string, leaseMinutes = 30): Promise<void> {
   const d = getDb();
-  d.prepare(`
-    UPDATE ingest_checkpoints
-    SET lease_expires_at=?, updated_at=datetime('now')
-    WHERE id=? AND lease_owner=?
-  `).run(nextLeaseIso(leaseMinutes), id, leaseOwner);
+  d.prepare(`UPDATE ingest_checkpoints SET lease_expires_at=?, updated_at=datetime('now') WHERE id=? AND lease_owner=?`)
+    .run(nextLeaseIso(leaseMinutes), id, leaseOwner);
 }
 
 export async function updateCheckpointProgress(id: number, nextBatchId: number, lastCompletedBatchId: number, status: CheckpointStatus, lastError: string | null): Promise<void> {
   const d = getDb();
-  d.prepare(`
-    UPDATE ingest_checkpoints
-    SET next_batch_id=?, last_completed_batch_id=?, status=?, last_error=?, updated_at=datetime('now')
-    WHERE id=?
-  `).run(nextBatchId, lastCompletedBatchId, status, lastError, id);
+  d.prepare(`UPDATE ingest_checkpoints SET next_batch_id=?, last_completed_batch_id=?, status=?, last_error=?, updated_at=datetime('now') WHERE id=?`)
+    .run(nextBatchId, lastCompletedBatchId, status, lastError, id);
 }
 
 export async function releaseLease(id: number, leaseOwner: string): Promise<void> {
   const d = getDb();
-  d.prepare(`
-    UPDATE ingest_checkpoints
-    SET lease_owner=NULL, lease_expires_at=NULL, updated_at=datetime('now')
-    WHERE id=? AND lease_owner=?
-  `).run(id, leaseOwner);
+  d.prepare(`UPDATE ingest_checkpoints SET lease_owner=NULL, lease_expires_at=NULL, updated_at=datetime('now') WHERE id=? AND lease_owner=?`)
+    .run(id, leaseOwner);
 }
 
-export async function loadEntityMaps(config: { sourceProvider: string; configKey: string }): Promise<{
-  media: any[];
-  people: any[];
-  characters: any[];
-  relationLookup: Record<number, any>;
-}> {
+export async function loadEntityMaps(config: { sourceProvider: string; configKey: string }): Promise<{ media: any[]; people: any[]; characters: any[]; relationLookup: Record<number, any>; }> {
   const d = getDb();
   const mediaRows: any[] = d.prepare(`SELECT payload FROM ingest_media WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
   const peopleRows: any[] = d.prepare(`SELECT payload FROM ingest_people WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
@@ -257,9 +252,7 @@ function upsertRows(table: string, sourceProvider: string, configKey: string, ro
     ON CONFLICT(source_provider, config_key, id)
     DO UPDATE SET payload=excluded.payload, updated_at=datetime('now')
   `);
-  for (const row of rows) {
-    stmt.run(sourceProvider, configKey, row.id, JSON.stringify(row.payload));
-  }
+  for (const row of rows) stmt.run(sourceProvider, configKey, row.id, JSON.stringify(row.payload));
 }
 
 export async function upsertBatchSnapshot(params: {
@@ -282,14 +275,19 @@ export async function upsertBatchSnapshot(params: {
     upsertRows('ingest_people', params.sourceProvider, params.configKey, params.people);
     upsertRows('ingest_characters', params.sourceProvider, params.configKey, params.characters);
     upsertRows('ingest_relations', params.sourceProvider, params.configKey, params.relations);
-    d.prepare(`
-      UPDATE ingest_checkpoints
-      SET next_batch_id=?, last_completed_batch_id=?, status=?, last_error=?, updated_at=datetime('now')
-      WHERE id=?
-    `).run(params.nextBatchId, params.lastCompletedBatchId, params.checkpointStatus, params.lastError, params.checkpointId);
+    d.prepare(`UPDATE ingest_checkpoints SET next_batch_id=?, last_completed_batch_id=?, status=?, last_error=?, updated_at=datetime('now') WHERE id=?`)
+      .run(params.nextBatchId, params.lastCompletedBatchId, params.checkpointStatus, params.lastError, params.checkpointId);
     d.exec('COMMIT');
   } catch (error) {
     d.exec('ROLLBACK');
     throw error;
   }
+}
+
+export async function getCheckpointStatus(): Promise<{ count: number; last: IngestCheckpoint | null }> {
+  await ensureDbSchema();
+  const d = getDb();
+  const count = Number((d.prepare('SELECT COUNT(*) as c FROM ingest_checkpoints').get() as any).c ?? 0);
+  const row = d.prepare('SELECT * FROM ingest_checkpoints ORDER BY updated_at DESC LIMIT 1').get();
+  return { count, last: row ? mapCheckpoint(row) : null };
 }

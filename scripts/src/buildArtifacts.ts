@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { BASE_PATH, BUILD_CONFIG, CACHE_DIR, DATA_DIR, TMP_DIR } from './config.js';
-import { closePool, hasDatabase, loadEntityMaps } from './db.js';
+import { closePool, hasDatabase, initializeDatabaseDefaults, loadEntityMaps } from './db.js';
 import { buildMapCoords } from './buildMapCoords.js';
 import { buildIndices } from './buildIndices.js';
 import { packGraphEdges, packPoints } from './packBinary.js';
@@ -80,14 +80,16 @@ async function main() {
     return true;
   }
 
+  await initializeDatabaseDefaults();
+
   const loadedFromTmp = await loadFromDirectory(TMP_DIR, 'TMP_DIR');
   const loadedFromCheckpoint = loadedFromTmp ? false : await loadFromDirectory(CHECKPOINT_DIR, 'CHECKPOINT_DIR');
 
   if (!loadedFromTmp && !loadedFromCheckpoint) {
     if (!hasDatabase()) {
       throw new Error(
-        `TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and DATABASE_URL is not configured. ` +
-        'This can happen when ingest was canceled before first persist; ensure checkpoint restore is configured and use non-canceling workflow concurrency.'
+        `TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and no SQLite DB data is available. ` +
+        'This can happen when ingest was canceled before first persist; ensure checkpoint restore is configured.'
       );
     }
     const sourceProvider = (process.env.SOURCE_PROVIDER ?? 'ANILIST').toUpperCase();
