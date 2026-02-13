@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { BASE_PATH, BUILD_CONFIG, CACHE_DIR, DATA_DIR, TMP_DIR } from './config.js';
-import { closePool, ensureDbSchema, hasDatabase, initializeDatabaseDefaults, loadEntityMaps } from './db.js';
+import { closePool, ensureDbSchema, getSqliteFilePath, hasDatabase, initializeDatabaseDefaults, loadEntityMaps } from './db.js';
 import { buildMapCoords } from './buildMapCoords.js';
 import { buildIndices } from './buildIndices.js';
 import { packGraphEdges, packPoints } from './packBinary.js';
@@ -102,6 +102,17 @@ async function main() {
   }
 
   if (!inputSource) {
+    const sqlitePath = getSqliteFilePath();
+    const sqliteConfigured = Boolean(process.env.SQLITE_PATH);
+    const sqliteExists = await canRead(sqlitePath);
+
+    if (sqliteConfigured || sqliteExists) {
+      throw new Error(
+        `No ingest entities found in SQLite at ${sqlitePath} for config key ${cfgKey}. ` +
+        'Refusing JSON checkpoint fallback to avoid loading very large checkpoint files.'
+      );
+    }
+
     const loadedFromTmp = await loadFromDirectory(TMP_DIR, 'TMP_DIR');
     const loadedFromCheckpoint = loadedFromTmp ? false : await loadFromDirectory(CHECKPOINT_DIR, 'CHECKPOINT_DIR');
 
