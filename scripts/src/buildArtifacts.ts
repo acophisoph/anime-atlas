@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { BASE_PATH, BUILD_CONFIG, CACHE_DIR, DATA_DIR, TMP_DIR } from './config.js';
-import { closePool, hasDatabase, initializeDatabaseDefaults, loadEntityMaps } from './db.js';
+import { closePool, ensureDbSchema, hasDatabase, initializeDatabaseDefaults, loadEntityMaps } from './db.js';
 import { buildMapCoords } from './buildMapCoords.js';
 import { buildIndices } from './buildIndices.js';
 import { packGraphEdges, packPoints } from './packBinary.js';
@@ -82,28 +82,35 @@ async function main() {
 
   await initializeDatabaseDefaults();
 
-  const loadedFromTmp = await loadFromDirectory(TMP_DIR, 'TMP_DIR');
-  const loadedFromCheckpoint = loadedFromTmp ? false : await loadFromDirectory(CHECKPOINT_DIR, 'CHECKPOINT_DIR');
+  const sourceProvider = (process.env.SOURCE_PROVIDER ?? 'ANILIST').toUpperCase();
+  const topAnime = Number(process.env.TOP_ANIME ?? 2500);
+  const topManga = Number(process.env.TOP_MANGA ?? 2500);
+  const batchAnime = Number(process.env.BATCH_ANIME ?? 50);
+  const batchManga = Number(process.env.BATCH_MANGA ?? 50);
+  const cfgKey = [sourceProvider, topAnime, topManga, batchAnime, batchManga].join(':');
 
-  if (!loadedFromTmp && !loadedFromCheckpoint) {
-    if (!hasDatabase()) {
+  if (hasDatabase()) {
+    await ensureDbSchema();
+    const dbData = await loadEntityMaps({ sourceProvider, configKey: cfgKey });
+    if (dbData.media.length || dbData.people.length || dbData.characters.length) {
+      media = dbData.media;
+      people = dbData.people;
+      characters = dbData.characters;
+      relationLookup = dbData.relationLookup;
+      inputSource = 'DATABASE';
+    }
+  }
+
+  if (!inputSource) {
+    const loadedFromTmp = await loadFromDirectory(TMP_DIR, 'TMP_DIR');
+    const loadedFromCheckpoint = loadedFromTmp ? false : await loadFromDirectory(CHECKPOINT_DIR, 'CHECKPOINT_DIR');
+
+    if (!loadedFromTmp && !loadedFromCheckpoint) {
       throw new Error(
         `TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and no SQLite DB data is available. ` +
         'This can happen when ingest was canceled before first persist; ensure checkpoint restore is configured.'
       );
     }
-    const sourceProvider = (process.env.SOURCE_PROVIDER ?? 'ANILIST').toUpperCase();
-    const topAnime = Number(process.env.TOP_ANIME ?? 2500);
-    const topManga = Number(process.env.TOP_MANGA ?? 2500);
-    const batchAnime = Number(process.env.BATCH_ANIME ?? 50);
-    const batchManga = Number(process.env.BATCH_MANGA ?? 50);
-    const cfgKey = [sourceProvider, topAnime, topManga, batchAnime, batchManga].join(':');
-    const dbData = await loadEntityMaps({ sourceProvider, configKey: cfgKey });
-    media = dbData.media;
-    people = dbData.people;
-    characters = dbData.characters;
-    relationLookup = dbData.relationLookup;
-    inputSource = 'DATABASE';
   }
 
   console.info('[info] buildArtifacts ingest input source', {
