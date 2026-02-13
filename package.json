@@ -1,0 +1,20 @@
+{
+  "name": "anime-atlas",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "app",
+    "scripts"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w app",
+    "build": "npm run ingest:batched -w scripts && npm run sync:data && npm run build:site",
+    "ingest:mvp": "npm run ingest:mvp -w scripts",
+    "build:artifacts": "npm run build:artifacts -w scripts",
+    "sanity:artifacts": "npm run sanity:artifacts -w scripts",
+    "sync:data": "mkdir -p app/public/data && rsync -a --delete data/ app/public/data/",
+    "build:site": "npm run build -w app",
+    "preview": "npm run preview -w app",
+    "ingest:batched": "npm run ingest:batched -w scripts"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "anime-atlas-scripts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "ingest:mvp": "tsx src/ingestTopMedia.ts && tsx src/ingestMediaDetails.ts",
+    "build:artifacts": "tsx src/buildArtifacts.ts",
+    "sanity:artifacts": "tsx src/sanityCheck.ts",
+    "ingest:batched": "tsx src/ingestBatches.ts",
+    "db:status": "tsx src/dbStatus.ts"
+  },
+  "dependencies": {
+    "minisearch": "^7.1.0",
+    "better-sqlite3": "^11.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
