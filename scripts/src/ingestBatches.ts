@@ -180,41 +180,43 @@ async function readJsonOr<T>(filePath: string, fallback: T): Promise<T> {
 
 async function writeJsonArrayStream<T>(filePath: string, values: Iterable<T>): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  const fileHandle = await fs.open(filePath, 'w');
+  await fs.rm(filePath, { force: true });
+  const handle = await fs.open(filePath, 'w');
+  let first = true;
   try {
-    await fileHandle.write('[');
-    let first = true;
+    await handle.write('[');
     for (const value of values) {
       const serialized = JSON.stringify(value);
       if (!serialized) continue;
-      if (!first) await fileHandle.write(',');
-      await fileHandle.write(serialized);
+      if (!first) await handle.write(',');
+      await handle.write(serialized);
       first = false;
     }
-    await fileHandle.write(']');
+    await handle.write(']');
   } finally {
-    await fileHandle.close();
+    await handle.close();
   }
 }
 
 async function writeJsonObjectStream(filePath: string, value: Record<number, any>): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  const fileHandle = await fs.open(filePath, 'w');
+  await fs.rm(filePath, { force: true });
+  const handle = await fs.open(filePath, 'w');
+  let first = true;
   try {
-    await fileHandle.write('{');
-    let first = true;
+    await handle.write('{');
     for (const [k, v] of Object.entries(value)) {
       const serialized = JSON.stringify(v);
       if (!serialized) continue;
-      if (!first) await fileHandle.write(',');
-      await fileHandle.write(JSON.stringify(k));
-      await fileHandle.write(':');
-      await fileHandle.write(serialized);
+      if (!first) await handle.write(',');
+      await handle.write(JSON.stringify(k));
+      await handle.write(':');
+      await handle.write(serialized);
       first = false;
     }
-    await fileHandle.write('}');
+    await handle.write('}');
   } finally {
-    await fileHandle.close();
+    await handle.close();
   }
 }
 
@@ -341,6 +343,15 @@ async function persistToDatabase(params: {
   relationLookup: Record<number, any>;
 }): Promise<void> {
   if (!hasDatabase()) return;
+  logger.info('upserting batch snapshot into sqlite', {
+    sourceProvider: SOURCE_PROVIDER,
+    configKey: params.cfgKey,
+    media: params.mediaById.size,
+    people: params.peopleMap.size,
+    characters: params.charMap.size,
+    relations: Object.keys(params.relationLookup).length,
+    nextBatchId: params.nextBatchId
+  });
   await upsertBatchSnapshot({
     sourceProvider: SOURCE_PROVIDER,
     configKey: params.cfgKey,

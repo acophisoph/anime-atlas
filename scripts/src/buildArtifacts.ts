@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { BASE_PATH, BUILD_CONFIG, CACHE_DIR, DATA_DIR, TMP_DIR } from './config.js';
-import { closePool, ensureDbSchema, getSqliteFilePath, hasDatabase, initializeDatabaseDefaults, loadEntityMaps } from './db.js';
+import { closePool, hasDatabase, initializeDatabaseDefaults, loadEntityMaps } from './db.js';
 import { buildMapCoords } from './buildMapCoords.js';
 import { buildIndices } from './buildIndices.js';
 import { packGraphEdges, packPoints } from './packBinary.js';
@@ -39,7 +39,7 @@ async function main() {
   let characters: any[] = [];
   let relationLookup: Record<number, any> = {};
   let inputSource: IngestInputSource | null = null;
-  let lastDirectoryLoadError: string | null = null;
+  const warnings: string[] = [];
 
   async function canRead(filePath: string): Promise<boolean> {
     try {
@@ -81,13 +81,8 @@ async function main() {
       inputSource = source;
       return true;
     } catch (error) {
-      const message = String(error);
-      if (/RangeError: Invalid string length/.test(message)) {
-        console.warn(`[warn] Skipping ${source} ingest input due to oversized JSON payload: ${message}`);
-        lastDirectoryLoadError = message;
-        return false;
-      }
-      throw error;
+      warnings.push(`Failed loading ${source} inputs at ${dirPath}: ${String(error)}`);
+      return false;
     }
   }
 
@@ -101,7 +96,6 @@ async function main() {
   const cfgKey = [sourceProvider, topAnime, topManga, batchAnime, batchManga].join(':');
 
   if (hasDatabase()) {
-    await ensureDbSchema();
     const dbData = await loadEntityMaps({ sourceProvider, configKey: cfgKey });
     if (dbData.media.length || dbData.people.length || dbData.characters.length) {
       media = dbData.media;
@@ -117,23 +111,28 @@ async function main() {
     const loadedFromCheckpoint = loadedFromTmp ? false : await loadFromDirectory(CHECKPOINT_DIR, 'CHECKPOINT_DIR');
 
     if (!loadedFromTmp && !loadedFromCheckpoint) {
-      const sqlitePath = getSqliteFilePath();
-      const sqliteConfigured = Boolean(process.env.SQLITE_PATH);
-      const sqliteExists = await canRead(sqlitePath);
-      if (sqliteConfigured || sqliteExists) {
+      if (!hasDatabase()) {
         throw new Error(
-          `No ingest entities found in SQLite at ${sqlitePath} for config key ${cfgKey}. ` +
-          (lastDirectoryLoadError
-            ? `Checkpoint fallback was attempted but failed (${lastDirectoryLoadError}).`
-            : 'Checkpoint/TMP fallback did not provide ingest files.')
+          `TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and no SQLite DB data is available. ` +
+          'This can happen when ingest was canceled before first persist; ensure checkpoint restore is configured.'
         );
       }
 
-      throw new Error(
-        `TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and no SQLite DB data is available. ` +
-        'This can happen when ingest was canceled before first persist; ensure checkpoint restore is configured.'
-      );
+      const dbData = await loadEntityMaps({ sourceProvider, configKey: cfgKey });
+      media = dbData.media;
+      people = dbData.people;
+      characters = dbData.characters;
+      relationLookup = dbData.relationLookup;
+      inputSource = 'DATABASE';
     }
+  }
+
+  for (const warning of warnings) {
+    console.warn('[warn]', warning);
+  }
+
+  if (!inputSource) {
+    throw new Error(`No usable ingest input source found for ${cfgKey}.`);
   }
 
   console.info('[info] buildArtifacts ingest input source', {

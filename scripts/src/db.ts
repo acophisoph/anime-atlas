@@ -35,12 +35,9 @@ function resolveSqlitePath(): string {
 function ensureDefaultsSync(): void {
   const sqlitePath = resolveSqlitePath();
   fs.mkdirSync(path.dirname(sqlitePath), { recursive: true });
-  const usingDefaultPath = !process.env.SQLITE_PATH;
-  if (usingDefaultPath) process.env.SQLITE_PATH = sqlitePath;
+  if (!process.env.SQLITE_PATH) process.env.SQLITE_PATH = sqlitePath;
   if (!initLogged) {
-    console.info(usingDefaultPath
-      ? `[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`
-      : `[info] SQLITE_PATH=${sqlitePath}`);
+    console.info(`[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`);
     initLogged = true;
   }
 }
@@ -48,12 +45,9 @@ function ensureDefaultsSync(): void {
 export async function initializeDatabaseDefaults(): Promise<void> {
   const sqlitePath = resolveSqlitePath();
   await fsp.mkdir(path.dirname(sqlitePath), { recursive: true });
-  const usingDefaultPath = !process.env.SQLITE_PATH;
-  if (usingDefaultPath) process.env.SQLITE_PATH = sqlitePath;
+  if (!process.env.SQLITE_PATH) process.env.SQLITE_PATH = sqlitePath;
   if (!initLogged) {
-    console.info(usingDefaultPath
-      ? `[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`
-      : `[info] SQLITE_PATH=${sqlitePath}`);
+    console.info(`[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`);
     initLogged = true;
   }
 }
@@ -232,6 +226,7 @@ export async function releaseLease(id: number, leaseOwner: string): Promise<void
 }
 
 export async function loadEntityMaps(config: { sourceProvider: string; configKey: string }): Promise<{ media: any[]; people: any[]; characters: any[]; relationLookup: Record<number, any>; }> {
+  await ensureDbSchema();
   const d = getDb();
   const mediaRows: any[] = d.prepare(`SELECT payload FROM ingest_media WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
   const peopleRows: any[] = d.prepare(`SELECT payload FROM ingest_people WHERE source_provider=? AND config_key=?`).all(config.sourceProvider, config.configKey);
