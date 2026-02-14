@@ -180,42 +180,42 @@ async function readJsonOr<T>(filePath: string, fallback: T): Promise<T> {
 
 async function writeJsonArrayStream<T>(filePath: string, values: Iterable<T>): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.rm(filePath, { force: true });
-  const chunks: string[] = ['['];
-  let first = true;
-  for (const value of values) {
-    const serialized = JSON.stringify(value);
-    if (!serialized) continue;
-    if (!first) chunks.push(',');
-    chunks.push(serialized);
-    first = false;
-    if (chunks.length >= 2048) {
-      await fs.appendFile(filePath, chunks.join(''));
-      chunks.length = 0;
+  const fileHandle = await fs.open(filePath, 'w');
+  try {
+    await fileHandle.write('[');
+    let first = true;
+    for (const value of values) {
+      const serialized = JSON.stringify(value);
+      if (!serialized) continue;
+      if (!first) await fileHandle.write(',');
+      await fileHandle.write(serialized);
+      first = false;
     }
+    await fileHandle.write(']');
+  } finally {
+    await fileHandle.close();
   }
-  chunks.push(']');
-  if (chunks.length) await fs.appendFile(filePath, chunks.join(''));
 }
 
 async function writeJsonObjectStream(filePath: string, value: Record<number, any>): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.rm(filePath, { force: true });
-  const chunks: string[] = ['{'];
-  let first = true;
-  for (const [k, v] of Object.entries(value)) {
-    const serialized = JSON.stringify(v);
-    if (!serialized) continue;
-    if (!first) chunks.push(',');
-    chunks.push(JSON.stringify(k), ':', serialized);
-    first = false;
-    if (chunks.length >= 2048) {
-      await fs.appendFile(filePath, chunks.join(''));
-      chunks.length = 0;
+  const fileHandle = await fs.open(filePath, 'w');
+  try {
+    await fileHandle.write('{');
+    let first = true;
+    for (const [k, v] of Object.entries(value)) {
+      const serialized = JSON.stringify(v);
+      if (!serialized) continue;
+      if (!first) await fileHandle.write(',');
+      await fileHandle.write(JSON.stringify(k));
+      await fileHandle.write(':');
+      await fileHandle.write(serialized);
+      first = false;
     }
+    await fileHandle.write('}');
+  } finally {
+    await fileHandle.close();
   }
-  chunks.push('}');
-  if (chunks.length) await fs.appendFile(filePath, chunks.join(''));
 }
 
 async function syncToCheckpoint(): Promise<void> {

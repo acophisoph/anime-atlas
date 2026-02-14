@@ -35,9 +35,12 @@ function resolveSqlitePath(): string {
 function ensureDefaultsSync(): void {
   const sqlitePath = resolveSqlitePath();
   fs.mkdirSync(path.dirname(sqlitePath), { recursive: true });
-  if (!process.env.SQLITE_PATH) process.env.SQLITE_PATH = sqlitePath;
+  const usingDefaultPath = !process.env.SQLITE_PATH;
+  if (usingDefaultPath) process.env.SQLITE_PATH = sqlitePath;
   if (!initLogged) {
-    console.info(`[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`);
+    console.info(usingDefaultPath
+      ? `[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`
+      : `[info] SQLITE_PATH=${sqlitePath}`);
     initLogged = true;
   }
 }
@@ -45,9 +48,12 @@ function ensureDefaultsSync(): void {
 export async function initializeDatabaseDefaults(): Promise<void> {
   const sqlitePath = resolveSqlitePath();
   await fsp.mkdir(path.dirname(sqlitePath), { recursive: true });
-  if (!process.env.SQLITE_PATH) process.env.SQLITE_PATH = sqlitePath;
+  const usingDefaultPath = !process.env.SQLITE_PATH;
+  if (usingDefaultPath) process.env.SQLITE_PATH = sqlitePath;
   if (!initLogged) {
-    console.info(`[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`);
+    console.info(usingDefaultPath
+      ? `[info] SQLITE_PATH not set; defaulting to ${sqlitePath}`
+      : `[info] SQLITE_PATH=${sqlitePath}`);
     initLogged = true;
   }
 }
