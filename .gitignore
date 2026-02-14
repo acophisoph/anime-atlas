@@ -4,9 +4,6 @@ scripts/.cache
 scripts/dist
 .DS_Store
 
-# Generated artifact outputs (single source of truth is ./data)
-data/**/*.bin
-
 # Build-time sync target only; never committed
 app/public/data/**
 !app/public/data/.gitkeep
