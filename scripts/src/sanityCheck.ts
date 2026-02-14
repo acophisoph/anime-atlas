@@ -2,36 +2,56 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
 
-async function exists(rel: string) {
-  try {
-    await fs.access(path.join(DATA_DIR, rel));
-    return true;
-  } catch {
-    return false;
-  }
+async function fileSize(rel: string): Promise<number> {
+  const stat = await fs.stat(path.join(DATA_DIR, rel));
+  return stat.size;
 }
 
-async function assertAny(...paths: string[]) {
-  const checks = await Promise.all(paths.map((p) => exists(p)));
-  if (!checks.some(Boolean)) {
-    throw new Error(`Missing required artifact variants: ${paths.join(', ')}`);
+async function requireNonEmpty(rel: string): Promise<void> {
+  try {
+    const size = await fileSize(rel);
+    if (size <= 0) throw new Error(`${rel} is empty`);
+  } catch (error) {
+    throw new Error(`Missing/invalid required artifact ${rel}: ${String(error)}`);
   }
 }
 
 async function main() {
-  await assertAny('manifest.json');
-  await assertAny('points.bin', 'points.json');
-  await assertAny('indices/search_index.json');
-  await assertAny('indices/tag_to_media.json');
-  await assertAny('indices/role_to_people.json');
-  await assertAny('graph/media_rel.bin', 'graph/media_rel.json');
+  await requireNonEmpty('manifest.json');
+  await requireNonEmpty('points.bin');
+  await requireNonEmpty('indices/search_index.json');
 
-  const manifest = JSON.parse(await fs.readFile(path.join(DATA_DIR, 'manifest.json'), 'utf-8'));
-  if (!manifest.counts || !manifest.buildConfig || !manifest.binarySpec) {
-    throw new Error('Manifest invalid: required fields missing');
+  const metaDir = path.join(DATA_DIR, 'meta');
+  const graphDir = path.join(DATA_DIR, 'graph');
+
+  const metaFiles = await fs.readdir(metaDir).catch(() => [] as string[]);
+  const graphFiles = await fs.readdir(graphDir).catch(() => [] as string[]);
+
+  const mediaChunks = metaFiles.filter((name) => /^media_\d{3}\.json$/.test(name));
+  if (mediaChunks.length === 0) {
+    throw new Error('No media chunk files found in data/meta (expected at least one media_*.json).');
   }
 
-  console.log('Artifact sanity check passed');
+  const graphBins = graphFiles.filter((name) => name.endsWith('.bin'));
+  if (graphBins.length === 0) {
+    throw new Error('No binary graph files found in data/graph (expected *.bin).');
+  }
+
+  for (const name of graphBins) {
+    await requireNonEmpty(path.join('graph', name));
+  }
+
+  const manifest = JSON.parse(await fs.readFile(path.join(DATA_DIR, 'manifest.json'), 'utf-8'));
+  const counts = manifest?.counts ?? {};
+  if (!counts.media || !counts.people || !counts.characters || !counts.points) {
+    throw new Error(`Manifest counts must all be > 0. Got: ${JSON.stringify(counts)}`);
+  }
+
+  console.log('verify:data passed', {
+    manifestCounts: counts,
+    mediaChunks: mediaChunks.length,
+    graphBins: graphBins.length
+  });
 }
 
 main().catch((error) => {

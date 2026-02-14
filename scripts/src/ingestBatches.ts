@@ -20,17 +20,9 @@ const TIME_BUDGET_MINUTES = Number(process.env.TIME_BUDGET_MINUTES ?? 0);
 
 const CHECKPOINT_DIR = path.join(CACHE_DIR, 'batch-progress');
 const statePath = path.join(TMP_DIR, 'batchState.json');
-const mediaPath = path.join(TMP_DIR, 'mediaDetails.json');
-const peoplePath = path.join(TMP_DIR, 'people.json');
-const charsPath = path.join(TMP_DIR, 'characters.json');
-const relPath = path.join(TMP_DIR, 'relationLookup.json');
 const seedPath = path.join(TMP_DIR, 'seedCatalog.json');
 
 const checkpointStatePath = path.join(CHECKPOINT_DIR, 'batchState.json');
-const checkpointMediaPath = path.join(CHECKPOINT_DIR, 'mediaDetails.json');
-const checkpointPeoplePath = path.join(CHECKPOINT_DIR, 'people.json');
-const checkpointCharsPath = path.join(CHECKPOINT_DIR, 'characters.json');
-const checkpointRelPath = path.join(CHECKPOINT_DIR, 'relationLookup.json');
 const checkpointSeedPath = path.join(CHECKPOINT_DIR, 'seedCatalog.json');
 
 const topQuery = `
@@ -178,57 +170,11 @@ async function readJsonOr<T>(filePath: string, fallback: T): Promise<T> {
   }
 }
 
-async function writeJsonArrayStream<T>(filePath: string, values: Iterable<T>): Promise<void> {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.rm(filePath, { force: true });
-  const handle = await fs.open(filePath, 'w');
-  let first = true;
-  try {
-    await handle.write('[');
-    for (const value of values) {
-      const serialized = JSON.stringify(value);
-      if (!serialized) continue;
-      if (!first) await handle.write(',');
-      await handle.write(serialized);
-      first = false;
-    }
-    await handle.write(']');
-  } finally {
-    await handle.close();
-  }
-}
-
-async function writeJsonObjectStream(filePath: string, value: Record<number, any>): Promise<void> {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.rm(filePath, { force: true });
-  const handle = await fs.open(filePath, 'w');
-  let first = true;
-  try {
-    await handle.write('{');
-    for (const [k, v] of Object.entries(value)) {
-      const serialized = JSON.stringify(v);
-      if (!serialized) continue;
-      if (!first) await handle.write(',');
-      await handle.write(JSON.stringify(k));
-      await handle.write(':');
-      await handle.write(serialized);
-      first = false;
-    }
-    await handle.write('}');
-  } finally {
-    await handle.close();
-  }
-}
-
 async function syncToCheckpoint(): Promise<void> {
   await fs.mkdir(CHECKPOINT_DIR, { recursive: true });
   const pairs: Array<[string, string]> = [
     [statePath, checkpointStatePath],
-    [seedPath, checkpointSeedPath],
-    [mediaPath, checkpointMediaPath],
-    [peoplePath, checkpointPeoplePath],
-    [charsPath, checkpointCharsPath],
-    [relPath, checkpointRelPath]
+    [seedPath, checkpointSeedPath]
   ];
   for (const [src, dst] of pairs) {
     try {
@@ -243,11 +189,7 @@ async function restoreFromCheckpointIfNeeded(): Promise<void> {
   await fs.mkdir(TMP_DIR, { recursive: true });
   const pairs: Array<[string, string]> = [
     [checkpointStatePath, statePath],
-    [checkpointSeedPath, seedPath],
-    [checkpointMediaPath, mediaPath],
-    [checkpointPeoplePath, peoplePath],
-    [checkpointCharsPath, charsPath],
-    [checkpointRelPath, relPath]
+    [checkpointSeedPath, seedPath]
   ];
   for (const [src, dst] of pairs) {
     try {
@@ -302,7 +244,6 @@ function makeBatches(animeSeeds: Seed[], mangaSeeds: Seed[]): BatchState[] {
 }
 
 
-
 function configKey(): string {
   return [SOURCE_PROVIDER, TOP_ANIME, TOP_MANGA, BATCH_ANIME, BATCH_MANGA].join(':');
 }
@@ -313,21 +254,16 @@ function shouldStopForTimeBudget(startMs: number): boolean {
   const thresholdMs = Math.max(1, TIME_BUDGET_MINUTES - 5) * 60_000;
   return elapsedMs >= thresholdMs;
 }
-async function persist(state: StateFile, mediaById: Map<number, MediaRecord>, peopleMap: Map<number, Person>, charMap: Map<number, Character>, relationLookup: Record<number, any>, seedCatalog: SeedCatalog): Promise<void> {
+async function persist(state: StateFile, seedCatalog: SeedCatalog): Promise<void> {
   state.updatedAt = new Date().toISOString();
   seedCatalog.updatedAt = new Date().toISOString();
 
   await fs.mkdir(TMP_DIR, { recursive: true });
   await fs.writeFile(statePath, JSON.stringify(state, null, 2));
   await fs.writeFile(seedPath, JSON.stringify(seedCatalog, null, 2));
-  await writeJsonArrayStream(mediaPath, mediaById.values());
-  await writeJsonArrayStream(peoplePath, peopleMap.values());
-  await writeJsonArrayStream(charsPath, charMap.values());
-  await writeJsonObjectStream(relPath, relationLookup);
   await syncToCheckpoint();
   logger.info('batch persistence checkpoint synced', { tmpDir: TMP_DIR, checkpointDir: CHECKPOINT_DIR });
 }
-
 
 
 async function persistToDatabase(params: {
@@ -509,7 +445,6 @@ async function processBatch(batch: BatchState, topIdSet: Set<number>, mediaById:
   }
 }
 
-
 async function main() {
   const startedAtMs = Date.now();
   let shutdownRequested = false;
@@ -580,7 +515,7 @@ async function main() {
   const charMap = new Map<number, Character>(characters.map((c) => [c.id, c]));
   const topIdSet = new Set<number>([...animeSeeds, ...mangaSeeds].map((seed) => seed.anilistId ?? (seed.malId ? canonicalId(seed.type, seed.malId) : 0)).filter(Boolean));
 
-  await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
+  await persist(state, seedCatalog);
   const sqliteFilePath = getSqliteFilePath();
   let sqliteExists = false;
   if (sqliteFilePath) {
@@ -618,7 +553,7 @@ async function main() {
       processedThisRun += 1;
       lastCompleted = batch.batchId;
 
-      await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
+      await persist(state, seedCatalog);
       await persistToDatabase({
         cfgKey,
         checkpointId: checkpointId!,
@@ -636,7 +571,7 @@ async function main() {
       batch.status = 'failed';
       batch.lastError = String(error);
       logger.warn('batch failed', { batchId: batch.batchId, error: batch.lastError });
-      await persist(state, mediaById, peopleMap, charMap, relationLookup, seedCatalog);
+      await persist(state, seedCatalog);
       await updateCheckpointProgress(checkpointId!, batch.batchId, lastCompleted, 'failed', batch.lastError);
       await renewLease(checkpointId!, leaseOwner, 30);
 

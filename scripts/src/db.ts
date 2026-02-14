@@ -292,3 +292,37 @@ export async function getCheckpointStatus(): Promise<{ count: number; last: Inge
   const row = d.prepare('SELECT * FROM ingest_checkpoints ORDER BY updated_at DESC LIMIT 1').get();
   return { count, last: row ? mapCheckpoint(row) : null };
 }
+
+
+export async function listConfigKeys(sourceProvider?: string): Promise<Array<{ configKey: string; mediaCount: number; peopleCount: number; charactersCount: number }>> {
+  await ensureDbSchema();
+  const d = getDb();
+  const where = sourceProvider ? 'WHERE c.source_provider = ?' : '';
+  const rows: any[] = sourceProvider
+    ? d.prepare(`
+      SELECT c.config_key as config_key,
+        (SELECT COUNT(*) FROM ingest_media m WHERE m.source_provider = c.source_provider AND m.config_key = c.config_key) as media_count,
+        (SELECT COUNT(*) FROM ingest_people p WHERE p.source_provider = c.source_provider AND p.config_key = c.config_key) as people_count,
+        (SELECT COUNT(*) FROM ingest_characters ch WHERE ch.source_provider = c.source_provider AND ch.config_key = c.config_key) as characters_count
+      FROM ingest_checkpoints c
+      ${where}
+      GROUP BY c.source_provider, c.config_key
+      ORDER BY c.updated_at DESC
+    `).all(sourceProvider)
+    : d.prepare(`
+      SELECT c.config_key as config_key,
+        (SELECT COUNT(*) FROM ingest_media m WHERE m.source_provider = c.source_provider AND m.config_key = c.config_key) as media_count,
+        (SELECT COUNT(*) FROM ingest_people p WHERE p.source_provider = c.source_provider AND p.config_key = c.config_key) as people_count,
+        (SELECT COUNT(*) FROM ingest_characters ch WHERE ch.source_provider = c.source_provider AND ch.config_key = c.config_key) as characters_count
+      FROM ingest_checkpoints c
+      GROUP BY c.source_provider, c.config_key
+      ORDER BY c.updated_at DESC
+    `).all();
+
+  return rows.map((row) => ({
+    configKey: row.config_key,
+    mediaCount: Number(row.media_count ?? 0),
+    peopleCount: Number(row.people_count ?? 0),
+    charactersCount: Number(row.characters_count ?? 0)
+  }));
+}
