@@ -1,0 +1,9 @@
+node_modules
+app/dist
+scripts/.cache
+scripts/dist
+.DS_Store
+
+# Build-time sync target only; never committed
+app/public/data/**
+!app/public/data/.gitkeep
