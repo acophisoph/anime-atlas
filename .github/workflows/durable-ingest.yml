@@ -1,0 +1,74 @@
+name: Durable Batched Ingest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: durable-ingest-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/cache@v4
+        with:
+          path: |
+            scripts/.cache/anime-atlas.sqlite
+            scripts/.cache/batch-progress
+          key: ingest-sqlite-${{ runner.os }}-${{ github.ref_name }}
+          restore-keys: |
+            ingest-sqlite-${{ runner.os }}-
+      - run: mkdir -p scripts/.cache scripts/.cache/batch-progress
+      - run: npm install
+      - name: Run batched ingest (SQLite checkpointed)
+        run: npm run ingest:batched -w scripts
+        env:
+          TIME_BUDGET_MINUTES: 320
+          SOURCE_PROVIDER: ANILIST
+          TOP_ANIME: 2500
+          TOP_MANGA: 2500
+          BATCH_ANIME: 50
+          BATCH_MANGA: 50
+          BATCH_MAX_RETRIES: 6
+          MAX_SEED_SKIPS_PER_BATCH: 1
+          REQUESTS_PER_SECOND: 0.35
+          JIKAN_REQUESTS_PER_SECOND: 1.2
+          JIKAN_REQUESTS_PER_MINUTE: 40
+          JIKAN_MAX_RETRIES: 8
+          RUN_BATCH_LIMIT: 120
+      - name: Build artifacts from checkpointed SQLite
+        run: npm run build:artifacts -w scripts
+        env:
+          SQLITE_PATH: scripts/.cache/anime-atlas.sqlite
+          SOURCE_PROVIDER: ANILIST
+          TOP_ANIME: 2500
+          TOP_MANGA: 2500
+          BATCH_ANIME: 50
+          BATCH_MANGA: 50
+          BATCH_MAX_RETRIES: 6
+          MAX_SEED_SKIPS_PER_BATCH: 1
+      - name: Commit and push data updates
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No data changes to commit"
+            exit 0
+          fi
+          git commit -m "Update generated data artifacts"
+          git push origin HEAD:main
