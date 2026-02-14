@@ -39,6 +39,7 @@ async function main() {
   let characters: any[] = [];
   let relationLookup: Record<number, any> = {};
   let inputSource: IngestInputSource | null = null;
+  let lastDirectoryLoadError: string | null = null;
 
   async function canRead(filePath: string): Promise<boolean> {
     try {
@@ -72,12 +73,22 @@ async function main() {
     const hasCore = await Promise.all([canRead(mediaFile), canRead(peopleFile), canRead(charsFile)]);
     if (!hasCore.every(Boolean)) return false;
 
-    media = await readJsonFile<any[]>(mediaFile, 'mediaDetails');
-    people = await readJsonFile<any[]>(peopleFile, 'people');
-    characters = await readJsonFile<any[]>(charsFile, 'characters');
-    relationLookup = (await canRead(relFile)) ? await readJsonFile<Record<number, any>>(relFile, 'relationLookup') : {};
-    inputSource = source;
-    return true;
+    try {
+      media = await readJsonFile<any[]>(mediaFile, 'mediaDetails');
+      people = await readJsonFile<any[]>(peopleFile, 'people');
+      characters = await readJsonFile<any[]>(charsFile, 'characters');
+      relationLookup = (await canRead(relFile)) ? await readJsonFile<Record<number, any>>(relFile, 'relationLookup') : {};
+      inputSource = source;
+      return true;
+    } catch (error) {
+      const message = String(error);
+      if (/RangeError: Invalid string length/.test(message)) {
+        console.warn(`[warn] Skipping ${source} ingest input due to oversized JSON payload: ${message}`);
+        lastDirectoryLoadError = message;
+        return false;
+      }
+      throw error;
+    }
   }
 
   await initializeDatabaseDefaults();
@@ -102,21 +113,22 @@ async function main() {
   }
 
   if (!inputSource) {
-    const sqlitePath = getSqliteFilePath();
-    const sqliteConfigured = Boolean(process.env.SQLITE_PATH);
-    const sqliteExists = await canRead(sqlitePath);
-
-    if (sqliteConfigured || sqliteExists) {
-      throw new Error(
-        `No ingest entities found in SQLite at ${sqlitePath} for config key ${cfgKey}. ` +
-        'Refusing JSON checkpoint fallback to avoid loading very large checkpoint files.'
-      );
-    }
-
     const loadedFromTmp = await loadFromDirectory(TMP_DIR, 'TMP_DIR');
     const loadedFromCheckpoint = loadedFromTmp ? false : await loadFromDirectory(CHECKPOINT_DIR, 'CHECKPOINT_DIR');
 
     if (!loadedFromTmp && !loadedFromCheckpoint) {
+      const sqlitePath = getSqliteFilePath();
+      const sqliteConfigured = Boolean(process.env.SQLITE_PATH);
+      const sqliteExists = await canRead(sqlitePath);
+      if (sqliteConfigured || sqliteExists) {
+        throw new Error(
+          `No ingest entities found in SQLite at ${sqlitePath} for config key ${cfgKey}. ` +
+          (lastDirectoryLoadError
+            ? `Checkpoint fallback was attempted but failed (${lastDirectoryLoadError}).`
+            : 'Checkpoint/TMP fallback did not provide ingest files.')
+        );
+      }
+
       throw new Error(
         `TMP ingest files and checkpoint files not found (${TMP_DIR}, ${CHECKPOINT_DIR}) and no SQLite DB data is available. ` +
         'This can happen when ingest was canceled before first persist; ensure checkpoint restore is configured.'
