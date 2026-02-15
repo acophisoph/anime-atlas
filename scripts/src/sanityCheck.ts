@@ -2,6 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
 
+function envMin(name: string): number {
+  const raw = process.env[name];
+  if (!raw) return 0;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 async function fileSize(rel: string): Promise<number> {
   const stat = await fs.stat(path.join(DATA_DIR, rel));
   return stat.size;
@@ -20,6 +27,11 @@ async function requireAnyNonEmpty(paths: string[], label: string): Promise<strin
 }
 
 async function main() {
+  const minMediaCount = envMin('MIN_MEDIA_COUNT');
+  const minPeopleCount = envMin('MIN_PEOPLE_COUNT');
+  const minCharacterCount = envMin('MIN_CHARACTER_COUNT');
+  const minPointCount = envMin('MIN_POINT_COUNT');
+
   await requireAnyNonEmpty(['manifest.json'], 'manifest');
   await requireAnyNonEmpty(['points.bin', 'points.json'], 'points');
   await requireAnyNonEmpty(['indices/search_index.json'], 'search index');
@@ -51,10 +63,25 @@ async function main() {
     throw new Error(`Manifest counts must all be > 0. Got: ${JSON.stringify(counts)}`);
   }
 
+  const thresholdFailures: string[] = [];
+  if (minMediaCount > 0 && counts.media < minMediaCount) thresholdFailures.push(`media ${counts.media} < ${minMediaCount}`);
+  if (minPeopleCount > 0 && counts.people < minPeopleCount) thresholdFailures.push(`people ${counts.people} < ${minPeopleCount}`);
+  if (minCharacterCount > 0 && counts.characters < minCharacterCount) thresholdFailures.push(`characters ${counts.characters} < ${minCharacterCount}`);
+  if (minPointCount > 0 && counts.points < minPointCount) thresholdFailures.push(`points ${counts.points} < ${minPointCount}`);
+  if (thresholdFailures.length > 0) {
+    throw new Error(`Artifact count thresholds failed: ${thresholdFailures.join(', ')}`);
+  }
+
   console.log('verify:data passed', {
     manifestCounts: counts,
     mediaChunks: mediaChunks.length,
-    graphFilesChecked: graphBins.length > 0 ? graphBins.length : graphJson.length
+    graphFilesChecked: graphBins.length > 0 ? graphBins.length : graphJson.length,
+    minimums: {
+      minMediaCount,
+      minPeopleCount,
+      minCharacterCount,
+      minPointCount
+    }
   });
 }
 

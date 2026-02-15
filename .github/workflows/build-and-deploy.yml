@@ -31,6 +31,11 @@ jobs:
             npm install
           fi
       - run: npm run sanity:artifacts
+        env:
+          MIN_MEDIA_COUNT: 500
+          MIN_PEOPLE_COUNT: 1000
+          MIN_CHARACTER_COUNT: 1000
+          MIN_POINT_COUNT: 500
       - run: npm run sync:data
       - name: Debug data directories
         run: |

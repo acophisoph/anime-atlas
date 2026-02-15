@@ -67,6 +67,11 @@ jobs:
           BATCH_ANIME: 50
           BATCH_MANGA: 50
       - run: npm run sanity:artifacts
+        env:
+          MIN_MEDIA_COUNT: 500
+          MIN_PEOPLE_COUNT: 1000
+          MIN_CHARACTER_COUNT: 1000
+          MIN_POINT_COUNT: 500
       - name: Commit refreshed data artifacts
         run: |
           git config user.name "github-actions[bot]"
