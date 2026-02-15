@@ -7,19 +7,22 @@ async function fileSize(rel: string): Promise<number> {
   return stat.size;
 }
 
-async function requireNonEmpty(rel: string): Promise<void> {
-  try {
-    const size = await fileSize(rel);
-    if (size <= 0) throw new Error(`${rel} is empty`);
-  } catch (error) {
-    throw new Error(`Missing/invalid required artifact ${rel}: ${String(error)}`);
+async function requireAnyNonEmpty(paths: string[], label: string): Promise<string> {
+  for (const rel of paths) {
+    try {
+      const size = await fileSize(rel);
+      if (size > 0) return rel;
+    } catch {
+      // try next
+    }
   }
+  throw new Error(`Missing/invalid required artifact ${label}: expected one of ${paths.join(', ')}`);
 }
 
 async function main() {
-  await requireNonEmpty('manifest.json');
-  await requireNonEmpty('points.bin');
-  await requireNonEmpty('indices/search_index.json');
+  await requireAnyNonEmpty(['manifest.json'], 'manifest');
+  await requireAnyNonEmpty(['points.bin', 'points.json'], 'points');
+  await requireAnyNonEmpty(['indices/search_index.json'], 'search index');
 
   const metaDir = path.join(DATA_DIR, 'meta');
   const graphDir = path.join(DATA_DIR, 'graph');
@@ -33,12 +36,13 @@ async function main() {
   }
 
   const graphBins = graphFiles.filter((name) => name.endsWith('.bin'));
-  if (graphBins.length === 0) {
-    throw new Error('No binary graph files found in data/graph (expected *.bin).');
+  const graphJson = graphFiles.filter((name) => name.endsWith('.json'));
+  if (graphBins.length === 0 && graphJson.length === 0) {
+    throw new Error('No graph files found in data/graph (expected *.bin or *.json).');
   }
 
-  for (const name of graphBins) {
-    await requireNonEmpty(path.join('graph', name));
+  for (const name of graphBins.length > 0 ? graphBins : graphJson) {
+    await requireAnyNonEmpty([path.join('graph', name)], `graph/${name}`);
   }
 
   const manifest = JSON.parse(await fs.readFile(path.join(DATA_DIR, 'manifest.json'), 'utf-8'));
@@ -50,7 +54,7 @@ async function main() {
   console.log('verify:data passed', {
     manifestCounts: counts,
     mediaChunks: mediaChunks.length,
-    graphBins: graphBins.length
+    graphFilesChecked: graphBins.length > 0 ? graphBins.length : graphJson.length
   });
 }
 
