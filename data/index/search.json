@@ -1,0 +1,287 @@
+[
+  {
+    "id": 1,
+    "kind": "media",
+    "en": "Attack on Titan",
+    "jp": "進撃の巨人",
+    "ro": "Shingeki no Kyojin",
+    "year": 2013,
+    "type": "ANIME"
+  },
+  {
+    "id": 2,
+    "kind": "media",
+    "en": "Fullmetal Alchemist: Brotherhood",
+    "jp": "鋼の錬金術師 BROTHERHOOD",
+    "ro": "Hagane no Renkinjutsushi: Brotherhood",
+    "year": 2009,
+    "type": "ANIME"
+  },
+  {
+    "id": 3,
+    "kind": "media",
+    "en": "Death Note",
+    "jp": "デスノート",
+    "ro": "Death Note",
+    "year": 2006,
+    "type": "ANIME"
+  },
+  {
+    "id": 4,
+    "kind": "media",
+    "en": "Spirited Away",
+    "jp": "千と千尋の神隠し",
+    "ro": "Sen to Chihiro no Kamikakushi",
+    "year": 2001,
+    "type": "ANIME"
+  },
+  {
+    "id": 5,
+    "kind": "media",
+    "en": "Berserk",
+    "jp": "ベルセルク",
+    "ro": "Berserk",
+    "year": 1997,
+    "type": "MANGA"
+  },
+  {
+    "id": 6,
+    "kind": "media",
+    "en": "One Piece",
+    "jp": "ワンピース",
+    "ro": "One Piece",
+    "year": 1999,
+    "type": "MANGA"
+  },
+  {
+    "id": 7,
+    "kind": "media",
+    "en": "Naruto",
+    "jp": "ナルト",
+    "ro": "Naruto",
+    "year": 2002,
+    "type": "ANIME"
+  },
+  {
+    "id": 8,
+    "kind": "media",
+    "en": "Your Lie in April",
+    "jp": "四月は君の嘘",
+    "ro": "Shigatsu wa Kimi no Uso",
+    "year": 2014,
+    "type": "ANIME"
+  },
+  {
+    "id": 9,
+    "kind": "media",
+    "en": "Cowboy Bebop",
+    "jp": "カウボーイビバップ",
+    "ro": "Cowboy Bebop",
+    "year": 1998,
+    "type": "ANIME"
+  },
+  {
+    "id": 10,
+    "kind": "media",
+    "en": "Neon Genesis Evangelion",
+    "jp": "新世紀エヴァンゲリオン",
+    "ro": "Neon Genesis Evangelion",
+    "year": 1995,
+    "type": "ANIME"
+  },
+  {
+    "id": 11,
+    "kind": "media",
+    "en": "Steins;Gate",
+    "jp": "シュタインズ・ゲート",
+    "ro": "Steins;Gate",
+    "year": 2011,
+    "type": "ANIME"
+  },
+  {
+    "id": 12,
+    "kind": "media",
+    "en": "Vinland Saga",
+    "jp": "ヴィンランド・サガ",
+    "ro": "Vinland Saga",
+    "year": 2019,
+    "type": "ANIME"
+  },
+  {
+    "id": 13,
+    "kind": "media",
+    "en": "Violet Evergarden",
+    "jp": "ヴァイオレット・エヴァーガーデン",
+    "ro": "Violet Evergarden",
+    "year": 2018,
+    "type": "ANIME"
+  },
+  {
+    "id": 14,
+    "kind": "media",
+    "en": "Hunter x Hunter",
+    "jp": "HUNTER×HUNTER",
+    "ro": "Hunter x Hunter",
+    "year": 2011,
+    "type": "ANIME"
+  },
+  {
+    "id": 15,
+    "kind": "media",
+    "en": "Mushishi",
+    "jp": "蟲師",
+    "ro": "Mushishi",
+    "year": 2005,
+    "type": "ANIME"
+  },
+  {
+    "id": 16,
+    "kind": "media",
+    "en": "Ping Pong the Animation",
+    "jp": "ピンポン THE ANIMATION",
+    "ro": "Ping Pong the Animation",
+    "year": 2014,
+    "type": "ANIME"
+  },
+  {
+    "id": 17,
+    "kind": "media",
+    "en": "Puella Magi Madoka Magica",
+    "jp": "魔法少女まどか☆マギカ",
+    "ro": "Mahou Shoujo Madoka Magica",
+    "year": 2011,
+    "type": "ANIME"
+  },
+  {
+    "id": 18,
+    "kind": "media",
+    "en": "Vinland Saga",
+    "jp": "ヴィンランド・サガ",
+    "ro": "Vinland Saga",
+    "year": 2005,
+    "type": "MANGA"
+  },
+  {
+    "id": 19,
+    "kind": "media",
+    "en": "Trigun",
+    "jp": "トライガン",
+    "ro": "Trigun",
+    "year": 1998,
+    "type": "ANIME"
+  },
+  {
+    "id": 20,
+    "kind": "media",
+    "en": "Planetes",
+    "jp": "プラネテス",
+    "ro": "Planetes",
+    "year": 2003,
+    "type": "ANIME"
+  },
+  {
+    "id": 101,
+    "kind": "person",
+    "en": "Tetsuro Araki",
+    "jp": "荒木哲郎",
+    "ro": "Araki Tetsuro"
+  },
+  {
+    "id": 102,
+    "kind": "person",
+    "en": "Yasuhiro Irie",
+    "jp": "入江泰浩",
+    "ro": "Irie Yasuhiro"
+  },
+  {
+    "id": 103,
+    "kind": "person",
+    "en": "Tsugumi Ohba",
+    "jp": "大場つぐみ",
+    "ro": "Ohba Tsugumi"
+  },
+  {
+    "id": 104,
+    "kind": "person",
+    "en": "Hayao Miyazaki",
+    "jp": "宮崎駿",
+    "ro": "Miyazaki Hayao"
+  },
+  {
+    "id": 105,
+    "kind": "person",
+    "en": "Kentaro Miura",
+    "jp": "三浦建太郎",
+    "ro": "Miura Kentaro"
+  },
+  {
+    "id": 106,
+    "kind": "person",
+    "en": "Eiichiro Oda",
+    "jp": "尾田栄一郎",
+    "ro": "Oda Eiichiro"
+  },
+  {
+    "id": 107,
+    "kind": "person",
+    "en": "Masashi Kishimoto",
+    "jp": "岸本斉史",
+    "ro": "Kishimoto Masashi"
+  },
+  {
+    "id": 108,
+    "kind": "person",
+    "en": "Naoshi Arakawa",
+    "jp": "新川直司",
+    "ro": "Arakawa Naoshi"
+  },
+  {
+    "id": 109,
+    "kind": "person",
+    "en": "Hiroyuki Sawano",
+    "jp": "澤野弘之",
+    "ro": "Sawano Hiroyuki"
+  },
+  {
+    "id": 110,
+    "kind": "person",
+    "en": "Yoko Kanno",
+    "jp": "菅野よう子",
+    "ro": "Kanno Yoko"
+  },
+  {
+    "id": 111,
+    "kind": "person",
+    "en": "Joe Hisaishi",
+    "jp": "久石譲",
+    "ro": "Hisaishi Joe"
+  },
+  {
+    "id": 112,
+    "kind": "person",
+    "en": "Shoji Gatoh",
+    "jp": "賀東招二",
+    "ro": "Gatoh Shoji"
+  },
+  {
+    "id": 113,
+    "kind": "person",
+    "en": "Makoto Shinkai",
+    "jp": "新海誠",
+    "ro": "Shinkai Makoto"
+  },
+  {
+    "id": 114,
+    "kind": "person",
+    "en": "Ichiro Okochi",
+    "jp": "大河内一楼",
+    "ro": "Okochi Ichiro"
+  },
+  {
+    "id": 115,
+    "kind": "person",
+    "en": "Atsushi Ikariya",
+    "jp": "碇谷敦",
+    "ro": "Ikariya Atsushi"
+  }
+]

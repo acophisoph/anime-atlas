@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "generated_at": 1743379200000,
+  "last_ingest_run_timestamp": 1743379200000,
+  "total_media_in_db": 20,
+  "total_people_in_db": 15,
+  "completed_batches_count": 4,
+  "pending_batches_count": 96,
+  "failed_batches_count": 0,
+  "completeness": {
+    "has_staff_for_all_media": false,
+    "has_characters_for_all_media": false,
+    "is_partial": true
+  },
+  "artifacts": {
+    "points_count": 35,
+    "media_chunk_count": 1,
+    "people_chunk_count": 1
+  }
+}

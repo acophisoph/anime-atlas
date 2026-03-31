@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.cache/
+scripts/.cache/*.sqlite
+app/public/data/
+*.log
+.env
+.env.local

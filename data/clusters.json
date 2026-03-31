@@ -1,0 +1,37 @@
+[
+  {
+    "id": 0,
+    "x": -0.5,
+    "y": -0.5,
+    "size": 4,
+    "label": "Action · Shonen"
+  },
+  {
+    "id": 1,
+    "x": 0.5,
+    "y": -0.5,
+    "size": 4,
+    "label": "Romance · Drama"
+  },
+  {
+    "id": 2,
+    "x": -0.5,
+    "y": 0.5,
+    "size": 4,
+    "label": "Sci-Fi · Mecha"
+  },
+  {
+    "id": 3,
+    "x": 0.5,
+    "y": 0.5,
+    "size": 4,
+    "label": "Slice of Life · Comedy"
+  },
+  {
+    "id": 4,
+    "x": 0,
+    "y": 0,
+    "size": 4,
+    "label": "Fantasy · Adventure"
+  }
+]

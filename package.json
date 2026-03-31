@@ -1,0 +1,14 @@
+{
+  "name": "anime-atlas",
+  "private": true,
+  "workspaces": ["app", "scripts"],
+  "scripts": {
+    "dev": "npm run sync:data && npm run dev --workspace=app",
+    "build:site": "npm run sync:data && npm run build --workspace=app",
+    "ingest:batched": "npm run ingest:batched --workspace=scripts",
+    "build:artifacts": "npm run build:artifacts --workspace=scripts",
+    "sanity:artifacts": "npm run sanity:artifacts --workspace=scripts",
+    "sync:data": "node scripts/commands/sync-data.js",
+    "db:status": "npm run db:status --workspace=scripts"
+  }
+}

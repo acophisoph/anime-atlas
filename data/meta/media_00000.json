@@ -1,0 +1,980 @@
+{
+  "1": {
+    "id": 1,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2013,
+    "popularity": 350000,
+    "averageScore": 85,
+    "title": {
+      "romaji": "Shingeki no Kyojin",
+      "english": "Attack on Titan",
+      "native": "進撃の巨人"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#1a2030"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Drama",
+      "Fantasy"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 2,
+        "name": "Shonen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 1,
+        "name": "Wit Studio",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "2": {
+    "id": 2,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2009,
+    "popularity": 400000,
+    "averageScore": 89,
+    "title": {
+      "romaji": "Hagane no Renkinjutsushi: Brotherhood",
+      "english": "Fullmetal Alchemist: Brotherhood",
+      "native": "鋼の錬金術師 BROTHERHOOD"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#c05020"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Drama",
+      "Fantasy"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 2,
+        "name": "Shonen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 2,
+        "name": "Bones",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "3": {
+    "id": 3,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2006,
+    "popularity": 380000,
+    "averageScore": 84,
+    "title": {
+      "romaji": "Death Note",
+      "english": "Death Note",
+      "native": "デスノート"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#101010"
+    },
+    "genres": [
+      "Mystery",
+      "Psychological",
+      "Supernatural"
+    ],
+    "tags": [
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 9,
+        "name": "Seinen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 3,
+        "name": "Madhouse",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "4": {
+    "id": 4,
+    "type": "ANIME",
+    "format": "MOVIE",
+    "seasonYear": 2001,
+    "popularity": 200000,
+    "averageScore": 91,
+    "title": {
+      "romaji": "Sen to Chihiro no Kamikakushi",
+      "english": "Spirited Away",
+      "native": "千と千尋の神隠し"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#2060a0"
+    },
+    "genres": [
+      "Adventure",
+      "Fantasy",
+      "Supernatural"
+    ],
+    "tags": [
+      {
+        "id": 5,
+        "name": "Fantasy",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 10,
+        "name": "Slice of Life",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 4,
+        "name": "Studio Ghibli",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "5": {
+    "id": 5,
+    "type": "MANGA",
+    "format": null,
+    "seasonYear": 1997,
+    "popularity": 300000,
+    "averageScore": 93,
+    "title": {
+      "romaji": "Berserk",
+      "english": "Berserk",
+      "native": "ベルセルク"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#301010"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Drama",
+      "Fantasy"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 9,
+        "name": "Seinen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 5,
+        "name": "Fantasy",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": []
+  },
+  "6": {
+    "id": 6,
+    "type": "MANGA",
+    "format": null,
+    "seasonYear": 1999,
+    "popularity": 450000,
+    "averageScore": 90,
+    "title": {
+      "romaji": "One Piece",
+      "english": "One Piece",
+      "native": "ワンピース"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#e07010"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Comedy",
+      "Fantasy"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 2,
+        "name": "Shonen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 7,
+        "name": "Comedy",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": []
+  },
+  "7": {
+    "id": 7,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2002,
+    "popularity": 420000,
+    "averageScore": 79,
+    "title": {
+      "romaji": "Naruto",
+      "english": "Naruto",
+      "native": "ナルト"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#e05010"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Fantasy"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 2,
+        "name": "Shonen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 7,
+        "name": "Pierrot",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "8": {
+    "id": 8,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2014,
+    "popularity": 280000,
+    "averageScore": 86,
+    "title": {
+      "romaji": "Shigatsu wa Kimi no Uso",
+      "english": "Your Lie in April",
+      "native": "四月は君の嘘"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#e0a0c0"
+    },
+    "genres": [
+      "Drama",
+      "Music",
+      "Romance"
+    ],
+    "tags": [
+      {
+        "id": 4,
+        "name": "Romance",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 8,
+        "name": "A-1 Pictures",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "9": {
+    "id": 9,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 1998,
+    "popularity": 320000,
+    "averageScore": 88,
+    "title": {
+      "romaji": "Cowboy Bebop",
+      "english": "Cowboy Bebop",
+      "native": "カウボーイビバップ"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#304060"
+    },
+    "genres": [
+      "Action",
+      "Drama",
+      "Sci-Fi"
+    ],
+    "tags": [
+      {
+        "id": 6,
+        "name": "Sci-Fi",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 9,
+        "name": "Sunrise",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "10": {
+    "id": 10,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 1995,
+    "popularity": 340000,
+    "averageScore": 82,
+    "title": {
+      "romaji": "Neon Genesis Evangelion",
+      "english": "Neon Genesis Evangelion",
+      "native": "新世紀エヴァンゲリオン"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#203050"
+    },
+    "genres": [
+      "Drama",
+      "Mecha",
+      "Psychological",
+      "Sci-Fi"
+    ],
+    "tags": [
+      {
+        "id": 6,
+        "name": "Sci-Fi",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 8,
+        "name": "Mecha",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 10,
+        "name": "Gainax",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "11": {
+    "id": 11,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2011,
+    "popularity": 360000,
+    "averageScore": 91,
+    "title": {
+      "romaji": "Steins;Gate",
+      "english": "Steins;Gate",
+      "native": "シュタインズ・ゲート"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#105020"
+    },
+    "genres": [
+      "Drama",
+      "Romance",
+      "Sci-Fi",
+      "Thriller"
+    ],
+    "tags": [
+      {
+        "id": 6,
+        "name": "Sci-Fi",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 4,
+        "name": "Romance",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 11,
+        "name": "White Fox",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "12": {
+    "id": 12,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2019,
+    "popularity": 270000,
+    "averageScore": 87,
+    "title": {
+      "romaji": "Vinland Saga",
+      "english": "Vinland Saga",
+      "native": "ヴィンランド・サガ"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#506080"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Drama"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 9,
+        "name": "Seinen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 12,
+        "name": "Wit Studio",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "13": {
+    "id": 13,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2018,
+    "popularity": 230000,
+    "averageScore": 85,
+    "title": {
+      "romaji": "Violet Evergarden",
+      "english": "Violet Evergarden",
+      "native": "ヴァイオレット・エヴァーガーデン"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#8080c0"
+    },
+    "genres": [
+      "Drama",
+      "Fantasy",
+      "Romance",
+      "Slice of Life"
+    ],
+    "tags": [
+      {
+        "id": 4,
+        "name": "Romance",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 10,
+        "name": "Slice of Life",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 13,
+        "name": "Kyoto Animation",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "14": {
+    "id": 14,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2011,
+    "popularity": 390000,
+    "averageScore": 88,
+    "title": {
+      "romaji": "Hunter x Hunter",
+      "english": "Hunter x Hunter",
+      "native": "HUNTER×HUNTER"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#20a040"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Fantasy"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 2,
+        "name": "Shonen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 5,
+        "name": "Fantasy",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 14,
+        "name": "Madhouse",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "15": {
+    "id": 15,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2005,
+    "popularity": 140000,
+    "averageScore": 87,
+    "title": {
+      "romaji": "Mushishi",
+      "english": "Mushishi",
+      "native": "蟲師"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#406040"
+    },
+    "genres": [
+      "Adventure",
+      "Fantasy",
+      "Mystery",
+      "Slice of Life"
+    ],
+    "tags": [
+      {
+        "id": 5,
+        "name": "Fantasy",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 10,
+        "name": "Slice of Life",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 9,
+        "name": "Seinen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 15,
+        "name": "Artland",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "16": {
+    "id": 16,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2014,
+    "popularity": 100000,
+    "averageScore": 86,
+    "title": {
+      "romaji": "Ping Pong the Animation",
+      "english": "Ping Pong the Animation",
+      "native": "ピンポン THE ANIMATION"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#808020"
+    },
+    "genres": [
+      "Drama",
+      "Slice of Life",
+      "Sports"
+    ],
+    "tags": [
+      {
+        "id": 10,
+        "name": "Slice of Life",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 16,
+        "name": "Tatsunoko Pro",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "17": {
+    "id": 17,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2011,
+    "popularity": 310000,
+    "averageScore": 85,
+    "title": {
+      "romaji": "Mahou Shoujo Madoka Magica",
+      "english": "Puella Magi Madoka Magica",
+      "native": "魔法少女まどか☆マギカ"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#c060c0"
+    },
+    "genres": [
+      "Drama",
+      "Fantasy",
+      "Psychological",
+      "Thriller"
+    ],
+    "tags": [
+      {
+        "id": 5,
+        "name": "Fantasy",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 9,
+        "name": "Seinen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 17,
+        "name": "Shaft",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "18": {
+    "id": 18,
+    "type": "MANGA",
+    "format": null,
+    "seasonYear": 2005,
+    "popularity": 220000,
+    "averageScore": 90,
+    "title": {
+      "romaji": "Vinland Saga",
+      "english": "Vinland Saga",
+      "native": "ヴィンランド・サガ"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#506080"
+    },
+    "genres": [
+      "Action",
+      "Adventure",
+      "Drama",
+      "Historical"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 9,
+        "name": "Seinen",
+        "category": "Demographic",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": []
+  },
+  "19": {
+    "id": 19,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 1998,
+    "popularity": 160000,
+    "averageScore": 80,
+    "title": {
+      "romaji": "Trigun",
+      "english": "Trigun",
+      "native": "トライガン"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#c0a020"
+    },
+    "genres": [
+      "Action",
+      "Comedy",
+      "Drama",
+      "Sci-Fi"
+    ],
+    "tags": [
+      {
+        "id": 1,
+        "name": "Action",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 6,
+        "name": "Sci-Fi",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 7,
+        "name": "Comedy",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 19,
+        "name": "Madhouse",
+        "isAnimationStudio": true
+      }
+    ]
+  },
+  "20": {
+    "id": 20,
+    "type": "ANIME",
+    "format": "TV",
+    "seasonYear": 2003,
+    "popularity": 80000,
+    "averageScore": 83,
+    "title": {
+      "romaji": "Planetes",
+      "english": "Planetes",
+      "native": "プラネテス"
+    },
+    "coverImage": {
+      "large": null,
+      "color": "#204060"
+    },
+    "genres": [
+      "Drama",
+      "Romance",
+      "Sci-Fi",
+      "Slice of Life"
+    ],
+    "tags": [
+      {
+        "id": 6,
+        "name": "Sci-Fi",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 10,
+        "name": "Slice of Life",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      },
+      {
+        "id": 3,
+        "name": "Drama",
+        "category": "Genre",
+        "rank": 80,
+        "isAdult": false
+      }
+    ],
+    "studios": [
+      {
+        "id": 20,
+        "name": "Sunrise",
+        "isAnimationStudio": true
+      }
+    ]
+  }
+}
