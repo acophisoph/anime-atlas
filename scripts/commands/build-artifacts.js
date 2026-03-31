@@ -61,11 +61,11 @@ async function main() {
   const hasStaffForAll = mediaRows.length > 0 && mediaRows.every(m => mediaWithStaff.has(m.id));
   const hasCharsForAll = mediaRows.length > 0 && mediaRows.every(m => mediaWithChars.has(m.id));
 
-  // Only plot media that have real data (exclude relation stubs with no genres/tags/popularity)
-  const plottableMedia = mediaRows.filter(m =>
-    m.popularity > 0 || m.genres_json !== '[]' || m.tags_json !== '[]'
-  );
-  console.log(`[artifacts] Plottable media: ${plottableMedia.length} / ${mediaRows.length} (${mediaRows.length - plottableMedia.length} stubs excluded from plot)`);
+  // Only plot media that have genre data — ensures non-zero UMAP feature vectors
+  // and a meaningful position on the map. Relation stubs with only popularity
+  // (no genres/tags) produce zero vectors → spiral fallback → separate blob.
+  const plottableMedia = mediaRows.filter(m => m.genres_json !== '[]');
+  console.log(`[artifacts] Plottable media: ${plottableMedia.length} / ${mediaRows.length} (${mediaRows.length - plottableMedia.length} no-genre stubs excluded from plot)`);
 
   // --- COORDINATES ---
   console.log('[artifacts] Computing media coordinates...');

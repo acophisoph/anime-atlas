@@ -110,18 +110,26 @@ export async function computeCoordinates(vectors, ids) {
 
   try {
     const { UMAP } = await import('umap-js');
-    const subVectors = nonZeroIdx.map(i => Array.from(vectors[i]));
-    const subIds     = nonZeroIdx.map(i => ids[i]);
+
+    // L2-normalize each vector so Euclidean distance ≈ cosine similarity.
+    // Critical for sparse high-dim genre/tag vectors — raw Euclidean in high
+    // dimensions causes all points to appear equidistant, collapsing to blobs.
+    const rawVecs = nonZeroIdx.map(i => Array.from(vectors[i]));
+    const subVectors = rawVecs.map(v => {
+      const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+      return v.map(x => x / norm);
+    });
+    const subIds = nonZeroIdx.map(i => ids[i]);
 
     const umap = new UMAP({
       nComponents: 2,
-      // More neighbors = more global structure, better separated clusters
-      nNeighbors: Math.min(25, subVectors.length - 1),
-      // Higher minDist = more intra-cluster spread (less clumping)
-      minDist: 0.25,
-      // Higher spread = wider map overall
-      spread: 1.8,
-      nEpochs: 400,
+      // More neighbors = stronger global structure across genre clusters
+      nNeighbors: Math.min(30, subVectors.length - 1),
+      // High minDist: individual points spread apart within each cluster
+      minDist: 0.5,
+      // High spread: clusters pushed far apart — wide open map
+      spread: 3.5,
+      nEpochs: 500,
       random: seededRandom(42),
     });
 

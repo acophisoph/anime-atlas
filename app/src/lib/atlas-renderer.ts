@@ -5,7 +5,7 @@ export interface RendererConfig {
   canvas: HTMLCanvasElement;
   width: number;
   height: number;
-  onHover: (id: number | null, screenX: number, screenY: number) => void;
+  onHover: (id: number | null) => void;
   onClick: (id: number, kind: 'media' | 'person') => void;
 }
 
@@ -15,7 +15,7 @@ export interface EdgeData {
   hop: number;
 }
 
-// Genre → color palette (matching Nomic-style vivid clusters)
+// Genre → color palette
 const GENRE_COLORS: Record<string, number> = {
   'Action':        0xef4444,
   'Adventure':     0xf97316,
@@ -33,56 +33,57 @@ const GENRE_COLORS: Record<string, number> = {
   'Psychological': 0x94a3b8,
   'Mecha':         0x0ea5e9,
   'Ecchi':         0xf472b6,
-  'Hentai':        0xfb923c,
   'Mahou Shoujo':  0xe879f9,
   'Harem':         0xfbbf24,
   'Thriller':      0x475569,
 };
 const DEFAULT_MEDIA_COLOR  = 0x5b9cf6;
 const DEFAULT_PERSON_COLOR = 0xf97316;
-const HOP_COLORS = [0xfbbf24, 0xfb923c, 0xf87171];
-const DIM_ALPHA  = 0.12;
+const HOP_COLORS  = [0xfbbf24, 0xfb923c, 0xf87171];
 const EDGE_COLORS = [0xfbbf24, 0xfb923c, 0xf87171];
+const DIM_ALPHA   = 0.08;
 
-// Cached circle textures by radius
-const textureCache = new Map<string, PIXI.Texture>();
-
-function getCircleTexture(app: PIXI.Application, radius: number, color: number): PIXI.Texture {
-  const key = `${radius}:${color}`;
-  if (textureCache.has(key)) return textureCache.get(key)!;
+// Shared circle texture (white; tinted per node)
+let sharedTex: PIXI.Texture | null = null;
+function getCircleTexture(app: PIXI.Application): PIXI.Texture {
+  if (sharedTex) return sharedTex;
   const g = new PIXI.Graphics();
-  g.beginFill(color);
-  g.drawCircle(0, 0, radius);
+  // Draw a crisp white circle with slight feathered edge for anti-aliasing
+  g.beginFill(0xffffff, 1);
+  g.drawCircle(0, 0, 16);
   g.endFill();
-  const tex = app.renderer.generateTexture(g, {
+  sharedTex = app.renderer.generateTexture(g, {
     resolution: Math.min(window.devicePixelRatio, 2),
   });
-  textureCache.set(key, tex);
-  return tex;
+  return sharedTex;
 }
 
 interface SpritePoint extends Point {
   sprite: PIXI.Sprite;
-  baseRadius: number;
+  baseRadius: number; // CSS pixels at base zoom
   color: number;
 }
+
+// Spatial grid bucketed by data-space coordinates
+interface GridBounds { minX: number; maxX: number; minY: number; maxY: number; }
 
 export class AtlasRenderer {
   private app: PIXI.Application;
   private edgeGraphics: PIXI.Graphics;
   private dotContainer: PIXI.Container;
-  private overlayGraphics: PIXI.Graphics; // selected ring + glow
+  private overlayGraphics: PIXI.Graphics;
   private labelContainer: PIXI.Container;
 
   private spritePoints: SpritePoint[] = [];
   private spriteMap = new Map<number, SpritePoint>();
   private clusters: Cluster[] = [];
 
-  // Spatial grid for O(1) hit test
-  private gridCells = new Map<string, number[]>(); // cell → spritePoints indices
+  // Spatial grid for O(1) hit testing
+  private gridCells = new Map<string, number[]>();
   private readonly GRID_DIVS = 64;
+  private gridBounds: GridBounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
 
-  // Camera
+  // Camera (world space)
   camX = 0; camY = 0; zoom = 1;
   private isDragging = false;
   private dragStart = { x: 0, y: 0, camX: 0, camY: 0 };
@@ -91,24 +92,23 @@ export class AtlasRenderer {
   private mode: 'media' | 'people' = 'media';
   private neighborhoodMap = new Map<number, number>();
   private selectedId: number | null = null;
+  private hoveredId: number | null = null;
   private edges: EdgeData[] = [];
-
-  // For genre color lookup (passed from outside)
-  private genreMap = new Map<number, string[]>(); // mediaId → genres
+  private genreMap = new Map<number, string[]>();
 
   constructor(private cfg: RendererConfig) {
     this.app = new PIXI.Application({
       view: cfg.canvas,
       width: cfg.width,
       height: cfg.height,
-      backgroundColor: 0x080810,
+      backgroundColor: 0x07070f,
       antialias: true,
       resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
     });
 
-    this.edgeGraphics   = new PIXI.Graphics();
-    this.dotContainer   = new PIXI.Container();
+    this.edgeGraphics    = new PIXI.Graphics();
+    this.dotContainer    = new PIXI.Container();
     this.overlayGraphics = new PIXI.Graphics();
     this.labelContainer  = new PIXI.Container();
 
@@ -130,6 +130,7 @@ export class AtlasRenderer {
       (wy - this.camY) * this.zoom + this.h() / 2,
     ];
   }
+
   screenToWorld(sx: number, sy: number): [number, number] {
     return [
       (sx - this.w() / 2) / this.zoom + this.camX,
@@ -143,40 +144,51 @@ export class AtlasRenderer {
     // Wheel zoom towards cursor
     view.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.15 : 0.87;
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
       const rect = view.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       const [wx, wy] = this.screenToWorld(mx, my);
-      this.zoom = Math.min(200, Math.max(0.05, this.zoom * factor));
+      this.zoom = Math.min(500, Math.max(0.5, this.zoom * factor));
       this.camX = wx - (mx - this.w() / 2) / this.zoom;
       this.camY = wy - (my - this.h() / 2) / this.zoom;
     }, { passive: false });
 
     view.addEventListener('mousedown', (e) => {
       this.isDragging = true;
-      this.hasMoved = false;
-      this.dragStart = { x: e.clientX, y: e.clientY, camX: this.camX, camY: this.camY };
+      this.hasMoved   = false;
+      this.dragStart  = { x: e.clientX, y: e.clientY, camX: this.camX, camY: this.camY };
     });
 
     window.addEventListener('mousemove', (e) => {
       const rect = view.getBoundingClientRect();
       if (!rect) return;
+
       if (this.isDragging) {
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
         if (Math.abs(dx) + Math.abs(dy) > 3) this.hasMoved = true;
         this.camX = this.dragStart.camX - dx / this.zoom;
         this.camY = this.dragStart.camY - dy / this.zoom;
-        this.cfg.onHover(null, 0, 0);
+        if (this.hoveredId !== null) { this.hoveredId = null; this.cfg.onHover(null); }
         return;
       }
-      if (rect.left <= e.clientX && e.clientX <= rect.right &&
-          rect.top  <= e.clientY && e.clientY <= rect.bottom) {
+
+      const inCanvas =
+        rect.left <= e.clientX && e.clientX <= rect.right &&
+        rect.top  <= e.clientY && e.clientY <= rect.bottom;
+
+      if (inCanvas) {
         const sx = e.clientX - rect.left;
         const sy = e.clientY - rect.top;
-        const hovered = this.hitTest(sx, sy);
-        this.cfg.onHover(hovered, e.clientX, e.clientY);
+        const newHover = this.hitTest(sx, sy);
+        if (newHover !== this.hoveredId) {
+          this.hoveredId = newHover;
+          this.cfg.onHover(newHover);
+        }
+      } else if (this.hoveredId !== null) {
+        this.hoveredId = null;
+        this.cfg.onHover(null);
       }
     });
 
@@ -194,7 +206,7 @@ export class AtlasRenderer {
       this.isDragging = false;
     });
 
-    // Touch
+    // Touch pan
     view.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         const t = e.touches[0];
@@ -202,6 +214,7 @@ export class AtlasRenderer {
         this.dragStart = { x: t.clientX, y: t.clientY, camX: this.camX, camY: this.camY };
       }
     }, { passive: true });
+
     view.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (e.touches.length === 1) {
@@ -211,26 +224,40 @@ export class AtlasRenderer {
         this.camY = this.dragStart.camY - (t.clientY - this.dragStart.y) / this.zoom;
       }
     }, { passive: false });
+
     view.addEventListener('touchend', () => { this.isDragging = false; });
   }
 
+  // Hit test: find nearest point within a 14-screen-pixel radius of (sx, sy).
+  // hitRadius is in world units = 14px / zoom, so it is always exactly 14 CSS pixels
+  // regardless of zoom level. This eliminates the old bug where Math.max(8, 12/zoom)
+  // produced a hitRadius of 8 world units at high zoom (covering the entire dataset).
   private hitTest(sx: number, sy: number): number | null {
-    const hitRadius = Math.max(8, 12 / this.zoom);
+    const HIT_PX = 14;
+    const hitRadius = HIT_PX / this.zoom; // world units
     const [wx, wy] = this.screenToWorld(sx, sy);
-    const cellX0 = Math.floor((wx / 2 + 0.5) * this.GRID_DIVS);
-    const cellY0 = Math.floor((wy / 2 + 0.5) * this.GRID_DIVS);
-    const cr = Math.ceil(hitRadius / (2 / this.GRID_DIVS)) + 1;
+
+    const gb = this.gridBounds;
+    const rangeX = (gb.maxX - gb.minX) || 1;
+    const rangeY = (gb.maxY - gb.minY) || 1;
+    const cellW = rangeX / this.GRID_DIVS;
+    const cellH = rangeY / this.GRID_DIVS;
+
+    const cellX0 = Math.floor((wx - gb.minX) / cellW);
+    const cellY0 = Math.floor((wy - gb.minY) / cellH);
+    const crX = Math.ceil(hitRadius / cellW) + 1;
+    const crY = Math.ceil(hitRadius / cellH) + 1;
 
     let closest: number | null = null;
     let closestD2 = hitRadius * hitRadius;
 
-    for (let gx = cellX0 - cr; gx <= cellX0 + cr; gx++) {
-      for (let gy = cellY0 - cr; gy <= cellY0 + cr; gy++) {
+    for (let gx = cellX0 - crX; gx <= cellX0 + crX; gx++) {
+      for (let gy = cellY0 - crY; gy <= cellY0 + crY; gy++) {
         const cell = this.gridCells.get(`${gx}:${gy}`);
         if (!cell) continue;
         for (const idx of cell) {
           const sp = this.spritePoints[idx];
-          if (this.mode === 'media' && sp.kind !== 'media') continue;
+          if (this.mode === 'media'  && sp.kind !== 'media')  continue;
           if (this.mode === 'people' && sp.kind !== 'person') continue;
           const d2 = (sp.x - wx) ** 2 + (sp.y - wy) ** 2;
           if (d2 < closestD2) { closestD2 = d2; closest = sp.id; }
@@ -243,7 +270,6 @@ export class AtlasRenderer {
   private colorForPoint(p: Point): number {
     if (p.colorRGB) return p.colorRGB;
     if (p.kind === 'person') return DEFAULT_PERSON_COLOR;
-    // Genre-based color
     const genres = this.genreMap.get(p.id) ?? [];
     for (const g of genres) {
       if (GENRE_COLORS[g]) return GENRE_COLORS[g];
@@ -251,11 +277,11 @@ export class AtlasRenderer {
     return DEFAULT_MEDIA_COLOR;
   }
 
+  // Dot size: very small at overview to prevent occlusion.
+  // Range: 1.3 (unknown) → 3.0 (mega-popular). Log scale on popularity.
   private radiusForPoint(p: Point): number {
     const pop = p.popularity || 0;
-    // Tighter range: 2–5px base radius. Large popular shows stand out
-    // without overwhelming neighbors.
-    return Math.max(2, Math.min(5, 1.2 + Math.log10(pop + 100) * 0.9));
+    return Math.max(1.3, Math.min(3.0, 0.7 + Math.log10(pop + 10) * 0.65));
   }
 
   setGenreMap(gm: Map<number, string[]>) {
@@ -264,8 +290,6 @@ export class AtlasRenderer {
 
   setPoints(rawPoints: Point[], mode: 'media' | 'people') {
     this.mode = mode;
-
-    // Remove old sprites
     this.dotContainer.removeChildren();
     this.spritePoints = [];
     this.spriteMap.clear();
@@ -274,15 +298,29 @@ export class AtlasRenderer {
     const visible = rawPoints.filter(p =>
       mode === 'media' ? p.kind === 'media' : p.kind === 'person'
     );
+    if (visible.length === 0) return;
+
+    // Compute data bounds for the spatial grid
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of visible) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+    this.gridBounds = { minX, maxX, minY, maxY };
+
+    const tex = getCircleTexture(this.app);
+    const rangeX = (maxX - minX) || 1;
+    const rangeY = (maxY - minY) || 1;
 
     for (let i = 0; i < visible.length; i++) {
       const p = visible[i];
-      const color = this.colorForPoint(p);
+      const color  = this.colorForPoint(p);
       const radius = this.radiusForPoint(p);
-      const tex = getCircleTexture(this.app, 16, 0xffffff); // white base, tint with color
+
       const sprite = new PIXI.Sprite(tex);
       sprite.anchor.set(0.5);
-      sprite.tint = color;
+      sprite.tint  = color;
+      sprite.alpha = 0.82;
       sprite.scale.set(radius / 16);
 
       const sp: SpritePoint = { ...p, sprite, baseRadius: radius, color };
@@ -290,10 +328,10 @@ export class AtlasRenderer {
       this.spriteMap.set(p.id, sp);
       this.dotContainer.addChild(sprite);
 
-      // Spatial index
-      const gx = Math.floor((p.x / 2 + 0.5) * this.GRID_DIVS);
-      const gy = Math.floor((p.y / 2 + 0.5) * this.GRID_DIVS);
-      const key = `${gx}:${gy}`;
+      // Index into spatial grid using actual data bounds
+      const gx = Math.floor(((p.x - minX) / rangeX) * this.GRID_DIVS);
+      const gy = Math.floor(((p.y - minY) / rangeY) * this.GRID_DIVS);
+      const key = `${Math.min(gx, this.GRID_DIVS - 1)}:${Math.min(gy, this.GRID_DIVS - 1)}`;
       if (!this.gridCells.has(key)) this.gridCells.set(key, []);
       this.gridCells.get(key)!.push(i);
     }
@@ -301,20 +339,22 @@ export class AtlasRenderer {
     this.autoFit(visible);
   }
 
-  private autoFit(points: Point[]) {
+  autoFit(points: Point[] = this.spritePoints) {
     if (points.length === 0) return;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of points) {
       minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
       minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
     }
-    const padX = (maxX - minX) * 0.08;
-    const padY = (maxY - minY) * 0.08;
+    const rangeX = (maxX - minX) || 1;
+    const rangeY = (maxY - minY) || 1;
+    // 14% padding so edge nodes aren't cut off
+    const PAD = 0.14;
     this.camX = (minX + maxX) / 2;
     this.camY = (minY + maxY) / 2;
     this.zoom = Math.min(
-      this.w() / ((maxX - minX + padX * 2) || 1),
-      this.h() / ((maxY - minY + padY * 2) || 1)
+      this.w() / (rangeX * (1 + PAD * 2)),
+      this.h() / (rangeY * (1 + PAD * 2)),
     );
   }
 
@@ -322,28 +362,28 @@ export class AtlasRenderer {
     this.clusters = clusters;
     this.labelContainer.removeChildren();
     for (const cl of clusters) {
-      // Container: pill bg + text
       const container = new PIXI.Container();
 
       const text = new PIXI.Text(cl.label, {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
         fill: 0xffffff,
         align: 'center',
+        letterSpacing: 0.5,
       });
       text.anchor.set(0.5);
 
       // Pill background
-      const pad = { x: 10, y: 5 };
+      const pad = { x: 9, y: 4 };
       const bg = new PIXI.Graphics();
-      bg.beginFill(0x0a0a18, 0.75);
-      bg.lineStyle(1, 0xffffff, 0.15);
+      bg.beginFill(0x080818, 0.78);
+      bg.lineStyle(1, 0xffffff, 0.12);
       bg.drawRoundedRect(
         -text.width / 2 - pad.x,
         -text.height / 2 - pad.y,
         text.width + pad.x * 2,
         text.height + pad.y * 2,
-        6
+        5,
       );
       bg.endFill();
 
@@ -357,28 +397,20 @@ export class AtlasRenderer {
     }
   }
 
-  setNeighborhood(map: Map<number, number>) {
-    this.neighborhoodMap = map;
-  }
-
-  setSelected(id: number | null) {
-    this.selectedId = id;
-  }
-
-  setEdges(edges: EdgeData[]) {
-    this.edges = edges;
-  }
+  setNeighborhood(map: Map<number, number>) { this.neighborhoodMap = map; }
+  setSelected(id: number | null)            { this.selectedId = id; }
+  setEdges(edges: EdgeData[])               { this.edges = edges; }
 
   focusOn(id: number) {
     const sp = this.spriteMap.get(id);
     if (!sp) return;
     this.camX = sp.x;
     this.camY = sp.y;
-    this.zoom = Math.max(this.zoom, 30);
+    this.zoom = Math.max(this.zoom, 40);
   }
 
   resize(w: number, h: number) {
-    this.cfg.width = w;
+    this.cfg.width  = w;
     this.cfg.height = h;
     this.app.renderer.resize(w, h);
   }
@@ -386,50 +418,57 @@ export class AtlasRenderer {
   private render() {
     const hasNeighbors = this.neighborhoodMap.size > 0;
 
-    // --- Edge lines ---
+    // ── Edge lines ─────────────────────────────────────────────────────────
     this.edgeGraphics.clear();
     if (hasNeighbors && this.edges.length > 0) {
-      const selectedSp = this.selectedId !== null ? this.spriteMap.get(this.selectedId) : null;
+      const selectedSp = this.selectedId != null ? this.spriteMap.get(this.selectedId) : null;
       for (const edge of this.edges) {
         const from = this.spriteMap.get(edge.fromId) ?? selectedSp;
         const to   = this.spriteMap.get(edge.toId);
         if (!from || !to) continue;
         const [sx1, sy1] = this.worldToScreen(from.x, from.y);
-        const [sx2, sy2] = this.worldToScreen(to.x, to.y);
+        const [sx2, sy2] = this.worldToScreen(to.x,   to.y);
         const color = EDGE_COLORS[Math.min(edge.hop - 1, 2)];
-        const alpha = Math.max(0.05, 0.4 - (edge.hop - 1) * 0.1);
-        this.edgeGraphics.lineStyle(Math.max(0.5, 1.5 / this.zoom), color, alpha);
+        const alpha = Math.max(0.04, 0.35 - (edge.hop - 1) * 0.1);
+        this.edgeGraphics.lineStyle(Math.max(0.4, 1.2 / this.zoom), color, alpha);
         this.edgeGraphics.moveTo(sx1, sy1);
         this.edgeGraphics.lineTo(sx2, sy2);
       }
     }
 
-    // --- Sprites ---
+    // ── Sprites ────────────────────────────────────────────────────────────
+    const margin = 24;
+    const W = this.w(), H = this.h();
+
     for (const sp of this.spritePoints) {
       const [sx, sy] = this.worldToScreen(sp.x, sp.y);
       sp.sprite.x = sx;
       sp.sprite.y = sy;
 
-      // Cull off-screen
-      const margin = 20;
-      const offScreen = sx < -margin || sx > this.w() + margin ||
-                        sy < -margin || sy > this.h() + margin;
+      const offScreen = sx < -margin || sx > W + margin ||
+                        sy < -margin || sy > H + margin;
       sp.sprite.visible = !offScreen;
       if (offScreen) continue;
 
-      // Physical screen size: stays ~constant at overview, grows when zoomed in.
-      // At zoom < 15 → constant screen size (good overview density).
-      // At zoom >= 15 → scale up so nodes become navigable close-up.
-      const zoomFactor = this.zoom < 15 ? 1 : Math.min(2.5, this.zoom / 15);
-      const screenR = Math.max(1.5, sp.baseRadius * zoomFactor);
+      // Screen-space radius: constant until zoom > threshold, then grows.
+      // This keeps overview clean and makes close-up navigation comfortable.
+      const ZOOM_THRESHOLD = 20;
+      const zoomFactor = this.zoom < ZOOM_THRESHOLD
+        ? 1
+        : Math.min(3.5, this.zoom / ZOOM_THRESHOLD);
+      const screenR = Math.max(1.0, sp.baseRadius * zoomFactor);
       sp.sprite.scale.set(screenR / 16);
 
-      if (hasNeighbors) {
+      // Color + alpha based on state
+      if (sp.id === this.selectedId) {
+        sp.sprite.tint  = 0xffffff;
+        sp.sprite.alpha = 1;
+      } else if (sp.id === this.hoveredId) {
+        sp.sprite.tint  = 0xffffff;
+        sp.sprite.alpha = 1;
+      } else if (hasNeighbors) {
         const hop = this.neighborhoodMap.get(sp.id);
-        if (sp.id === this.selectedId) {
-          sp.sprite.tint  = 0xffffff;
-          sp.sprite.alpha = 1;
-        } else if (hop !== undefined) {
+        if (hop !== undefined) {
           sp.sprite.tint  = HOP_COLORS[Math.min(hop - 1, 2)];
           sp.sprite.alpha = 1;
         } else {
@@ -437,29 +476,49 @@ export class AtlasRenderer {
           sp.sprite.alpha = DIM_ALPHA;
         }
       } else {
-        sp.sprite.tint  = sp.id === this.selectedId ? 0xffffff : sp.color;
-        sp.sprite.alpha = 1;
+        sp.sprite.tint  = sp.color;
+        sp.sprite.alpha = 0.82;
       }
     }
 
-    // --- Selected ring ---
+    // ── Overlay: selected ring + hovered ring ──────────────────────────────
     this.overlayGraphics.clear();
+
+    if (this.hoveredId !== null && this.hoveredId !== this.selectedId) {
+      const sp = this.spriteMap.get(this.hoveredId);
+      if (sp) {
+        const [sx, sy] = this.worldToScreen(sp.x, sp.y);
+        const ZOOM_THRESHOLD = 20;
+        const zoomFactor = this.zoom < ZOOM_THRESHOLD ? 1 : Math.min(3.5, this.zoom / ZOOM_THRESHOLD);
+        const screenR = Math.max(1.0, sp.baseRadius * zoomFactor);
+        // Subtle hover ring
+        this.overlayGraphics.lineStyle(1.5, 0xffffff, 0.5);
+        this.overlayGraphics.drawCircle(sx, sy, screenR + 2.5);
+      }
+    }
+
     if (this.selectedId !== null) {
       const sp = this.spriteMap.get(this.selectedId);
       if (sp) {
         const [sx, sy] = this.worldToScreen(sp.x, sp.y);
-        const r = Math.max(8, sp.baseRadius * Math.min(1, this.zoom / 15) + 4);
-        this.overlayGraphics.lineStyle(2, 0xffffff, 0.9);
-        this.overlayGraphics.drawCircle(sx, sy, r);
-        this.overlayGraphics.lineStyle(4, 0xffffff, 0.2);
-        this.overlayGraphics.drawCircle(sx, sy, r + 4);
+        const ZOOM_THRESHOLD = 20;
+        const zoomFactor = this.zoom < ZOOM_THRESHOLD ? 1 : Math.min(3.5, this.zoom / ZOOM_THRESHOLD);
+        const screenR = Math.max(1.0, sp.baseRadius * zoomFactor);
+        // Bright selection ring + soft glow
+        this.overlayGraphics.lineStyle(2, 0xffffff, 1.0);
+        this.overlayGraphics.drawCircle(sx, sy, screenR + 3);
+        this.overlayGraphics.lineStyle(5, 0xffffff, 0.18);
+        this.overlayGraphics.drawCircle(sx, sy, screenR + 6);
       }
     }
 
-    // --- Cluster labels ---
-    // Show labels only when zoomed out (overview); fade them in
-    const LABEL_ZOOM_MAX = 40;
-    const labelAlpha = Math.max(0, Math.min(1, 1 - (this.zoom - 2) / (LABEL_ZOOM_MAX - 2)));
+    // ── Cluster labels ─────────────────────────────────────────────────────
+    // Visible only while zoomed out; fade as you zoom in
+    const LABEL_FADE_START = 3;   // zoom below this → fully visible
+    const LABEL_FADE_END   = 25;  // zoom above this → hidden
+    const labelAlpha = Math.max(0, Math.min(1,
+      1 - (this.zoom - LABEL_FADE_START) / (LABEL_FADE_END - LABEL_FADE_START)
+    ));
     this.labelContainer.alpha = labelAlpha;
 
     for (const child of this.labelContainer.children) {
@@ -468,14 +527,14 @@ export class AtlasRenderer {
       const [sx, sy] = this.worldToScreen(wx, wy);
       child.x = sx;
       child.y = sy;
-      // Scale label with zoom slightly
-      const lz = Math.max(0.7, Math.min(1.4, this.zoom / 8));
+      // Subtle scale with zoom so labels don't get too large/small
+      const lz = Math.max(0.75, Math.min(1.3, this.zoom / 5));
       child.scale.set(lz);
     }
   }
 
   destroy() {
-    textureCache.clear();
+    sharedTex = null;
     this.app.destroy(false, { children: true });
   }
 }

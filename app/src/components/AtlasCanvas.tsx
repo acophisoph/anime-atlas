@@ -28,7 +28,7 @@ export function AtlasCanvas() {
       canvas: canvasRef.current,
       width,
       height,
-      onHover: (id, sx, sy) => setHovered(id),
+      onHover: (id) => setHovered(id),
       onClick: (id, kind) => setSelected(id, kind),
     });
     rendererRef.current = renderer;
@@ -36,6 +36,7 @@ export function AtlasCanvas() {
     const obs = new ResizeObserver(entries => {
       const e = entries[0];
       renderer.resize(e.contentRect.width, e.contentRect.height);
+      renderer.autoFit();
     });
     obs.observe(wrapRef.current);
 
