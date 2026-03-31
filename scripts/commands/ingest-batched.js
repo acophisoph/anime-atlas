@@ -16,7 +16,8 @@ const DB_PATH = process.env.DB_PATH ??
   path.join(__dirname, '..', '.cache', 'anime-atlas.sqlite');
 const TIME_BUDGET_MS =
   parseInt(process.env.TIME_BUDGET_MINUTES ?? '270', 10) * 60 * 1000;
-const RUN_BATCH_LIMIT = parseInt(process.env.RUN_BATCH_LIMIT ?? '40', 10);
+// 0 = unlimited (rely on TIME_BUDGET_MS only)
+const RUN_BATCH_LIMIT = parseInt(process.env.RUN_BATCH_LIMIT ?? '0', 10);
 const BATCH_MAX_RETRIES = parseInt(process.env.BATCH_MAX_RETRIES ?? '5', 10);
 
 // Priority order: list pages first (they unlock more work), then details
@@ -48,7 +49,7 @@ async function main() {
         console.log('[ingest] Time budget exhausted');
         break;
       }
-      if (batchesProcessed >= RUN_BATCH_LIMIT) {
+      if (RUN_BATCH_LIMIT > 0 && batchesProcessed >= RUN_BATCH_LIMIT) {
         console.log('[ingest] Batch count limit reached');
         break;
       }

@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       batch_limit:
-        description: 'Max batches per run'
-        default: '40'
+        description: 'Max batches per run (0 = time-budget only)'
+        default: '0'
       time_budget:
         description: 'Time budget in minutes'
         default: '270'
@@ -51,8 +51,11 @@ jobs:
       - name: Run batched ingest
         env:
           TIME_BUDGET_MINUTES: ${{ github.event.inputs.time_budget || '270' }}
-          RUN_BATCH_LIMIT: ${{ github.event.inputs.batch_limit || '40' }}
-          REQUESTS_PER_SECOND: '0.35'
+          # 0 = unlimited batches, rely purely on time budget
+          RUN_BATCH_LIMIT: ${{ github.event.inputs.batch_limit || '0' }}
+          # 90 req/min hard cap → 1.5/s max. Run at 80% = 1.2/s.
+          # Adaptive slowdown kicks in automatically via X-RateLimit-Remaining.
+          REQUESTS_PER_SECOND: '1.2'
           BATCH_MAX_RETRIES: '5'
         run: npm run ingest:batched
 

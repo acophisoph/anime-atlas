@@ -253,8 +253,9 @@ export class AtlasRenderer {
 
   private radiusForPoint(p: Point): number {
     const pop = p.popularity || 0;
-    // log scale: 3px for pop=0, up to 9px for pop=1M+
-    return Math.max(2.5, Math.min(9, 2 + Math.log10(pop + 100) * 1.5));
+    // Tighter range: 2–5px base radius. Large popular shows stand out
+    // without overwhelming neighbors.
+    return Math.max(2, Math.min(5, 1.2 + Math.log10(pop + 100) * 0.9));
   }
 
   setGenreMap(gm: Map<number, string[]>) {
@@ -321,21 +322,38 @@ export class AtlasRenderer {
     this.clusters = clusters;
     this.labelContainer.removeChildren();
     for (const cl of clusters) {
-      const label = new PIXI.Text(cl.label, {
-        fontSize: 13,
-        fontWeight: 'bold',
+      // Container: pill bg + text
+      const container = new PIXI.Container();
+
+      const text = new PIXI.Text(cl.label, {
+        fontSize: 12,
+        fontWeight: '700',
         fill: 0xffffff,
         align: 'center',
-        dropShadow: true,
-        dropShadowColor: 0x000000,
-        dropShadowBlur: 6,
-        dropShadowDistance: 0,
       });
-      label.anchor.set(0.5);
-      (label as any).__wx = cl.x;
-      (label as any).__wy = cl.y;
-      (label as any).__size = cl.size;
-      this.labelContainer.addChild(label);
+      text.anchor.set(0.5);
+
+      // Pill background
+      const pad = { x: 10, y: 5 };
+      const bg = new PIXI.Graphics();
+      bg.beginFill(0x0a0a18, 0.75);
+      bg.lineStyle(1, 0xffffff, 0.15);
+      bg.drawRoundedRect(
+        -text.width / 2 - pad.x,
+        -text.height / 2 - pad.y,
+        text.width + pad.x * 2,
+        text.height + pad.y * 2,
+        6
+      );
+      bg.endFill();
+
+      container.addChild(bg);
+      container.addChild(text);
+
+      (container as any).__wx   = cl.x;
+      (container as any).__wy   = cl.y;
+      (container as any).__size = cl.size;
+      this.labelContainer.addChild(container);
     }
   }
 
@@ -399,9 +417,11 @@ export class AtlasRenderer {
       sp.sprite.visible = !offScreen;
       if (offScreen) continue;
 
-      // Size: base radius scaled so physical size stays ~constant regardless of zoom,
-      // but grows when zoomed in past a threshold (reveals individual nodes nicely)
-      const screenR = Math.max(2, sp.baseRadius * Math.min(1, this.zoom / 15));
+      // Physical screen size: stays ~constant at overview, grows when zoomed in.
+      // At zoom < 15 → constant screen size (good overview density).
+      // At zoom >= 15 → scale up so nodes become navigable close-up.
+      const zoomFactor = this.zoom < 15 ? 1 : Math.min(2.5, this.zoom / 15);
+      const screenR = Math.max(1.5, sp.baseRadius * zoomFactor);
       sp.sprite.scale.set(screenR / 16);
 
       if (hasNeighbors) {
@@ -443,15 +463,14 @@ export class AtlasRenderer {
     this.labelContainer.alpha = labelAlpha;
 
     for (const child of this.labelContainer.children) {
-      const label = child as PIXI.Text;
-      const wx = (label as any).__wx as number;
-      const wy = (label as any).__wy as number;
+      const wx = (child as any).__wx as number;
+      const wy = (child as any).__wy as number;
       const [sx, sy] = this.worldToScreen(wx, wy);
-      label.x = sx;
-      label.y = sy;
+      child.x = sx;
+      child.y = sy;
       // Scale label with zoom slightly
       const lz = Math.max(0.7, Math.min(1.4, this.zoom / 8));
-      label.scale.set(lz);
+      child.scale.set(lz);
     }
   }
 

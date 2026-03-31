@@ -115,9 +115,13 @@ export async function computeCoordinates(vectors, ids) {
 
     const umap = new UMAP({
       nComponents: 2,
-      nNeighbors: Math.min(15, subVectors.length - 1),
-      minDist: 0.1,
-      spread: 1.0,
+      // More neighbors = more global structure, better separated clusters
+      nNeighbors: Math.min(25, subVectors.length - 1),
+      // Higher minDist = more intra-cluster spread (less clumping)
+      minDist: 0.25,
+      // Higher spread = wider map overall
+      spread: 1.8,
+      nEpochs: 400,
       random: seededRandom(42),
     });
 
