@@ -1,37 +1,212 @@
 [
   {
     "id": 0,
-    "x": -0.5,
-    "y": -0.5,
-    "size": 4,
-    "label": "Action · Shonen"
+    "x": -0.565275926004536,
+    "y": 0.5098633964626912,
+    "size": 235,
+    "label": "Ecchi · Slice of Life · Large Breasts"
   },
   {
     "id": 1,
-    "x": 0.5,
-    "y": -0.5,
-    "size": 4,
-    "label": "Romance · Drama"
+    "x": 0.6427170347659144,
+    "y": -0.5196844574286107,
+    "size": 202,
+    "label": "Action · Supernatural · Super Power"
   },
   {
     "id": 2,
-    "x": -0.5,
-    "y": 0.5,
-    "size": 4,
-    "label": "Sci-Fi · Mecha"
+    "x": -0.5760085553807778,
+    "y": 0.7774199321257188,
+    "size": 239,
+    "label": "Drama · Mystery · Death Game"
   },
   {
     "id": 3,
-    "x": 0.5,
-    "y": 0.5,
-    "size": 4,
-    "label": "Slice of Life · Comedy"
+    "x": -0.27905046397847544,
+    "y": 0.6515755659470128,
+    "size": 316,
+    "label": "Drama · Sci-Fi · Tragedy"
   },
   {
     "id": 4,
-    "x": 0,
-    "y": 0,
-    "size": 4,
-    "label": "Fantasy · Adventure"
+    "x": 0.3561286207943102,
+    "y": -0.7602624214270023,
+    "size": 141,
+    "label": "Drama · Romance · Coming of Age"
+  },
+  {
+    "id": 5,
+    "x": -0.4374076796289966,
+    "y": 0.9009159609975391,
+    "size": 250,
+    "label": "Action · Comedy · Politics"
+  },
+  {
+    "id": 6,
+    "x": 0.8155596131901061,
+    "y": -0.7487063598118139,
+    "size": 76,
+    "label": "Ecchi · Fantasy · Female Harem"
+  },
+  {
+    "id": 7,
+    "x": -0.7252984278908845,
+    "y": 0.709546956902451,
+    "size": 275,
+    "label": "Drama · Music · Female Protagonist"
+  },
+  {
+    "id": 8,
+    "x": -0.8433709737246562,
+    "y": 0.5362590520450224,
+    "size": 241,
+    "label": "Comedy · Drama · Female Protagonist"
+  },
+  {
+    "id": 9,
+    "x": -0.20725574834964644,
+    "y": 0.47076148698938713,
+    "size": 213,
+    "label": "Drama · Sci-Fi · Female Protagonist"
+  },
+  {
+    "id": 10,
+    "x": 0.44704386078294717,
+    "y": -0.8925681352995456,
+    "size": 171,
+    "label": "Comedy · Slice of Life · School"
+  },
+  {
+    "id": 11,
+    "x": -0.4228391558453044,
+    "y": 0.5861579098748578,
+    "size": 275,
+    "label": "Drama · Music · Coming of Age"
+  },
+  {
+    "id": 12,
+    "x": 0.42654464766697037,
+    "y": -0.49699501739883034,
+    "size": 122,
+    "label": "Mystery · Drama · Tragedy"
+  },
+  {
+    "id": 13,
+    "x": -0.269071291648905,
+    "y": 0.842272155248096,
+    "size": 285,
+    "label": "Comedy · Horror · Tragedy"
+  },
+  {
+    "id": 14,
+    "x": -0.5591605845738225,
+    "y": 0.6512706708760687,
+    "size": 257,
+    "label": "Action · Drama · E-Sports"
+  },
+  {
+    "id": 15,
+    "x": 0.0844156554496931,
+    "y": -0.6561538849941556,
+    "size": 36,
+    "label": "Sports · Drama · Primarily Male Cast"
+  },
+  {
+    "id": 16,
+    "x": -0.6995480635306907,
+    "y": 0.5721745735701922,
+    "size": 236,
+    "label": "Drama · Horror · Dissociative Identities"
+  },
+  {
+    "id": 17,
+    "x": -0.13235684503135345,
+    "y": 0.7484538392607775,
+    "size": 220,
+    "label": "Comedy · Sci-Fi · Female Protagonist"
+  },
+  {
+    "id": 18,
+    "x": -0.11808131650436926,
+    "y": 0.5978930613939442,
+    "size": 228,
+    "label": "Drama · Romance · Male Protagonist"
+  },
+  {
+    "id": 19,
+    "x": 0.9068358176973748,
+    "y": -0.5941530983444773,
+    "size": 280,
+    "label": "Fantasy · Action · Magic"
+  },
+  {
+    "id": 20,
+    "x": -0.41474316064974265,
+    "y": 0.7444316375517845,
+    "size": 320,
+    "label": "Comedy · Drama · Ice Skating"
+  },
+  {
+    "id": 21,
+    "x": -0.49957426690618817,
+    "y": 0.40097344425354775,
+    "size": 210,
+    "label": "Comedy · Action · Surreal Comedy"
+  },
+  {
+    "id": 22,
+    "x": 0.49770894985490693,
+    "y": -0.35137216578618446,
+    "size": 83,
+    "label": "Action · Sci-Fi · Female Protagonist"
+  },
+  {
+    "id": 23,
+    "x": 0.25843390428326213,
+    "y": -0.9492746705814559,
+    "size": 94,
+    "label": "Slice of Life · Comedy · Female Protagonist"
+  },
+  {
+    "id": 24,
+    "x": -0.609999108356582,
+    "y": 0.8989857463314833,
+    "size": 212,
+    "label": "Romance · Sci-Fi · Male Protagonist"
+  },
+  {
+    "id": 25,
+    "x": -0.6993107342935846,
+    "y": 0.4259876269836132,
+    "size": 198,
+    "label": "Comedy · Fantasy · Episodic"
+  },
+  {
+    "id": 26,
+    "x": -0.3502069952056308,
+    "y": 0.45226989097057957,
+    "size": 260,
+    "label": "Mystery · Drama · Male Protagonist"
+  },
+  {
+    "id": 27,
+    "x": -0.8930273019150274,
+    "y": 0.6943876259772849,
+    "size": 249,
+    "label": "Slice of Life · Music · Ensemble Cast"
+  },
+  {
+    "id": 28,
+    "x": -0.7710349100639444,
+    "y": 0.8457719214519854,
+    "size": 228,
+    "label": "Comedy · Romance · Acting"
+  },
+  {
+    "id": 29,
+    "x": 0.6236814749101491,
+    "y": -0.8475951617813611,
+    "size": 114,
+    "label": "Comedy · Romance · Heterosexual"
   }
 ]
