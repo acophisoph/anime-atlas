@@ -93,23 +93,49 @@ export async function computeCoordinates(vectors, ids) {
     return deterministicLayout(ids);
   }
 
+  // Filter out all-zero vectors — UMAP produces NaN for identical zero vectors.
+  // Keep a fallback position map for them and only UMAP the non-zero subset.
+  const spiral = deterministicLayout(ids);
+  const spiralMap = new Map(spiral.map(p => [p.id, p]));
+
+  const nonZeroIdx = [];
+  for (let i = 0; i < vectors.length; i++) {
+    if (vectors[i].some(v => v !== 0)) nonZeroIdx.push(i);
+  }
+
+  if (nonZeroIdx.length < UMAP_THRESHOLD) {
+    console.log(`[coords] Only ${nonZeroIdx.length} non-zero vectors, using spiral layout`);
+    return spiral;
+  }
+
   try {
     const { UMAP } = await import('umap-js');
-    const data = vectors.map(v => Array.from(v));
+    const subVectors = nonZeroIdx.map(i => Array.from(vectors[i]));
+    const subIds     = nonZeroIdx.map(i => ids[i]);
 
     const umap = new UMAP({
       nComponents: 2,
-      nNeighbors: Math.min(15, vectors.length - 1),
+      nNeighbors: Math.min(15, subVectors.length - 1),
       minDist: 0.1,
       spread: 1.0,
       random: seededRandom(42),
     });
 
-    const embedding = umap.fit(data);
-    return embedding.map((coords, i) => ({ id: ids[i], x: coords[0], y: coords[1] }));
+    const embedding = umap.fit(subVectors);
+
+    // Build result: UMAP coords for non-zero vectors, spiral for zero-vector stubs
+    const resultMap = new Map();
+    for (let i = 0; i < subIds.length; i++) {
+      const [x, y] = embedding[i];
+      if (!isNaN(x) && !isNaN(y)) {
+        resultMap.set(subIds[i], { id: subIds[i], x, y });
+      }
+    }
+
+    return ids.map(id => resultMap.get(id) ?? spiralMap.get(id) ?? { id, x: 0, y: 0 });
   } catch (err) {
-    console.warn('[coords] UMAP failed, falling back to grid:', err.message);
-    return deterministicLayout(ids);
+    console.warn('[coords] UMAP failed, falling back to spiral:', err.message);
+    return spiral;
   }
 }
 
