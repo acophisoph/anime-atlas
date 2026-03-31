@@ -74,6 +74,8 @@ const search = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'index', 'search.j
 check(Array.isArray(search), 'search.json must be an array');
 check(search.length === manifest.total_media_in_db + manifest.total_people_in_db,
   `search.json entry count (${search.length}) != media+people (${manifest.total_media_in_db + manifest.total_people_in_db})`);
+check(pointCount === manifest.artifacts.points_count,
+  `points.bin count (${pointCount}) != manifest.artifacts.points_count (${manifest.artifacts.points_count})`);
 
 // 6. Graph bin magic checks
 const GRAPH_MAGIC = 0x41544c47;

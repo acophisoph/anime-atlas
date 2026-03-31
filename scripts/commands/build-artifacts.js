@@ -61,11 +61,17 @@ async function main() {
   const hasStaffForAll = mediaRows.length > 0 && mediaRows.every(m => mediaWithStaff.has(m.id));
   const hasCharsForAll = mediaRows.length > 0 && mediaRows.every(m => mediaWithChars.has(m.id));
 
+  // Only plot media that have real data (exclude relation stubs with no genres/tags/popularity)
+  const plottableMedia = mediaRows.filter(m =>
+    m.popularity > 0 || m.genres_json !== '[]' || m.tags_json !== '[]'
+  );
+  console.log(`[artifacts] Plottable media: ${plottableMedia.length} / ${mediaRows.length} (${mediaRows.length - plottableMedia.length} stubs excluded from plot)`);
+
   // --- COORDINATES ---
   console.log('[artifacts] Computing media coordinates...');
-  const { vectors: mediaVecs } = buildMediaFeatureVectors(mediaRows);
+  const { vectors: mediaVecs } = buildMediaFeatureVectors(plottableMedia);
   const mediaCoords = normalizeCoords(
-    await computeCoordinates(mediaVecs, mediaRows.map(m => m.id))
+    await computeCoordinates(mediaVecs, plottableMedia.map(m => m.id))
   );
   const mediaCoordsMap = new Map(mediaCoords.map(c => [c.id, c]));
 
@@ -88,16 +94,39 @@ async function main() {
   );
   const peopleCoordsMap = new Map(peopleCoords.map(c => [c.id, c]));
 
+  // Genre → color palette (packed 0xRRGGBB)
+  const GENRE_COLORS = {
+    'Action': 0xef4444, 'Adventure': 0xf97316, 'Comedy': 0xeab308,
+    'Drama': 0x22c55e, 'Fantasy': 0xa855f7, 'Romance': 0xec4899,
+    'Sci-Fi': 0x06b6d4, 'Mystery': 0x6366f1, 'Horror': 0xdc2626,
+    'Slice of Life': 0x84cc16, 'Sports': 0x14b8a6, 'Supernatural': 0x8b5cf6,
+    'Music': 0xf59e0b, 'Psychological': 0x94a3b8, 'Mecha': 0x0ea5e9,
+    'Ecchi': 0xf472b6, 'Mahou Shoujo': 0xe879f9, 'Harem': 0xfbbf24,
+    'Thriller': 0x475569,
+  };
+
+  function resolveColor(coverColor, genresJson) {
+    if (coverColor) {
+      const s = coverColor.replace('#', '');
+      if (s.length === 6) return parseInt(s, 16);
+    }
+    const genres = JSON.parse(genresJson || '[]');
+    for (const g of genres) {
+      if (GENRE_COLORS[g]) return GENRE_COLORS[g];
+    }
+    return 0x5b9cf6; // default blue
+  }
+
   // --- POINTS.BIN ---
   const allPoints = [
-    ...mediaRows.map(m => {
+    ...plottableMedia.map(m => {
       const c = mediaCoordsMap.get(m.id) ?? { x: 0, y: 0 };
       return {
         id: m.id, kind: 'media',
         x: c.x, y: c.y,
         popularity: m.popularity ?? 0,
         averageScore: m.average_score ?? 0,
-        color: m.cover_color ?? null,
+        color: resolveColor(m.cover_color, m.genres_json),
       };
     }),
     ...peopleRows.map(p => {
@@ -105,7 +134,8 @@ async function main() {
       return {
         id: p.id, kind: 'person',
         x: c.x, y: c.y,
-        popularity: 0, averageScore: 0, color: null,
+        popularity: 0, averageScore: 0,
+        color: 0xf97316,
       };
     }),
   ];
@@ -113,7 +143,7 @@ async function main() {
 
   // --- CLUSTERS ---
   console.log('[artifacts] Clustering...');
-  const clusters = await clusterPoints(allPoints, mediaRows, peopleRows);
+  const clusters = await clusterPoints(allPoints, plottableMedia, peopleRows);
   fs.writeFileSync(
     path.join(DATA_DIR, 'clusters.json'),
     JSON.stringify(clusters, null, 2)
@@ -245,6 +275,7 @@ async function main() {
     generated_at: Date.now(),
     last_ingest_run_timestamp: lastRunAt,
     total_media_in_db: totalMedia,
+    total_plottable_media: plottableMedia.length,
     total_people_in_db: totalPeople,
     completed_batches_count: doneCount,
     pending_batches_count: pendingCount,

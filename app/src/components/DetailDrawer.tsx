@@ -1,26 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useStore } from '../lib/store';
-import { loadMediaMeta, loadPersonMeta, loadGraph } from '../lib/data-loader';
+import { loadMediaMeta, loadPersonMeta } from '../lib/data-loader';
 import { getNeighborhood } from '../lib/graph-utils';
-import type { MediaMeta, PersonMeta, ConnectionMethod } from '../types';
+import type { MediaMeta, PersonMeta, Graph } from '../types';
+
+type ConnTab = 'info' | 'connections' | 'similar';
 
 export function DetailDrawer() {
-  const selectedId   = useStore(s => s.selectedId);
-  const selectedKind = useStore(s => s.selectedKind);
-  const lang         = useStore(s => s.lang);
-  const setSelected  = useStore(s => s.setSelected);
-  const setNeighborhood = useStore(s => s.setNeighborhood);
+  const selectedId    = useStore(s => s.selectedId);
+  const selectedKind  = useStore(s => s.selectedKind);
+  const lang          = useStore(s => s.lang);
+  const setSelected   = useStore(s => s.setSelected);
+  const setNeighborhood  = useStore(s => s.setNeighborhood);
   const clearNeighborhood = useStore(s => s.clearNeighborhood);
+  const neighborhoodMap  = useStore(s => s.neighborhoodMap);
   const graphRelations = useStore(s => s.graphRelations);
   const graphStaff     = useStore(s => s.graphStaff);
   const graphCollab    = useStore(s => s.graphCollab);
+  const searchEntries  = useStore(s => s.searchEntries);
+  const points         = useStore(s => s.points);
 
   const [meta, setMeta] = useState<MediaMeta | PersonMeta | null>(null);
-  const [connMethod, setConnMethod] = useState<ConnectionMethod>('relations');
+  const [tab, setTab]   = useState<ConnTab>('info');
+  const [connMethod, setConnMethod] = useState<'relations' | 'staff' | 'collab'>('relations');
   const [hopDepth, setHopDepth]     = useState(1);
+  const [minWeight, setMinWeight]   = useState(1);
 
   useEffect(() => {
     if (selectedId === null) { setMeta(null); return; }
+    setTab('info');
     if (selectedKind === 'media') {
       loadMediaMeta(selectedId).then(setMeta).catch(() => setMeta(null));
     } else {
@@ -28,186 +36,444 @@ export function DetailDrawer() {
     }
   }, [selectedId, selectedKind]);
 
-  function exploreConnections() {
+  const exploreConnections = useCallback(() => {
     if (selectedId === null) return;
-    let graph = graphRelations;
-    if (connMethod === 'staff') graph = graphStaff;
-    else if (connMethod === 'relations') graph = graphRelations;
-    if (!graph) return;
-    const map = getNeighborhood(graph, selectedId, hopDepth);
+    let graph = connMethod === 'relations' ? graphRelations
+              : connMethod === 'staff'     ? graphStaff
+              : graphCollab;
+    if (!graph || graph.nodeCount === 0) return;
+    const map = getNeighborhood(graph, selectedId, hopDepth, minWeight);
     setNeighborhood(map);
-  }
+  }, [selectedId, connMethod, hopDepth, minWeight, graphRelations, graphStaff, graphCollab, setNeighborhood]);
 
-  if (selectedId === null || !meta) {
-    return null;
-  }
+  const close = () => { setSelected(null, null); clearNeighborhood(); };
+
+  if (selectedId === null) return null;
 
   const isMedia = selectedKind === 'media';
-  const m = meta as MediaMeta;
-  const p = meta as PersonMeta;
+  const m = meta as MediaMeta | null;
+  const p = meta as PersonMeta | null;
 
-  const title = isMedia
-    ? (lang === 'jp' ? m.title.native : m.title.english) || m.title.romaji || String(selectedId)
-    : (lang === 'jp' ? p.nameNative : p.nameFull) || String(selectedId);
+  const title = !meta ? '…'
+    : isMedia
+      ? (lang === 'jp' ? m!.title.native : m!.title.english) || m!.title.romaji || String(selectedId)
+      : (lang === 'jp' ? p!.nameNative : p!.nameFull) || String(selectedId);
 
-  const subtitle = isMedia
-    ? [m.type, m.format, m.seasonYear].filter(Boolean).join(' · ')
-    : p.language || '';
+  const subtitle = !meta ? ''
+    : isMedia
+      ? [m!.type, m!.format, m!.seasonYear].filter(Boolean).join(' · ')
+      : p!.language || '';
+
+  // Neighbor list with names
+  const neighborEntries = [...neighborhoodMap.entries()]
+    .sort((a, b) => a[1] - b[1]) // sort by hop
+    .slice(0, 60)
+    .map(([id, hop]) => {
+      const se = searchEntries.find(e => e.id === id);
+      const name = se ? (lang === 'jp' ? se.jp : se.en) || se.ro : String(id);
+      return { id, hop, name, kind: se?.kind ?? 'media' };
+    });
+
+  const graphAvailable = (g: typeof graphRelations) => g && g.nodeCount > 0;
 
   return (
     <aside style={styles.drawer}>
+      {/* Header */}
       <div style={styles.header}>
-        <div>
-          <div style={styles.title}>{title}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={styles.title} title={title}>{title}</div>
           {subtitle && <div style={styles.subtitle}>{subtitle}</div>}
         </div>
-        <button style={styles.closeBtn} onClick={() => { setSelected(null, null); clearNeighborhood(); }}>✕</button>
+        <button style={styles.closeBtn} onClick={close}>✕</button>
       </div>
 
-      {isMedia && m.coverImage.large && (
+      {/* Cover image */}
+      {isMedia && m?.coverImage.large && (
         <img src={m.coverImage.large} alt={title} style={styles.cover} />
       )}
 
-      {isMedia && (
-        <>
-          {m.genres.length > 0 && (
-            <div style={styles.section}>
-              <div style={styles.sectionLabel}>Genres</div>
-              <div style={styles.tagRow}>
-                {m.genres.map(g => <Tag key={g} label={g} />)}
-              </div>
-            </div>
-          )}
-
-          {m.tags.slice(0, 8).length > 0 && (
-            <div style={styles.section}>
-              <div style={styles.sectionLabel}>Tags</div>
-              <div style={styles.tagRow}>
-                {m.tags.slice(0, 8).map(t => <Tag key={t.id} label={t.name} />)}
-              </div>
-            </div>
-          )}
-
-          {m.studios.length > 0 && (
-            <div style={styles.section}>
-              <div style={styles.sectionLabel}>Studios</div>
-              <div style={styles.tagRow}>
-                {m.studios.filter(s => s.isAnimationStudio).map(s => (
-                  <Tag key={s.id} label={s.name} color="#2a3a5a" />
-                ))}
-              </div>
-            </div>
-          )}
-
+      {/* Score bar */}
+      {isMedia && m && (m.averageScore || m.popularity) && (
+        <div style={styles.scoreRow}>
           {m.averageScore && (
-            <div style={styles.score}>
-              Score: <span style={{ color: '#ffd700' }}>{m.averageScore}%</span>
-              {' '}· Popularity: <span style={{ color: '#93c5fd' }}>{m.popularity?.toLocaleString()}</span>
-            </div>
+            <span style={styles.scorePill}>
+              ⭐ {m.averageScore}%
+            </span>
           )}
-        </>
-      )}
-
-      {!isMedia && p.description && (
-        <div style={styles.section}>
-          <div style={styles.sectionLabel}>About</div>
-          <div style={styles.bio}>{p.description.slice(0, 300)}{p.description.length > 300 ? '…' : ''}</div>
+          {m.popularity ? (
+            <span style={styles.popPill}>
+              🔥 {m.popularity.toLocaleString()} fans
+            </span>
+          ) : null}
         </div>
       )}
 
-      {!isMedia && p.siteUrl && (
-        <a href={p.siteUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
-          AniList Profile ↗
-        </a>
-      )}
-
-      {/* Explore Connections */}
-      <div style={styles.section}>
-        <div style={styles.sectionLabel}>Explore Connections</div>
-        <div style={styles.controlRow}>
-          <select style={styles.select} value={connMethod}
-            onChange={e => setConnMethod(e.target.value as ConnectionMethod)}>
-            {isMedia && <option value="relations">Relations</option>}
-            {isMedia && <option value="staff">Staff Overlap</option>}
-            {!isMedia && <option value="collab">Collaborators</option>}
-          </select>
-          <select style={styles.select} value={hopDepth}
-            onChange={e => setHopDepth(+e.target.value)}>
-            <option value={1}>1 hop</option>
-            <option value={2}>2 hops</option>
-            <option value={3}>3 hops</option>
-          </select>
-        </div>
-        <button style={styles.actionBtn} onClick={exploreConnections}>
-          Show Connections
-        </button>
-        <button style={{ ...styles.actionBtn, ...styles.secondaryBtn }} onClick={clearNeighborhood}>
-          Clear Overlay
-        </button>
+      {/* Tabs */}
+      <div style={styles.tabs}>
+        {(['info', 'connections', 'similar'] as ConnTab[]).map(t => (
+          <button key={t} style={{ ...styles.tab, ...(tab === t ? styles.tabActive : {}) }}
+            onClick={() => setTab(t)}>
+            {t === 'info' ? 'Info' : t === 'connections' ? `Connections${neighborhoodMap.size > 0 ? ` (${neighborhoodMap.size})` : ''}` : 'Similar'}
+          </button>
+        ))}
       </div>
 
-      {/* Hop Legend */}
-      <div style={styles.hopLegend}>
-        {[1, 2, 3].map((h, i) => (
-          <div key={h} style={styles.hopItem}>
-            <div style={{ ...styles.hopDot, background: ['#ffd700','#ff8c00','#ff4500'][i] }} />
-            <span>Hop {h}</span>
-          </div>
-        ))}
+      <div style={styles.body}>
+        {tab === 'info' && (
+          <InfoTab meta={meta} isMedia={isMedia} />
+        )}
+
+        {tab === 'connections' && (
+          <ConnectionsTab
+            isMedia={isMedia}
+            connMethod={connMethod}
+            setConnMethod={setConnMethod}
+            hopDepth={hopDepth}
+            setHopDepth={setHopDepth}
+            minWeight={minWeight}
+            setMinWeight={setMinWeight}
+            onExplore={exploreConnections}
+            onClear={clearNeighborhood}
+            neighborEntries={neighborEntries}
+            graphAvailable={graphAvailable}
+            graphRelations={graphRelations}
+            graphStaff={graphStaff}
+            graphCollab={graphCollab}
+            onSelectNode={(id: number, kind: 'media' | 'person') => setSelected(id, kind)}
+            lang={lang}
+          />
+        )}
+
+        {tab === 'similar' && (
+          <SimilarTab
+            selectedId={selectedId}
+            isMedia={isMedia}
+            graphRelations={graphRelations}
+            graphStaff={graphStaff}
+            searchEntries={searchEntries}
+            onSelect={(id, kind) => setSelected(id, kind)}
+            lang={lang}
+          />
+        )}
       </div>
     </aside>
   );
 }
 
-function Tag({ label, color = '#1e2040' }: { label: string; color?: string }) {
+// ---- Info Tab ----
+function InfoTab({ meta, isMedia }: { meta: MediaMeta | PersonMeta | null; isMedia: boolean }) {
+  if (!meta) return <div style={styles.loading}>Loading…</div>;
+
+  if (isMedia) {
+    const m = meta as MediaMeta;
+    return (
+      <div style={styles.infoWrap}>
+        {m.genres.length > 0 && (
+          <Section label="Genres">
+            <div style={styles.tagRow}>{m.genres.map(g => <Tag key={g} label={g} genre={g} />)}</div>
+          </Section>
+        )}
+        {m.tags.slice(0, 10).length > 0 && (
+          <Section label="Tags">
+            <div style={styles.tagRow}>
+              {m.tags.slice(0, 10).map(t => <Tag key={t.id} label={`${t.name} (${t.rank})`} />)}
+            </div>
+          </Section>
+        )}
+        {m.studios.filter(s => s.isAnimationStudio).length > 0 && (
+          <Section label="Animation Studio">
+            <div style={styles.tagRow}>
+              {m.studios.filter(s => s.isAnimationStudio).map(s => (
+                <Tag key={s.id} label={s.name} color="#1e3a5f" />
+              ))}
+            </div>
+          </Section>
+        )}
+      </div>
+    );
+  }
+
+  const p = meta as PersonMeta;
   return (
-    <span style={{
-      padding: '2px 8px', borderRadius: 10, background: color,
-      border: '1px solid #2a2a50', color: '#9090c8', fontSize: 11,
-    }}>{label}</span>
+    <div style={styles.infoWrap}>
+      {p.siteUrl && (
+        <a href={p.siteUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
+          AniList Profile ↗
+        </a>
+      )}
+      {p.description && (
+        <Section label="About">
+          <p style={styles.bio}>{p.description.replace(/<[^>]*>/g, '').slice(0, 400)}…</p>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+// ---- Connections Tab ----
+function ConnectionsTab({
+  isMedia, connMethod, setConnMethod, hopDepth, setHopDepth,
+  minWeight, setMinWeight, onExplore, onClear, neighborEntries,
+  graphAvailable, graphRelations, graphStaff, graphCollab, onSelectNode, lang,
+}: any) {
+  const hopColors = ['#fbbf24', '#fb923c', '#f87171'];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Method selector */}
+      <div>
+        <Label>Edge type</Label>
+        <div style={styles.segGroup}>
+          {isMedia && (
+            <>
+              <SegBtn active={connMethod === 'relations'} onClick={() => setConnMethod('relations')}
+                disabled={!graphAvailable(graphRelations)}>
+                Relations {!graphAvailable(graphRelations) && '(loading)'}
+              </SegBtn>
+              <SegBtn active={connMethod === 'staff'} onClick={() => setConnMethod('staff')}
+                disabled={!graphAvailable(graphStaff)}>
+                Staff overlap {!graphAvailable(graphStaff) && '(loading)'}
+              </SegBtn>
+            </>
+          )}
+          {!isMedia && (
+            <SegBtn active={connMethod === 'collab'} onClick={() => setConnMethod('collab')}
+              disabled={!graphAvailable(graphCollab)}>
+              Collaborators {!graphAvailable(graphCollab) && '(loading)'}
+            </SegBtn>
+          )}
+        </div>
+      </div>
+
+      {/* Hop depth */}
+      <div>
+        <Label>Hops out — {hopDepth}</Label>
+        <input type="range" min={1} max={3} value={hopDepth}
+          onChange={e => setHopDepth(+e.target.value)}
+          style={{ width: '100%', accentColor: '#5b9cf6' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666688' }}>
+          <span>1</span><span>2</span><span>3</span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button style={styles.primaryBtn} onClick={onExplore}>
+          Show connections
+        </button>
+        {neighborEntries.length > 0 && (
+          <button style={styles.ghostBtn} onClick={onClear}>Clear</button>
+        )}
+      </div>
+
+      {/* Hop legend */}
+      {neighborEntries.length > 0 && (
+        <div style={styles.hopLegend}>
+          {[1,2,3].map((h,i) => (
+            <span key={h} style={styles.hopPill}>
+              <span style={{ ...styles.hopDot, background: hopColors[i] }} />
+              {h} hop
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Neighbor list */}
+      {neighborEntries.length > 0 && (
+        <div>
+          <Label>{neighborEntries.length} nodes reachable</Label>
+          <div style={styles.neighborList}>
+            {neighborEntries.map(({ id, hop, name, kind }: any) => (
+              <div key={id} style={styles.neighborRow} onClick={() => onSelectNode(id, kind)}>
+                <span style={{ ...styles.hopBadge, background: hopColors[hop - 1] }}>{hop}</span>
+                <span style={styles.neighborName}>{name}</span>
+                <span style={styles.neighborKind}>{kind === 'media' ? '🎬' : '👤'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {neighborEntries.length === 0 && (
+        <div style={styles.hint}>
+          Select an edge type and click "Show connections" to explore the network from this node.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Similar Tab ----
+function SimilarTab({ selectedId, isMedia, graphRelations, graphStaff, searchEntries, onSelect, lang }: {
+  selectedId: number; isMedia: boolean;
+  graphRelations: Graph | null; graphStaff: Graph | null;
+  searchEntries: any[]; onSelect: (id: number, kind: 'media' | 'person') => void; lang: string;
+}) {
+  const graph: Graph | null = isMedia
+    ? (graphStaff && graphStaff.nodeCount > 0 ? graphStaff : graphRelations)
+    : null;
+
+  if (!graph || graph.nodeCount === 0) {
+    return <div style={styles.hint}>Similar items are computed from staff overlap graphs — available after more ingest runs complete.</div>;
+  }
+  const map = getNeighborhood(graph, selectedId, 1, 0);
+  const similar = [...map.keys()].slice(0, 20).map(id => {
+    const se = searchEntries.find((e: any) => e.id === id);
+    return { id, name: se ? (lang === 'jp' ? se.jp : se.en) || se.ro : String(id), kind: (se?.kind ?? 'media') as 'media' | 'person' };
+  });
+
+  return (
+    <div style={styles.neighborList}>
+      {similar.map(({ id, name, kind }) => (
+        <div key={id} style={styles.neighborRow} onClick={() => onSelect(id, kind)}>
+          <span style={styles.neighborName}>{name}</span>
+          <span style={styles.neighborKind}>{kind === 'media' ? '🎬' : '👤'}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Small components ----
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <div style={styles.label}>{children}</div>;
+}
+
+const GENRE_COLORS: Record<string, string> = {
+  'Action': '#ef4444', 'Adventure': '#f97316', 'Comedy': '#eab308',
+  'Drama': '#22c55e', 'Fantasy': '#a855f7', 'Romance': '#ec4899',
+  'Sci-Fi': '#06b6d4', 'Mystery': '#6366f1', 'Horror': '#dc2626',
+  'Slice of Life': '#84cc16', 'Sports': '#14b8a6', 'Supernatural': '#8b5cf6',
+  'Music': '#f59e0b', 'Psychological': '#94a3b8', 'Mecha': '#0ea5e9',
+};
+
+function Tag({ label, genre, color }: { label: string; genre?: string; color?: string }) {
+  const bg = color ?? (genre && GENRE_COLORS[genre] ? GENRE_COLORS[genre] + '22' : '#1e1e38');
+  const border = genre && GENRE_COLORS[genre] ? GENRE_COLORS[genre] + '66' : '#2a2a50';
+  const text = genre && GENRE_COLORS[genre] ? GENRE_COLORS[genre] : '#9090c8';
+  return (
+    <span style={{ padding: '3px 9px', borderRadius: 10, background: bg,
+      border: `1px solid ${border}`, color: text, fontSize: 11, fontWeight: 600 }}>
+      {label}
+    </span>
+  );
+}
+
+function SegBtn({ active, disabled, onClick, children }: any) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      flex: 1, padding: '5px 0', fontSize: 11, border: '1px solid #2a2a40',
+      borderRadius: 5, cursor: disabled ? 'default' : 'pointer',
+      background: active ? '#2a3a6a' : 'transparent',
+      color: active ? '#93c5fd' : disabled ? '#444466' : '#8888a8',
+      fontWeight: active ? 600 : 400,
+    }}>
+      {children}
+    </button>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
   drawer: {
-    width: 300, flexShrink: 0, background: '#111118', borderLeft: '1px solid #1e1e2e',
-    overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 0,
+    width: 320, flexShrink: 0, background: '#0e0e1a',
+    borderLeft: '1px solid #1a1a2e',
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
   },
   header: {
-    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-    marginBottom: 12, gap: 8,
+    display: 'flex', alignItems: 'flex-start', gap: 8,
+    padding: '14px 16px 10px', borderBottom: '1px solid #1a1a2e', flexShrink: 0,
   },
-  title: { fontWeight: 700, fontSize: 15, color: '#e8e8f8', lineHeight: 1.3 },
-  subtitle: { fontSize: 12, color: '#8888a8', marginTop: 2 },
+  title: {
+    fontWeight: 700, fontSize: 15, color: '#e8e8f8', lineHeight: 1.3,
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+  },
+  subtitle: { fontSize: 11, color: '#6666a0', marginTop: 3 },
   closeBtn: {
-    border: 'none', background: 'transparent', color: '#888', cursor: 'pointer', fontSize: 16,
-    padding: 4, lineHeight: 1, flexShrink: 0,
+    border: 'none', background: 'transparent', color: '#555577',
+    cursor: 'pointer', fontSize: 17, padding: '0 2px', lineHeight: 1, flexShrink: 0,
+    marginTop: 1,
   },
   cover: {
-    width: '100%', maxHeight: 200, objectFit: 'cover',
-    borderRadius: 8, marginBottom: 12,
+    width: '100%', maxHeight: 180, objectFit: 'cover', flexShrink: 0,
   },
-  section: { marginBottom: 14 },
-  sectionLabel: {
-    fontSize: 11, fontWeight: 600, color: '#6666a0',
-    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6,
+  scoreRow: {
+    display: 'flex', gap: 8, padding: '8px 16px', flexShrink: 0,
   },
-  tagRow: { display: 'flex', flexWrap: 'wrap', gap: 4 },
-  score: { fontSize: 12, color: '#8888a8', marginBottom: 12 },
-  bio: { fontSize: 12, color: '#9090b0', lineHeight: 1.6 },
-  link: { display: 'block', color: '#5b9cf6', fontSize: 13, marginBottom: 12 },
-  controlRow: { display: 'flex', gap: 6, marginBottom: 6 },
-  select: {
-    flex: 1, padding: '5px 8px', borderRadius: 5, border: '1px solid #2a2a40',
-    background: '#1a1a28', color: '#c8c8e8', fontSize: 12, outline: 'none',
+  scorePill: {
+    fontSize: 12, color: '#fbbf24', background: '#2a2010',
+    border: '1px solid #4a3820', borderRadius: 12, padding: '2px 10px',
   },
-  actionBtn: {
-    width: '100%', padding: '8px 0', borderRadius: 6, border: 'none',
-    background: '#2030a0', color: '#e8e8f8', cursor: 'pointer', fontSize: 13,
-    marginBottom: 6,
+  popPill: {
+    fontSize: 12, color: '#93c5fd', background: '#101a2a',
+    border: '1px solid #1e3a5f', borderRadius: 12, padding: '2px 10px',
   },
-  secondaryBtn: { background: '#1e1e38', color: '#9090c8' },
-  hopLegend: { display: 'flex', gap: 12, marginTop: 4 },
-  hopItem: { display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#8888a8' },
-  hopDot: { width: 10, height: 10, borderRadius: '50%' },
+  tabs: {
+    display: 'flex', borderBottom: '1px solid #1a1a2e', flexShrink: 0,
+  },
+  tab: {
+    flex: 1, padding: '9px 4px', border: 'none', background: 'transparent',
+    color: '#6666a0', cursor: 'pointer', fontSize: 12,
+    borderBottom: '2px solid transparent', transition: 'all 0.15s',
+  },
+  tabActive: { color: '#93c5fd', borderBottomColor: '#3b82f6', fontWeight: 600 },
+  body: {
+    flex: 1, overflowY: 'auto', padding: 16,
+    scrollbarWidth: 'thin',
+  },
+  infoWrap: { display: 'flex', flexDirection: 'column' },
+  tagRow: { display: 'flex', flexWrap: 'wrap', gap: 5 },
+  label: {
+    fontSize: 10, fontWeight: 700, color: '#444466',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 7,
+  },
+  link: { color: '#5b9cf6', fontSize: 13, marginBottom: 14, display: 'block' },
+  bio: { fontSize: 12, color: '#9090b0', lineHeight: 1.7, margin: 0 },
+  loading: { color: '#444466', fontSize: 13, padding: '20px 0' },
+  hint: { fontSize: 12, color: '#444466', lineHeight: 1.6 },
+  segGroup: { display: 'flex', gap: 4 },
+  primaryBtn: {
+    flex: 1, padding: '9px 0', borderRadius: 7, border: 'none',
+    background: '#1e40af', color: '#e8e8f8', cursor: 'pointer',
+    fontSize: 13, fontWeight: 600,
+  },
+  ghostBtn: {
+    padding: '9px 14px', borderRadius: 7, border: '1px solid #2a2a40',
+    background: 'transparent', color: '#8888a8', cursor: 'pointer', fontSize: 12,
+  },
+  hopLegend: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  hopPill: {
+    display: 'flex', alignItems: 'center', gap: 5,
+    fontSize: 11, color: '#8888a8',
+    background: '#0e0e1a', border: '1px solid #1e1e30',
+    borderRadius: 10, padding: '2px 8px',
+  },
+  hopDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
+  neighborList: {
+    display: 'flex', flexDirection: 'column', gap: 2,
+    maxHeight: 360, overflowY: 'auto',
+  },
+  neighborRow: {
+    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+    borderRadius: 6, cursor: 'pointer', transition: 'background 0.1s',
+    background: '#0a0a14',
+  },
+  hopBadge: {
+    width: 18, height: 18, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 10, fontWeight: 700, color: '#000', flexShrink: 0,
+  },
+  neighborName: {
+    flex: 1, fontSize: 12, color: '#c8c8e8',
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+  },
+  neighborKind: { fontSize: 13, flexShrink: 0 },
 };

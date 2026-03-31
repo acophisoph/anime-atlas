@@ -5,129 +5,208 @@ export interface RendererConfig {
   canvas: HTMLCanvasElement;
   width: number;
   height: number;
-  onHover: (id: number | null) => void;
+  onHover: (id: number | null, screenX: number, screenY: number) => void;
   onClick: (id: number, kind: 'media' | 'person') => void;
 }
 
-interface VisualPoint extends Point {
-  screenX: number;
-  screenY: number;
+export interface EdgeData {
+  fromId: number;
+  toId: number;
+  hop: number;
 }
 
-const POINT_BASE_RADIUS = 4;
-const POINT_HOVER_RADIUS = 8;
-const MEDIA_COLOR  = 0x5b9cf6;
-const PERSON_COLOR = 0xf97316;
-const HOP_COLORS = [0xffd700, 0xff8c00, 0xff4500];
-const DIM_ALPHA = 0.15;
+// Genre → color palette (matching Nomic-style vivid clusters)
+const GENRE_COLORS: Record<string, number> = {
+  'Action':        0xef4444,
+  'Adventure':     0xf97316,
+  'Comedy':        0xeab308,
+  'Drama':         0x22c55e,
+  'Fantasy':       0xa855f7,
+  'Romance':       0xec4899,
+  'Sci-Fi':        0x06b6d4,
+  'Mystery':       0x6366f1,
+  'Horror':        0xdc2626,
+  'Slice of Life': 0x84cc16,
+  'Sports':        0x14b8a6,
+  'Supernatural':  0x8b5cf6,
+  'Music':         0xf59e0b,
+  'Psychological': 0x94a3b8,
+  'Mecha':         0x0ea5e9,
+  'Ecchi':         0xf472b6,
+  'Hentai':        0xfb923c,
+  'Mahou Shoujo':  0xe879f9,
+  'Harem':         0xfbbf24,
+  'Thriller':      0x475569,
+};
+const DEFAULT_MEDIA_COLOR  = 0x5b9cf6;
+const DEFAULT_PERSON_COLOR = 0xf97316;
+const HOP_COLORS = [0xfbbf24, 0xfb923c, 0xf87171];
+const DIM_ALPHA  = 0.12;
+const EDGE_COLORS = [0xfbbf24, 0xfb923c, 0xf87171];
+
+// Cached circle textures by radius
+const textureCache = new Map<string, PIXI.Texture>();
+
+function getCircleTexture(app: PIXI.Application, radius: number, color: number): PIXI.Texture {
+  const key = `${radius}:${color}`;
+  if (textureCache.has(key)) return textureCache.get(key)!;
+  const g = new PIXI.Graphics();
+  g.beginFill(color);
+  g.drawCircle(0, 0, radius);
+  g.endFill();
+  const tex = app.renderer.generateTexture(g, {
+    resolution: Math.min(window.devicePixelRatio, 2),
+  });
+  textureCache.set(key, tex);
+  return tex;
+}
+
+interface SpritePoint extends Point {
+  sprite: PIXI.Sprite;
+  baseRadius: number;
+  color: number;
+}
 
 export class AtlasRenderer {
   private app: PIXI.Application;
-  private dotContainer: PIXI.ParticleContainer | null = null;
-  private overlayContainer: PIXI.Container;
+  private edgeGraphics: PIXI.Graphics;
+  private dotContainer: PIXI.Container;
+  private overlayGraphics: PIXI.Graphics; // selected ring + glow
   private labelContainer: PIXI.Container;
-  private pointSprites: Map<number, PIXI.Sprite> = new Map();
-  private points: VisualPoint[] = [];
+
+  private spritePoints: SpritePoint[] = [];
+  private spriteMap = new Map<number, SpritePoint>();
   private clusters: Cluster[] = [];
 
-  // Spatial index (grid)
-  private gridCells: Map<string, number[]> = new Map();
-  private readonly GRID_SIZE = 50;
+  // Spatial grid for O(1) hit test
+  private gridCells = new Map<string, number[]>(); // cell → spritePoints indices
+  private readonly GRID_DIVS = 64;
 
-  // Camera state
-  private camX = 0;
-  private camY = 0;
-  private zoom = 1;
+  // Camera
+  camX = 0; camY = 0; zoom = 1;
   private isDragging = false;
   private dragStart = { x: 0, y: 0, camX: 0, camY: 0 };
+  private hasMoved = false;
 
   private mode: 'media' | 'people' = 'media';
-  private neighborhoodMap: Map<number, number> = new Map();
+  private neighborhoodMap = new Map<number, number>();
   private selectedId: number | null = null;
+  private edges: EdgeData[] = [];
+
+  // For genre color lookup (passed from outside)
+  private genreMap = new Map<number, string[]>(); // mediaId → genres
 
   constructor(private cfg: RendererConfig) {
     this.app = new PIXI.Application({
       view: cfg.canvas,
       width: cfg.width,
       height: cfg.height,
-      backgroundColor: 0x0a0a0f,
+      backgroundColor: 0x080810,
       antialias: true,
-      resolution: window.devicePixelRatio || 1,
+      resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
     });
 
-    this.overlayContainer = new PIXI.Container();
-    this.labelContainer   = new PIXI.Container();
+    this.edgeGraphics   = new PIXI.Graphics();
+    this.dotContainer   = new PIXI.Container();
+    this.overlayGraphics = new PIXI.Graphics();
+    this.labelContainer  = new PIXI.Container();
 
-    this.app.stage.addChild(this.overlayContainer);
+    this.app.stage.addChild(this.edgeGraphics);
+    this.app.stage.addChild(this.dotContainer);
+    this.app.stage.addChild(this.overlayGraphics);
     this.app.stage.addChild(this.labelContainer);
 
     this.setupInteraction();
     this.app.ticker.add(() => this.render());
   }
 
+  private w() { return this.cfg.width; }
+  private h() { return this.cfg.height; }
+
+  worldToScreen(wx: number, wy: number): [number, number] {
+    return [
+      (wx - this.camX) * this.zoom + this.w() / 2,
+      (wy - this.camY) * this.zoom + this.h() / 2,
+    ];
+  }
+  screenToWorld(sx: number, sy: number): [number, number] {
+    return [
+      (sx - this.w() / 2) / this.zoom + this.camX,
+      (sy - this.h() / 2) / this.zoom + this.camY,
+    ];
+  }
+
   private setupInteraction() {
     const view = this.app.view as HTMLCanvasElement;
 
+    // Wheel zoom towards cursor
     view.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.1 : 0.91;
+      const factor = e.deltaY < 0 ? 1.15 : 0.87;
       const rect = view.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      // Zoom towards mouse
-      const wx = (mx - this.cfg.width / 2) / this.zoom + this.camX;
-      const wy = (my - this.cfg.height / 2) / this.zoom + this.camY;
-      this.zoom = Math.min(50, Math.max(0.1, this.zoom * factor));
-      this.camX = wx - (mx - this.cfg.width / 2) / this.zoom;
-      this.camY = wy - (my - this.cfg.height / 2) / this.zoom;
+      const [wx, wy] = this.screenToWorld(mx, my);
+      this.zoom = Math.min(200, Math.max(0.05, this.zoom * factor));
+      this.camX = wx - (mx - this.w() / 2) / this.zoom;
+      this.camY = wy - (my - this.h() / 2) / this.zoom;
     }, { passive: false });
 
     view.addEventListener('mousedown', (e) => {
       this.isDragging = true;
+      this.hasMoved = false;
       this.dragStart = { x: e.clientX, y: e.clientY, camX: this.camX, camY: this.camY };
     });
 
     window.addEventListener('mousemove', (e) => {
+      const rect = view.getBoundingClientRect();
+      if (!rect) return;
       if (this.isDragging) {
-        this.camX = this.dragStart.camX - (e.clientX - this.dragStart.x) / this.zoom;
-        this.camY = this.dragStart.camY - (e.clientY - this.dragStart.y) / this.zoom;
-        this.cfg.onHover(null);
+        const dx = e.clientX - this.dragStart.x;
+        const dy = e.clientY - this.dragStart.y;
+        if (Math.abs(dx) + Math.abs(dy) > 3) this.hasMoved = true;
+        this.camX = this.dragStart.camX - dx / this.zoom;
+        this.camY = this.dragStart.camY - dy / this.zoom;
+        this.cfg.onHover(null, 0, 0);
         return;
       }
-      const rect = view.getBoundingClientRect();
-      const hovered = this.hitTest(e.clientX - rect.left, e.clientY - rect.top);
-      this.cfg.onHover(hovered);
+      if (rect.left <= e.clientX && e.clientX <= rect.right &&
+          rect.top  <= e.clientY && e.clientY <= rect.bottom) {
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const hovered = this.hitTest(sx, sy);
+        this.cfg.onHover(hovered, e.clientX, e.clientY);
+      }
     });
 
     window.addEventListener('mouseup', (e) => {
-      if (this.isDragging) {
-        const dx = Math.abs(e.clientX - this.dragStart.x);
-        const dy = Math.abs(e.clientY - this.dragStart.y);
-        this.isDragging = false;
-        if (dx < 3 && dy < 3) {
-          const rect = view.getBoundingClientRect();
-          const id = this.hitTest(e.clientX - rect.left, e.clientY - rect.top);
-          if (id !== null) {
-            const pt = this.points.find(p => p.id === id);
-            if (pt) this.cfg.onClick(id, pt.kind);
-          }
+      if (this.isDragging && !this.hasMoved) {
+        const rect = view.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const id = this.hitTest(sx, sy);
+        if (id !== null) {
+          const sp = this.spriteMap.get(id);
+          if (sp) this.cfg.onClick(id, sp.kind);
         }
       }
+      this.isDragging = false;
     });
 
-    // Touch support
+    // Touch
     view.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         const t = e.touches[0];
-        this.isDragging = true;
+        this.isDragging = true; this.hasMoved = false;
         this.dragStart = { x: t.clientX, y: t.clientY, camX: this.camX, camY: this.camY };
       }
-    });
+    }, { passive: true });
     view.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (e.touches.length === 1) {
         const t = e.touches[0];
+        this.hasMoved = true;
         this.camX = this.dragStart.camX - (t.clientX - this.dragStart.x) / this.zoom;
         this.camY = this.dragStart.camY - (t.clientY - this.dragStart.y) / this.zoom;
       }
@@ -135,58 +214,129 @@ export class AtlasRenderer {
     view.addEventListener('touchend', () => { this.isDragging = false; });
   }
 
-  private worldToScreen(wx: number, wy: number): [number, number] {
-    return [
-      (wx - this.camX) * this.zoom + this.cfg.width / 2,
-      (wy - this.camY) * this.zoom + this.cfg.height / 2,
-    ];
-  }
-
-  private screenToWorld(sx: number, sy: number): [number, number] {
-    return [
-      (sx - this.cfg.width / 2) / this.zoom + this.camX,
-      (sy - this.cfg.height / 2) / this.zoom + this.camY,
-    ];
-  }
-
   private hitTest(sx: number, sy: number): number | null {
+    const hitRadius = Math.max(8, 12 / this.zoom);
     const [wx, wy] = this.screenToWorld(sx, sy);
-    const cellRadius = Math.ceil(POINT_HOVER_RADIUS / this.zoom / (2 / this.GRID_SIZE));
-    const cx0 = Math.floor((wx + 1) / 2 * this.GRID_SIZE) - cellRadius;
-    const cy0 = Math.floor((wy + 1) / 2 * this.GRID_SIZE) - cellRadius;
+    const cellX0 = Math.floor((wx / 2 + 0.5) * this.GRID_DIVS);
+    const cellY0 = Math.floor((wy / 2 + 0.5) * this.GRID_DIVS);
+    const cr = Math.ceil(hitRadius / (2 / this.GRID_DIVS)) + 1;
 
     let closest: number | null = null;
-    let closestDist = (POINT_HOVER_RADIUS * 2) ** 2 / this.zoom ** 2;
+    let closestD2 = hitRadius * hitRadius;
 
-    for (let gx = cx0; gx <= cx0 + cellRadius * 2; gx++) {
-      for (let gy = cy0; gy <= cy0 + cellRadius * 2; gy++) {
-        const key = `${gx}:${gy}`;
-        const cell = this.gridCells.get(key);
+    for (let gx = cellX0 - cr; gx <= cellX0 + cr; gx++) {
+      for (let gy = cellY0 - cr; gy <= cellY0 + cr; gy++) {
+        const cell = this.gridCells.get(`${gx}:${gy}`);
         if (!cell) continue;
         for (const idx of cell) {
-          const p = this.points[idx];
-          if (this.mode === 'media' && p.kind !== 'media') continue;
-          if (this.mode === 'people' && p.kind !== 'person') continue;
-          const dx = p.x - wx;
-          const dy = p.y - wy;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < closestDist) { closestDist = d2; closest = p.id; }
+          const sp = this.spritePoints[idx];
+          if (this.mode === 'media' && sp.kind !== 'media') continue;
+          if (this.mode === 'people' && sp.kind !== 'person') continue;
+          const d2 = (sp.x - wx) ** 2 + (sp.y - wy) ** 2;
+          if (d2 < closestD2) { closestD2 = d2; closest = sp.id; }
         }
       }
     }
     return closest;
   }
 
-  setPoints(points: Point[], mode: 'media' | 'people') {
+  private colorForPoint(p: Point): number {
+    if (p.colorRGB) return p.colorRGB;
+    if (p.kind === 'person') return DEFAULT_PERSON_COLOR;
+    // Genre-based color
+    const genres = this.genreMap.get(p.id) ?? [];
+    for (const g of genres) {
+      if (GENRE_COLORS[g]) return GENRE_COLORS[g];
+    }
+    return DEFAULT_MEDIA_COLOR;
+  }
+
+  private radiusForPoint(p: Point): number {
+    const pop = p.popularity || 0;
+    // log scale: 3px for pop=0, up to 9px for pop=1M+
+    return Math.max(2.5, Math.min(9, 2 + Math.log10(pop + 100) * 1.5));
+  }
+
+  setGenreMap(gm: Map<number, string[]>) {
+    this.genreMap = gm;
+  }
+
+  setPoints(rawPoints: Point[], mode: 'media' | 'people') {
     this.mode = mode;
-    this.points = points as VisualPoint[];
-    this.buildSpatialIndex();
-    this.rebuildSprites();
+
+    // Remove old sprites
+    this.dotContainer.removeChildren();
+    this.spritePoints = [];
+    this.spriteMap.clear();
+    this.gridCells.clear();
+
+    const visible = rawPoints.filter(p =>
+      mode === 'media' ? p.kind === 'media' : p.kind === 'person'
+    );
+
+    for (let i = 0; i < visible.length; i++) {
+      const p = visible[i];
+      const color = this.colorForPoint(p);
+      const radius = this.radiusForPoint(p);
+      const tex = getCircleTexture(this.app, 16, 0xffffff); // white base, tint with color
+      const sprite = new PIXI.Sprite(tex);
+      sprite.anchor.set(0.5);
+      sprite.tint = color;
+      sprite.scale.set(radius / 16);
+
+      const sp: SpritePoint = { ...p, sprite, baseRadius: radius, color };
+      this.spritePoints.push(sp);
+      this.spriteMap.set(p.id, sp);
+      this.dotContainer.addChild(sprite);
+
+      // Spatial index
+      const gx = Math.floor((p.x / 2 + 0.5) * this.GRID_DIVS);
+      const gy = Math.floor((p.y / 2 + 0.5) * this.GRID_DIVS);
+      const key = `${gx}:${gy}`;
+      if (!this.gridCells.has(key)) this.gridCells.set(key, []);
+      this.gridCells.get(key)!.push(i);
+    }
+
+    this.autoFit(visible);
+  }
+
+  private autoFit(points: Point[]) {
+    if (points.length === 0) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of points) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+    const padX = (maxX - minX) * 0.08;
+    const padY = (maxY - minY) * 0.08;
+    this.camX = (minX + maxX) / 2;
+    this.camY = (minY + maxY) / 2;
+    this.zoom = Math.min(
+      this.w() / ((maxX - minX + padX * 2) || 1),
+      this.h() / ((maxY - minY + padY * 2) || 1)
+    );
   }
 
   setClusters(clusters: Cluster[]) {
     this.clusters = clusters;
-    this.rebuildLabels();
+    this.labelContainer.removeChildren();
+    for (const cl of clusters) {
+      const label = new PIXI.Text(cl.label, {
+        fontSize: 13,
+        fontWeight: 'bold',
+        fill: 0xffffff,
+        align: 'center',
+        dropShadow: true,
+        dropShadowColor: 0x000000,
+        dropShadowBlur: 6,
+        dropShadowDistance: 0,
+      });
+      label.anchor.set(0.5);
+      (label as any).__wx = cl.x;
+      (label as any).__wy = cl.y;
+      (label as any).__size = cl.size;
+      this.labelContainer.addChild(label);
+    }
   }
 
   setNeighborhood(map: Map<number, number>) {
@@ -197,123 +347,116 @@ export class AtlasRenderer {
     this.selectedId = id;
   }
 
+  setEdges(edges: EdgeData[]) {
+    this.edges = edges;
+  }
+
+  focusOn(id: number) {
+    const sp = this.spriteMap.get(id);
+    if (!sp) return;
+    this.camX = sp.x;
+    this.camY = sp.y;
+    this.zoom = Math.max(this.zoom, 30);
+  }
+
   resize(w: number, h: number) {
     this.cfg.width = w;
     this.cfg.height = h;
     this.app.renderer.resize(w, h);
   }
 
-  focusOn(id: number) {
-    const pt = this.points.find(p => p.id === id);
-    if (pt) {
-      this.camX = pt.x;
-      this.camY = pt.y;
-      this.zoom = Math.max(this.zoom, 5);
-    }
-  }
-
-  private buildSpatialIndex() {
-    this.gridCells.clear();
-    for (let i = 0; i < this.points.length; i++) {
-      const p = this.points[i];
-      const gx = Math.floor((p.x + 1) / 2 * this.GRID_SIZE);
-      const gy = Math.floor((p.y + 1) / 2 * this.GRID_SIZE);
-      const key = `${gx}:${gy}`;
-      if (!this.gridCells.has(key)) this.gridCells.set(key, []);
-      this.gridCells.get(key)!.push(i);
-    }
-  }
-
-  private rebuildSprites() {
-    if (this.dotContainer) {
-      this.app.stage.removeChild(this.dotContainer);
-    }
-    this.dotContainer = new PIXI.ParticleContainer(this.points.length, {
-      vertices: true, position: true, tint: true, alpha: true,
-    });
-    this.pointSprites.clear();
-
-    // Create a simple circle texture
-    const gfx = new PIXI.Graphics();
-    gfx.beginFill(0xffffff);
-    gfx.drawCircle(0, 0, 8);
-    gfx.endFill();
-    const texture = this.app.renderer.generateTexture(gfx);
-
-    for (const p of this.points) {
-      if (this.mode === 'media' && p.kind !== 'media') continue;
-      if (this.mode === 'people' && p.kind !== 'person') continue;
-
-      const sprite = new PIXI.Sprite(texture);
-      sprite.anchor.set(0.5);
-      sprite.tint = p.colorRGB || (p.kind === 'media' ? MEDIA_COLOR : PERSON_COLOR);
-      this.dotContainer.addChild(sprite);
-      this.pointSprites.set(p.id, sprite);
-    }
-
-    this.app.stage.addChildAt(this.dotContainer, 0);
-  }
-
-  private rebuildLabels() {
-    this.labelContainer.removeChildren();
-    for (const cl of this.clusters) {
-      const text = new PIXI.Text(cl.label, {
-        fontSize: 12,
-        fill: 0xaaaacc,
-        align: 'center',
-      });
-      text.anchor.set(0.5);
-      (text as any).__clusterX = cl.x;
-      (text as any).__clusterY = cl.y;
-      this.labelContainer.addChild(text);
-    }
-  }
-
   private render() {
-    const hasNeighborhood = this.neighborhoodMap.size > 0;
+    const hasNeighbors = this.neighborhoodMap.size > 0;
 
-    for (const [id, sprite] of this.pointSprites) {
-      const pt = this.points.find(p => p.id === id);
-      if (!pt) continue;
-
-      const [sx, sy] = this.worldToScreen(pt.x, pt.y);
-      sprite.x = sx;
-      sprite.y = sy;
-
-      const radius = (id === this.selectedId ? POINT_HOVER_RADIUS : POINT_BASE_RADIUS) / this.zoom;
-      sprite.scale.set(radius / 8);
-
-      if (hasNeighborhood) {
-        const hop = this.neighborhoodMap.get(id);
-        if (id === this.selectedId) {
-          sprite.tint = 0xffffff;
-          sprite.alpha = 1;
-        } else if (hop !== undefined) {
-          sprite.tint = HOP_COLORS[hop - 1] ?? HOP_COLORS[2];
-          sprite.alpha = 1;
-        } else {
-          sprite.alpha = DIM_ALPHA;
-        }
-      } else {
-        sprite.tint = pt.colorRGB || (pt.kind === 'media' ? MEDIA_COLOR : PERSON_COLOR);
-        sprite.alpha = 1;
+    // --- Edge lines ---
+    this.edgeGraphics.clear();
+    if (hasNeighbors && this.edges.length > 0) {
+      const selectedSp = this.selectedId !== null ? this.spriteMap.get(this.selectedId) : null;
+      for (const edge of this.edges) {
+        const from = this.spriteMap.get(edge.fromId) ?? selectedSp;
+        const to   = this.spriteMap.get(edge.toId);
+        if (!from || !to) continue;
+        const [sx1, sy1] = this.worldToScreen(from.x, from.y);
+        const [sx2, sy2] = this.worldToScreen(to.x, to.y);
+        const color = EDGE_COLORS[Math.min(edge.hop - 1, 2)];
+        const alpha = Math.max(0.05, 0.4 - (edge.hop - 1) * 0.1);
+        this.edgeGraphics.lineStyle(Math.max(0.5, 1.5 / this.zoom), color, alpha);
+        this.edgeGraphics.moveTo(sx1, sy1);
+        this.edgeGraphics.lineTo(sx2, sy2);
       }
     }
 
-    // Update cluster labels
-    const minZoomForLabels = 0.5;
-    this.labelContainer.visible = this.zoom >= minZoomForLabels;
+    // --- Sprites ---
+    for (const sp of this.spritePoints) {
+      const [sx, sy] = this.worldToScreen(sp.x, sp.y);
+      sp.sprite.x = sx;
+      sp.sprite.y = sy;
+
+      // Cull off-screen
+      const margin = 20;
+      const offScreen = sx < -margin || sx > this.w() + margin ||
+                        sy < -margin || sy > this.h() + margin;
+      sp.sprite.visible = !offScreen;
+      if (offScreen) continue;
+
+      // Size: base radius scaled so physical size stays ~constant regardless of zoom,
+      // but grows when zoomed in past a threshold (reveals individual nodes nicely)
+      const screenR = Math.max(2, sp.baseRadius * Math.min(1, this.zoom / 15));
+      sp.sprite.scale.set(screenR / 16);
+
+      if (hasNeighbors) {
+        const hop = this.neighborhoodMap.get(sp.id);
+        if (sp.id === this.selectedId) {
+          sp.sprite.tint  = 0xffffff;
+          sp.sprite.alpha = 1;
+        } else if (hop !== undefined) {
+          sp.sprite.tint  = HOP_COLORS[Math.min(hop - 1, 2)];
+          sp.sprite.alpha = 1;
+        } else {
+          sp.sprite.tint  = sp.color;
+          sp.sprite.alpha = DIM_ALPHA;
+        }
+      } else {
+        sp.sprite.tint  = sp.id === this.selectedId ? 0xffffff : sp.color;
+        sp.sprite.alpha = 1;
+      }
+    }
+
+    // --- Selected ring ---
+    this.overlayGraphics.clear();
+    if (this.selectedId !== null) {
+      const sp = this.spriteMap.get(this.selectedId);
+      if (sp) {
+        const [sx, sy] = this.worldToScreen(sp.x, sp.y);
+        const r = Math.max(8, sp.baseRadius * Math.min(1, this.zoom / 15) + 4);
+        this.overlayGraphics.lineStyle(2, 0xffffff, 0.9);
+        this.overlayGraphics.drawCircle(sx, sy, r);
+        this.overlayGraphics.lineStyle(4, 0xffffff, 0.2);
+        this.overlayGraphics.drawCircle(sx, sy, r + 4);
+      }
+    }
+
+    // --- Cluster labels ---
+    // Show labels only when zoomed out (overview); fade them in
+    const LABEL_ZOOM_MAX = 40;
+    const labelAlpha = Math.max(0, Math.min(1, 1 - (this.zoom - 2) / (LABEL_ZOOM_MAX - 2)));
+    this.labelContainer.alpha = labelAlpha;
+
     for (const child of this.labelContainer.children) {
-      const text = child as PIXI.Text;
-      const wx = (text as any).__clusterX as number;
-      const wy = (text as any).__clusterY as number;
+      const label = child as PIXI.Text;
+      const wx = (label as any).__wx as number;
+      const wy = (label as any).__wy as number;
       const [sx, sy] = this.worldToScreen(wx, wy);
-      text.x = sx;
-      text.y = sy;
+      label.x = sx;
+      label.y = sy;
+      // Scale label with zoom slightly
+      const lz = Math.max(0.7, Math.min(1.4, this.zoom / 8));
+      label.scale.set(lz);
     }
   }
 
   destroy() {
+    textureCache.clear();
     this.app.destroy(false, { children: true });
   }
 }
