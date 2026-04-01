@@ -15,7 +15,7 @@ export interface EdgeData {
   hop: number;
 }
 
-// Genre → color palette
+// ─── Colour palette ────────────────────────────────────────────────────────
 const GENRE_COLORS: Record<string, number> = {
   'Action':        0xef4444,
   'Adventure':     0xf97316,
@@ -41,41 +41,44 @@ const DEFAULT_MEDIA_COLOR  = 0x5b9cf6;
 const DEFAULT_PERSON_COLOR = 0xf97316;
 const HOP_COLORS  = [0xfbbf24, 0xfb923c, 0xf87171];
 const EDGE_COLORS = [0xfbbf24, 0xfb923c, 0xf87171];
-const DIM_ALPHA   = 0.07;
+const DIM_ALPHA   = 0.06;
 
-// ── Node size model ────────────────────────────────────────────────────────
-// World coordinate range is √n × 5 (e.g. ±395 for 6k media).
-// At autoFit (overview): zoom ≈ viewport / worldRange ≈ 1–2.
-// We want nodes to appear as tiny coloured dots at overview (density map
-// effect like Nomic/Map-of-Reddit) and grow to comfortably clickable size
-// when zoomed in.
+// ─── Node size model (Nomic-style) ─────────────────────────────────────────
 //
-// screenRadius(zoom) = baseRadius × clamp(zoom / GROW_ABOVE, 1, MAX_GROW)
-//   • below GROW_ABOVE zoom: constant tiny dot  → cluster overview
-//   • above GROW_ABOVE zoom: grows linearly      → individual inspection
+// Key insight: nodes must be a FIXED SCREEN-SPACE SIZE — they don't grow with
+// absolute zoom. Instead the WORLD grows (√n × 5 scale), so zooming in
+// reveals gaps between nodes rather than making existing nodes bigger.
 //
-// GROW_ABOVE is set to 8× the autoFit zoom level. Since autoFit ≈ 1–2 for
-// the scaled world, GROW_ABOVE ≈ 8–16 is a good transition point.
-const GROW_ABOVE = 10;   // zoom level at which nodes start growing
-const MAX_GROW   = 60;   // maximum growth multiplier above GROW_ABOVE
+// screenRadius = base × clamp(1, MAX_GROW, relativeZoom ^ GROW_EXP)
+//
+// where relativeZoom = zoom / autoFitZoom (1.0 at overview, >1 when zoomed in)
+//
+// At overview (relativeZoom=1):  base × 1   = 1.8–4.0 px  — tiny dots
+// At 16× overview:               base × 2.0             — still small
+// At 256× overview:              base × 4.0             — comfortably clickable
+//
+// GROW_EXP = 0.4 → very slow √-curve growth. Nodes feel "stable" while the
+// canvas expands around them.
+const GROW_EXP = 0.4;
+const MAX_GROW = 5;
 
-// Base radius in CSS pixels (at grow threshold).
-// Popularity drives slight size variation so popular shows stand out.
-function baseRadiusForPoint(pop: number): number {
-  return Math.max(1.8, Math.min(4.5, 0.9 + Math.log10(pop + 10) * 0.75));
+// Popularity-weighted base radius. Popular shows are ever-so-slightly larger.
+function baseRadius(pop: number): number {
+  return Math.max(1.8, Math.min(4.0, 0.8 + Math.log10(pop + 10) * 0.7));
 }
 
-function screenRadius(base: number, zoom: number): number {
-  const t = Math.max(1, Math.min(MAX_GROW, zoom / GROW_ABOVE));
+// The computed screen-space radius given the current relative zoom level.
+function screenR(base: number, relZoom: number): number {
+  const t = Math.min(MAX_GROW, Math.pow(Math.max(1, relZoom), GROW_EXP));
   return Math.max(1.5, base * t);
 }
 
-// Shared texture
+// ─── Shared circle texture ──────────────────────────────────────────────────
 let sharedTex: PIXI.Texture | null = null;
 function getCircleTexture(app: PIXI.Application): PIXI.Texture {
   if (sharedTex) return sharedTex;
   const g = new PIXI.Graphics();
-  g.beginFill(0xffffff, 1);
+  g.beginFill(0xffffff, 1.0);
   g.drawCircle(0, 0, 16);
   g.endFill();
   sharedTex = app.renderer.generateTexture(g, {
@@ -86,448 +89,415 @@ function getCircleTexture(app: PIXI.Application): PIXI.Texture {
 
 interface SpritePoint extends Point {
   sprite: PIXI.Sprite;
-  baseRadius: number;
+  base: number;   // base radius in CSS px
   color: number;
 }
 
-interface GridBounds { minX: number; maxX: number; minY: number; maxY: number; }
+interface Bounds { minX: number; maxX: number; minY: number; maxY: number; }
 
 export class AtlasRenderer {
   private app: PIXI.Application;
-  private edgeGraphics: PIXI.Graphics;
-  private dotContainer: PIXI.Container;
-  private overlayGraphics: PIXI.Graphics;
-  private labelContainer: PIXI.Container;
+  private edgeGfx:    PIXI.Graphics;
+  private dotCtr:     PIXI.Container;
+  private overlayGfx: PIXI.Graphics;
+  private labelCtr:   PIXI.Container;
 
-  private spritePoints: SpritePoint[] = [];
-  private spriteMap = new Map<number, SpritePoint>();
+  private pts: SpritePoint[] = [];
+  private ptMap = new Map<number, SpritePoint>();
   private clusters: Cluster[] = [];
 
-  // Spatial grid for O(1) hit testing
-  private gridCells = new Map<string, number[]>();
-  private readonly GRID_DIVS = 128; // more cells for the larger world space
-  private gridBounds: GridBounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
+  // Spatial grid (128 divisions for large worlds)
+  private grid = new Map<string, number[]>();
+  private readonly DIVS = 128;
+  private bounds: Bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 };
 
-  // Camera
+  // Camera state
   camX = 0; camY = 0; zoom = 1;
-  private isDragging = false;
-  private dragStart = { x: 0, y: 0, camX: 0, camY: 0 };
-  private hasMoved = false;
+  private autoFitZoom = 1;   // stored on autoFit — used for relative zoom calc
+
+  private drag = false;
+  private dragStart = { x: 0, y: 0, cx: 0, cy: 0 };
+  private moved    = false;
 
   private mode: 'media' | 'people' = 'media';
-  private neighborhoodMap = new Map<number, number>();
-  private selectedId: number | null = null;
-  private hoveredId: number | null = null;
+  private nbMap  = new Map<number, number>();
+  private selId: number | null = null;
+  private hovId: number | null = null;
   private edges: EdgeData[] = [];
   private genreMap = new Map<number, string[]>();
 
   constructor(private cfg: RendererConfig) {
     this.app = new PIXI.Application({
-      view: cfg.canvas,
-      width: cfg.width,
-      height: cfg.height,
+      view:            cfg.canvas,
+      width:           cfg.width,
+      height:          cfg.height,
       backgroundColor: 0x07070f,
-      antialias: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
-      autoDensity: true,
+      antialias:       true,
+      resolution:      Math.min(window.devicePixelRatio || 1, 2),
+      autoDensity:     true,
     });
 
-    this.edgeGraphics    = new PIXI.Graphics();
-    this.dotContainer    = new PIXI.Container();
-    this.overlayGraphics = new PIXI.Graphics();
-    this.labelContainer  = new PIXI.Container();
+    this.edgeGfx    = new PIXI.Graphics();
+    this.dotCtr     = new PIXI.Container();
+    this.overlayGfx = new PIXI.Graphics();
+    this.labelCtr   = new PIXI.Container();
 
-    this.app.stage.addChild(this.edgeGraphics);
-    this.app.stage.addChild(this.dotContainer);
-    this.app.stage.addChild(this.overlayGraphics);
-    this.app.stage.addChild(this.labelContainer);
+    this.app.stage.addChild(this.edgeGfx);
+    this.app.stage.addChild(this.dotCtr);
+    this.app.stage.addChild(this.overlayGfx);
+    this.app.stage.addChild(this.labelCtr);
 
-    this.setupInteraction();
+    this.setupInput();
     this.app.ticker.add(() => this.render());
   }
 
-  private w() { return this.cfg.width; }
-  private h() { return this.cfg.height; }
+  private W() { return this.cfg.width; }
+  private H() { return this.cfg.height; }
 
   worldToScreen(wx: number, wy: number): [number, number] {
     return [
-      (wx - this.camX) * this.zoom + this.w() / 2,
-      (wy - this.camY) * this.zoom + this.h() / 2,
+      (wx - this.camX) * this.zoom + this.W() / 2,
+      (wy - this.camY) * this.zoom + this.H() / 2,
     ];
   }
 
-  screenToWorld(sx: number, sy: number): [number, number] {
+  private s2w(sx: number, sy: number): [number, number] {
     return [
-      (sx - this.w() / 2) / this.zoom + this.camX,
-      (sy - this.h() / 2) / this.zoom + this.camY,
+      (sx - this.W() / 2) / this.zoom + this.camX,
+      (sy - this.H() / 2) / this.zoom + this.camY,
     ];
   }
 
-  private setupInteraction() {
-    const view = this.app.view as HTMLCanvasElement;
+  private setupInput() {
+    const v = this.app.view as HTMLCanvasElement;
 
-    view.addEventListener('wheel', (e) => {
+    // Wheel zoom — anchor at cursor
+    v.addEventListener('wheel', (e) => {
       e.preventDefault();
-      // Faster zoom step — feels responsive on a large canvas
-      const factor = e.deltaY < 0 ? 1.18 : 1 / 1.18;
-      const rect   = view.getBoundingClientRect();
+      const f    = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const rect = v.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      const [wx, wy] = this.screenToWorld(mx, my);
-      // Max zoom: 100,000 — allows reading individual node labels at deep zoom
-      this.zoom = Math.min(100_000, Math.max(0.001, this.zoom * factor));
-      this.camX = wx - (mx - this.w() / 2) / this.zoom;
-      this.camY = wy - (my - this.h() / 2) / this.zoom;
+      const [wx, wy] = this.s2w(mx, my);
+      // Very wide zoom range — from full overview to deep individual inspection
+      this.zoom = Math.min(500_000, Math.max(0.0001, this.zoom * f));
+      this.camX = wx - (mx - this.W() / 2) / this.zoom;
+      this.camY = wy - (my - this.H() / 2) / this.zoom;
     }, { passive: false });
 
-    view.addEventListener('mousedown', (e) => {
-      this.isDragging = true;
-      this.hasMoved   = false;
-      this.dragStart  = { x: e.clientX, y: e.clientY, camX: this.camX, camY: this.camY };
+    v.addEventListener('mousedown', (e) => {
+      this.drag = true; this.moved = false;
+      this.dragStart = { x: e.clientX, y: e.clientY, cx: this.camX, cy: this.camY };
     });
 
     window.addEventListener('mousemove', (e) => {
-      const rect = view.getBoundingClientRect();
-      if (!rect) return;
-
-      if (this.isDragging) {
+      const rect = v.getBoundingClientRect();
+      if (this.drag) {
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
-        if (Math.abs(dx) + Math.abs(dy) > 3) this.hasMoved = true;
-        this.camX = this.dragStart.camX - dx / this.zoom;
-        this.camY = this.dragStart.camY - dy / this.zoom;
-        if (this.hoveredId !== null) { this.hoveredId = null; this.cfg.onHover(null); }
+        if (Math.abs(dx) + Math.abs(dy) > 3) this.moved = true;
+        this.camX = this.dragStart.cx - dx / this.zoom;
+        this.camY = this.dragStart.cy - dy / this.zoom;
+        if (this.hovId !== null) { this.hovId = null; this.cfg.onHover(null); }
         return;
       }
-
       const inCanvas =
-        rect.left <= e.clientX && e.clientX <= rect.right &&
-        rect.top  <= e.clientY && e.clientY <= rect.bottom;
-
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top  && e.clientY <= rect.bottom;
       if (inCanvas) {
-        const sx = e.clientX - rect.left;
-        const sy = e.clientY - rect.top;
-        const newHover = this.hitTest(sx, sy);
-        if (newHover !== this.hoveredId) {
-          this.hoveredId = newHover;
-          this.cfg.onHover(newHover);
-        }
-      } else if (this.hoveredId !== null) {
-        this.hoveredId = null;
-        this.cfg.onHover(null);
+        const id = this.hitTest(e.clientX - rect.left, e.clientY - rect.top);
+        if (id !== this.hovId) { this.hovId = id; this.cfg.onHover(id); }
+      } else if (this.hovId !== null) {
+        this.hovId = null; this.cfg.onHover(null);
       }
     });
 
     window.addEventListener('mouseup', (e) => {
-      if (this.isDragging && !this.hasMoved) {
-        const rect = view.getBoundingClientRect();
-        const sx = e.clientX - rect.left;
-        const sy = e.clientY - rect.top;
-        const id = this.hitTest(sx, sy);
+      if (this.drag && !this.moved) {
+        const rect = v.getBoundingClientRect();
+        const id = this.hitTest(e.clientX - rect.left, e.clientY - rect.top);
         if (id !== null) {
-          const sp = this.spriteMap.get(id);
+          const sp = this.ptMap.get(id);
           if (sp) this.cfg.onClick(id, sp.kind);
         }
       }
-      this.isDragging = false;
+      this.drag = false;
     });
 
-    view.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        const t = e.touches[0];
-        this.isDragging = true; this.hasMoved = false;
-        this.dragStart = { x: t.clientX, y: t.clientY, camX: this.camX, camY: this.camY };
-      }
+    // Touch
+    v.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      this.drag = true; this.moved = false;
+      this.dragStart = { x: t.clientX, y: t.clientY, cx: this.camX, cy: this.camY };
     }, { passive: true });
 
-    view.addEventListener('touchmove', (e) => {
+    v.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      if (e.touches.length === 1) {
-        const t = e.touches[0];
-        this.hasMoved = true;
-        this.camX = this.dragStart.camX - (t.clientX - this.dragStart.x) / this.zoom;
-        this.camY = this.dragStart.camY - (t.clientY - this.dragStart.y) / this.zoom;
-      }
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      this.moved = true;
+      this.camX = this.dragStart.cx - (t.clientX - this.dragStart.x) / this.zoom;
+      this.camY = this.dragStart.cy - (t.clientY - this.dragStart.y) / this.zoom;
     }, { passive: false });
 
-    view.addEventListener('touchend', () => { this.isDragging = false; });
+    v.addEventListener('touchend', () => { this.drag = false; });
   }
 
-  // Hit test: 18 screen-pixel radius, always.
-  // hitRadius in world units = 18 / zoom, properly scaled to the large world.
+  // Hit test: always exactly HIT_PX screen pixels of pickup radius.
   private hitTest(sx: number, sy: number): number | null {
-    const HIT_PX = 18;
-    const hitRadius = HIT_PX / this.zoom;
-    const [wx, wy] = this.screenToWorld(sx, sy);
+    const HIT_PX = 16;
+    const hr = HIT_PX / this.zoom;           // world-space radius
+    const [wx, wy] = this.s2w(sx, sy);
+    const b = this.bounds;
+    const cw = ((b.maxX - b.minX) || 1) / this.DIVS;
+    const ch = ((b.maxY - b.minY) || 1) / this.DIVS;
+    const cx0 = Math.floor((wx - b.minX) / cw);
+    const cy0 = Math.floor((wy - b.minY) / ch);
+    const rx  = Math.ceil(hr / cw) + 1;
+    const ry  = Math.ceil(hr / ch) + 1;
 
-    const gb = this.gridBounds;
-    const cellW = ((gb.maxX - gb.minX) || 1) / this.GRID_DIVS;
-    const cellH = ((gb.maxY - gb.minY) || 1) / this.GRID_DIVS;
-    const cellX0 = Math.floor((wx - gb.minX) / cellW);
-    const cellY0 = Math.floor((wy - gb.minY) / cellH);
-    const crX = Math.ceil(hitRadius / cellW) + 1;
-    const crY = Math.ceil(hitRadius / cellH) + 1;
+    let best: number | null = null;
+    let bestD2 = hr * hr;
 
-    let closest: number | null = null;
-    let closestD2 = hitRadius * hitRadius;
-
-    for (let gx = cellX0 - crX; gx <= cellX0 + crX; gx++) {
-      for (let gy = cellY0 - crY; gy <= cellY0 + crY; gy++) {
-        const cell = this.gridCells.get(`${gx}:${gy}`);
+    for (let gx = cx0 - rx; gx <= cx0 + rx; gx++) {
+      for (let gy = cy0 - ry; gy <= cy0 + ry; gy++) {
+        const cell = this.grid.get(`${gx}:${gy}`);
         if (!cell) continue;
         for (const idx of cell) {
-          const sp = this.spritePoints[idx];
+          const sp = this.pts[idx];
           if (this.mode === 'media'  && sp.kind !== 'media')  continue;
           if (this.mode === 'people' && sp.kind !== 'person') continue;
           const d2 = (sp.x - wx) ** 2 + (sp.y - wy) ** 2;
-          if (d2 < closestD2) { closestD2 = d2; closest = sp.id; }
+          if (d2 < bestD2) { bestD2 = d2; best = sp.id; }
         }
       }
     }
-    return closest;
+    return best;
   }
 
-  private colorForPoint(p: Point): number {
+  private colorFor(p: Point): number {
     if (p.colorRGB) return p.colorRGB;
     if (p.kind === 'person') return DEFAULT_PERSON_COLOR;
     const genres = this.genreMap.get(p.id) ?? [];
-    for (const g of genres) {
-      if (GENRE_COLORS[g]) return GENRE_COLORS[g];
-    }
+    for (const g of genres) if (GENRE_COLORS[g]) return GENRE_COLORS[g];
     return DEFAULT_MEDIA_COLOR;
   }
 
   setGenreMap(gm: Map<number, string[]>) { this.genreMap = gm; }
 
-  setPoints(rawPoints: Point[], mode: 'media' | 'people') {
+  setPoints(raw: Point[], mode: 'media' | 'people') {
     this.mode = mode;
-    this.dotContainer.removeChildren();
-    this.spritePoints = [];
-    this.spriteMap.clear();
-    this.gridCells.clear();
+    this.dotCtr.removeChildren();
+    this.pts   = [];
+    this.ptMap.clear();
+    this.grid.clear();
 
-    const visible = rawPoints.filter(p =>
+    const vis = raw.filter(p =>
       mode === 'media' ? p.kind === 'media' : p.kind === 'person'
     );
-    if (visible.length === 0) return;
+    if (!vis.length) return;
 
-    // Data bounds for spatial grid and autoFit
+    // Data bounds
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const p of visible) {
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    for (const p of vis) {
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
     }
-    this.gridBounds = { minX, maxX, minY, maxY };
+    this.bounds = { minX, maxX, minY, maxY };
 
-    const tex    = getCircleTexture(this.app);
+    const tex   = getCircleTexture(this.app);
     const rangeX = (maxX - minX) || 1;
     const rangeY = (maxY - minY) || 1;
 
-    for (let i = 0; i < visible.length; i++) {
-      const p      = visible[i];
-      const color  = this.colorForPoint(p);
-      const radius = baseRadiusForPoint(p.popularity || 0);
+    for (let i = 0; i < vis.length; i++) {
+      const p    = vis[i];
+      const col  = this.colorFor(p);
+      const base = baseRadius(p.popularity || 0);
 
       const sprite = new PIXI.Sprite(tex);
       sprite.anchor.set(0.5);
-      sprite.tint  = color;
-      // Slight alpha < 1 so dense areas naturally appear brighter (additive density effect)
-      sprite.alpha = 0.75;
-      sprite.scale.set(radius / 16);
+      sprite.tint  = col;
+      sprite.alpha = 0.8;
+      sprite.scale.set(base / 16);   // will be updated each frame
 
-      const sp: SpritePoint = { ...p, sprite, baseRadius: radius, color };
-      this.spritePoints.push(sp);
-      this.spriteMap.set(p.id, sp);
-      this.dotContainer.addChild(sprite);
+      const sp: SpritePoint = { ...p, sprite, base, color: col };
+      this.pts.push(sp);
+      this.ptMap.set(p.id, sp);
+      this.dotCtr.addChild(sprite);
 
-      const gx  = Math.floor(((p.x - minX) / rangeX) * this.GRID_DIVS);
-      const gy  = Math.floor(((p.y - minY) / rangeY) * this.GRID_DIVS);
-      const key = `${Math.min(gx, this.GRID_DIVS - 1)}:${Math.min(gy, this.GRID_DIVS - 1)}`;
-      if (!this.gridCells.has(key)) this.gridCells.set(key, []);
-      this.gridCells.get(key)!.push(i);
+      // Index in spatial grid
+      const gx  = Math.min(this.DIVS - 1, Math.floor(((p.x - minX) / rangeX) * this.DIVS));
+      const gy  = Math.min(this.DIVS - 1, Math.floor(((p.y - minY) / rangeY) * this.DIVS));
+      const key = `${gx}:${gy}`;
+      if (!this.grid.has(key)) this.grid.set(key, []);
+      this.grid.get(key)!.push(i);
     }
 
-    this.autoFit(visible);
+    this.autoFit(vis);
   }
 
-  // autoFit: show the entire dataset with 12% padding.
-  // With the sqrt(n)×5 world scale, this produces a Nomic-style overview where
-  // clusters are visible as coloured blobs and individual nodes are tiny dots.
-  autoFit(points: Point[] = this.spritePoints) {
-    if (points.length === 0) return;
+  autoFit(points: Point[] = this.pts) {
+    if (!points.length) return;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of points) {
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
     }
-    const PAD = 0.12;
-    const rangeX = (maxX - minX) || 1;
-    const rangeY = (maxY - minY) || 1;
-    this.camX = (minX + maxX) / 2;
-    this.camY = (minY + maxY) / 2;
-    this.zoom = Math.min(
-      this.w() / (rangeX * (1 + PAD * 2)),
-      this.h() / (rangeY * (1 + PAD * 2)),
+    const PAD  = 0.10;
+    const rx   = (maxX - minX) || 1;
+    const ry   = (maxY - minY) || 1;
+    this.camX  = (minX + maxX) / 2;
+    this.camY  = (minY + maxY) / 2;
+    this.zoom  = Math.min(
+      this.W() / (rx * (1 + PAD * 2)),
+      this.H() / (ry * (1 + PAD * 2)),
     );
+    // Store so the per-frame screenR calculation can express zoom relative to overview
+    this.autoFitZoom = this.zoom;
   }
 
   setClusters(clusters: Cluster[]) {
     this.clusters = clusters;
-    this.labelContainer.removeChildren();
+    this.labelCtr.removeChildren();
     for (const cl of clusters) {
-      const container = new PIXI.Container();
-
+      const ctr  = new PIXI.Container();
       const text = new PIXI.Text(cl.label, {
-        fontSize: 11,
-        fontWeight: '700',
-        fill: 0xffffff,
-        align: 'center',
-        letterSpacing: 0.4,
+        fontSize: 11, fontWeight: '700', fill: 0xffffff,
+        align: 'center', letterSpacing: 0.5,
       });
       text.anchor.set(0.5);
 
-      const pad = { x: 9, y: 4 };
-      const bg  = new PIXI.Graphics();
-      bg.beginFill(0x06060f, 0.80);
-      bg.lineStyle(1, 0xffffff, 0.14);
-      bg.drawRoundedRect(
-        -text.width / 2 - pad.x,
-        -text.height / 2 - pad.y,
-        text.width + pad.x * 2,
-        text.height + pad.y * 2,
-        5,
-      );
+      const px = 9, py = 4;
+      const bg = new PIXI.Graphics();
+      bg.beginFill(0x050510, 0.82);
+      bg.lineStyle(1, 0xffffff, 0.15);
+      bg.drawRoundedRect(-text.width / 2 - px, -text.height / 2 - py,
+        text.width + px * 2, text.height + py * 2, 5);
       bg.endFill();
 
-      container.addChild(bg);
-      container.addChild(text);
-      (container as any).__wx   = cl.x;
-      (container as any).__wy   = cl.y;
-      (container as any).__size = cl.size;
-      this.labelContainer.addChild(container);
+      ctr.addChild(bg);
+      ctr.addChild(text);
+      (ctr as any).__wx   = cl.x;
+      (ctr as any).__wy   = cl.y;
+      (ctr as any).__size = cl.size;
+      this.labelCtr.addChild(ctr);
     }
   }
 
-  setNeighborhood(map: Map<number, number>) { this.neighborhoodMap = map; }
-  setSelected(id: number | null)            { this.selectedId = id; }
-  setEdges(edges: EdgeData[])               { this.edges = edges; }
+  setNeighborhood(m: Map<number, number>) { this.nbMap  = m; }
+  setSelected(id: number | null)          { this.selId  = id; }
+  setEdges(e: EdgeData[])                 { this.edges  = e; }
 
   focusOn(id: number) {
-    const sp = this.spriteMap.get(id);
+    const sp = this.ptMap.get(id);
     if (!sp) return;
     this.camX = sp.x;
     this.camY = sp.y;
-    // Zoom to a level where that node's cluster is clearly visible
-    this.zoom = GROW_ABOVE * 6;
+    this.zoom = this.autoFitZoom * 40;   // 40× overview → cluster-level view
   }
 
   resize(w: number, h: number) {
-    this.cfg.width  = w;
-    this.cfg.height = h;
+    this.cfg.width = w; this.cfg.height = h;
     this.app.renderer.resize(w, h);
   }
 
   private render() {
-    const hasNeighbors = this.neighborhoodMap.size > 0;
+    const hasNb    = this.nbMap.size > 0;
+    const W = this.W(), H = this.H();
+    // Relative zoom: how many times we've zoomed in vs the full overview.
+    const relZ = this.zoom / (this.autoFitZoom || 1);
 
-    // ── Edge lines ──────────────────────────────────────────────────────────
-    this.edgeGraphics.clear();
-    if (hasNeighbors && this.edges.length > 0) {
-      const selSp = this.selectedId != null ? this.spriteMap.get(this.selectedId) : null;
-      for (const edge of this.edges) {
-        const from = this.spriteMap.get(edge.fromId) ?? selSp;
-        const to   = this.spriteMap.get(edge.toId);
+    // ── Edges ──────────────────────────────────────────────────────────────
+    this.edgeGfx.clear();
+    if (hasNb && this.edges.length) {
+      const selSp = this.selId != null ? this.ptMap.get(this.selId) : null;
+      for (const e of this.edges) {
+        const from = this.ptMap.get(e.fromId) ?? selSp;
+        const to   = this.ptMap.get(e.toId);
         if (!from || !to) continue;
-        const [sx1, sy1] = this.worldToScreen(from.x, from.y);
-        const [sx2, sy2] = this.worldToScreen(to.x,   to.y);
-        const color = EDGE_COLORS[Math.min(edge.hop - 1, 2)];
-        const alpha = Math.max(0.04, 0.38 - (edge.hop - 1) * 0.1);
-        this.edgeGraphics.lineStyle(Math.max(0.5, 1.5 / this.zoom), color, alpha);
-        this.edgeGraphics.moveTo(sx1, sy1);
-        this.edgeGraphics.lineTo(sx2, sy2);
+        const [x1, y1] = this.worldToScreen(from.x, from.y);
+        const [x2, y2] = this.worldToScreen(to.x,   to.y);
+        const col  = EDGE_COLORS[Math.min(e.hop - 1, 2)];
+        const alp  = Math.max(0.04, 0.38 - (e.hop - 1) * 0.1);
+        this.edgeGfx.lineStyle(Math.max(0.5, 1.5 / this.zoom), col, alp);
+        this.edgeGfx.moveTo(x1, y1);
+        this.edgeGfx.lineTo(x2, y2);
       }
     }
 
-    // ── Sprites ─────────────────────────────────────────────────────────────
-    const W = this.w(), H = this.h();
-    const margin = 24;
-
-    for (const sp of this.spritePoints) {
+    // ── Sprites ────────────────────────────────────────────────────────────
+    const MARGIN = 20;
+    for (const sp of this.pts) {
       const [sx, sy] = this.worldToScreen(sp.x, sp.y);
       sp.sprite.x = sx;
       sp.sprite.y = sy;
 
-      const offScreen = sx < -margin || sx > W + margin ||
-                        sy < -margin || sy > H + margin;
-      sp.sprite.visible = !offScreen;
-      if (offScreen) continue;
+      if (sx < -MARGIN || sx > W + MARGIN || sy < -MARGIN || sy > H + MARGIN) {
+        sp.sprite.visible = false; continue;
+      }
+      sp.sprite.visible = true;
 
-      const r = screenRadius(sp.baseRadius, this.zoom);
+      // Screen-space radius: tiny at overview (relZ≈1), grows slowly via
+      // power curve so it never gets huge. At relZ=100 it's only ~2.5× base.
+      const r = screenR(sp.base, relZ);
       sp.sprite.scale.set(r / 16);
 
-      if (sp.id === this.selectedId) {
-        sp.sprite.tint  = 0xffffff;
-        sp.sprite.alpha = 1;
-      } else if (sp.id === this.hoveredId) {
-        sp.sprite.tint  = 0xffffff;
-        sp.sprite.alpha = 1;
-      } else if (hasNeighbors) {
-        const hop = this.neighborhoodMap.get(sp.id);
+      // Colour / alpha state
+      if (sp.id === this.selId) {
+        sp.sprite.tint = 0xffffff; sp.sprite.alpha = 1;
+      } else if (sp.id === this.hovId) {
+        sp.sprite.tint = 0xffffff; sp.sprite.alpha = 1;
+      } else if (hasNb) {
+        const hop = this.nbMap.get(sp.id);
         if (hop !== undefined) {
-          sp.sprite.tint  = HOP_COLORS[Math.min(hop - 1, 2)];
-          sp.sprite.alpha = 1;
+          sp.sprite.tint = HOP_COLORS[Math.min(hop - 1, 2)]; sp.sprite.alpha = 1;
         } else {
-          sp.sprite.tint  = sp.color;
-          sp.sprite.alpha = DIM_ALPHA;
+          sp.sprite.tint = sp.color; sp.sprite.alpha = DIM_ALPHA;
         }
       } else {
-        sp.sprite.tint  = sp.color;
-        sp.sprite.alpha = 0.75;
+        sp.sprite.tint = sp.color; sp.sprite.alpha = 0.78;
       }
     }
 
-    // ── Overlay: selected + hovered rings ───────────────────────────────────
-    this.overlayGraphics.clear();
+    // ── Overlay rings ──────────────────────────────────────────────────────
+    this.overlayGfx.clear();
 
-    if (this.hoveredId !== null && this.hoveredId !== this.selectedId) {
-      const sp = this.spriteMap.get(this.hoveredId);
+    if (this.hovId !== null && this.hovId !== this.selId) {
+      const sp = this.ptMap.get(this.hovId);
       if (sp) {
         const [sx, sy] = this.worldToScreen(sp.x, sp.y);
-        const r = screenRadius(sp.baseRadius, this.zoom);
-        this.overlayGraphics.lineStyle(1.5, 0xffffff, 0.55);
-        this.overlayGraphics.drawCircle(sx, sy, r + 2.5);
+        const r = screenR(sp.base, relZ);
+        this.overlayGfx.lineStyle(1.5, 0xffffff, 0.6);
+        this.overlayGfx.drawCircle(sx, sy, r + 2.5);
       }
     }
 
-    if (this.selectedId !== null) {
-      const sp = this.spriteMap.get(this.selectedId);
+    if (this.selId !== null) {
+      const sp = this.ptMap.get(this.selId);
       if (sp) {
         const [sx, sy] = this.worldToScreen(sp.x, sp.y);
-        const r = screenRadius(sp.baseRadius, this.zoom);
-        this.overlayGraphics.lineStyle(2.5, 0xffffff, 1.0);
-        this.overlayGraphics.drawCircle(sx, sy, r + 3.5);
-        this.overlayGraphics.lineStyle(6, 0xffffff, 0.16);
-        this.overlayGraphics.drawCircle(sx, sy, r + 7);
+        const r = screenR(sp.base, relZ);
+        this.overlayGfx.lineStyle(2.5, 0xffffff, 1);
+        this.overlayGfx.drawCircle(sx, sy, r + 3.5);
+        this.overlayGfx.lineStyle(7, 0xffffff, 0.15);
+        this.overlayGfx.drawCircle(sx, sy, r + 7);
       }
     }
 
-    // ── Cluster labels ───────────────────────────────────────────────────────
-    // Fade label as zoom approaches GROW_ABOVE (individual-node territory).
-    // Below 0.5× GROW_ABOVE → fully visible.
-    // Above 2× GROW_ABOVE   → hidden.
-    const labelAlpha = Math.max(0, Math.min(1,
-      1 - (this.zoom - GROW_ABOVE * 0.5) / (GROW_ABOVE * 1.5)
-    ));
-    this.labelContainer.alpha = labelAlpha;
+    // ── Cluster labels ──────────────────────────────────────────────────────
+    // Visible in overview range: relZ 1 → 8. Fade out as you zoom into nodes.
+    const labelAlpha = Math.max(0, Math.min(1, 1 - (relZ - 2) / 6));
+    this.labelCtr.alpha = labelAlpha;
 
-    for (const child of this.labelContainer.children) {
+    for (const child of this.labelCtr.children) {
       const wx = (child as any).__wx as number;
       const wy = (child as any).__wy as number;
       const [sx, sy] = this.worldToScreen(wx, wy);
       child.x = sx;
       child.y = sy;
-      // Scale label slightly so it doesn't shrink to nothing at low zoom
-      const lz = Math.max(0.8, Math.min(1.6, Math.sqrt(this.zoom / 2)));
+      // Labels stay legibly sized across a wide zoom range
+      const lz = Math.max(0.85, Math.min(1.6, Math.cbrt(relZ)));
       child.scale.set(lz);
     }
   }
