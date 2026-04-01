@@ -68,12 +68,23 @@ async function main() {
   console.log(`[artifacts] Plottable media: ${plottableMedia.length} / ${mediaRows.length} (${mediaRows.length - plottableMedia.length} no-genre stubs excluded from plot)`);
 
   // --- COORDINATES ---
+  // World scale: multiply normalised [-1,1] coords by √n × SCALE so the
+  // world grows proportionally with the dataset.  At autoFit the whole map
+  // fits in the viewport as a cluster overview (like Nomic Atlas / Map of
+  // Reddit).  Zooming in reveals individual nodes — they are tiny at overview
+  // and grow as the user zooms in.  The scale constant 5 gives ~40px between
+  // nearest-neighbour nodes when zoomed in 10× from overview.
+  const COORD_SCALE = 5;
+
   console.log('[artifacts] Computing media coordinates...');
   const { vectors: mediaVecs } = buildMediaFeatureVectors(plottableMedia);
-  const mediaCoords = normalizeCoords(
+  const rawMediaCoords = normalizeCoords(
     await computeCoordinates(mediaVecs, plottableMedia.map(m => m.id))
   );
+  const mediaScale = Math.sqrt(Math.max(plottableMedia.length, 100)) * COORD_SCALE;
+  const mediaCoords = rawMediaCoords.map(c => ({ ...c, x: c.x * mediaScale, y: c.y * mediaScale }));
   const mediaCoordsMap = new Map(mediaCoords.map(c => [c.id, c]));
+  console.log(`[artifacts] Media world scale: ×${mediaScale.toFixed(1)} → range ±${mediaScale.toFixed(0)}`);
 
   // Build credits maps for people
   const creditsMap = new Map();
@@ -89,10 +100,13 @@ async function main() {
 
   console.log('[artifacts] Computing people coordinates...');
   const { vectors: peopleVecs } = buildPeopleFeatureVectors(peopleRows, creditsMap, mediaTagMap);
-  const peopleCoords = normalizeCoords(
+  const rawPeopleCoords = normalizeCoords(
     await computeCoordinates(peopleVecs, peopleRows.map(p => p.id))
   );
+  const peopleScale = Math.sqrt(Math.max(peopleRows.length, 100)) * COORD_SCALE;
+  const peopleCoords = rawPeopleCoords.map(c => ({ ...c, x: c.x * peopleScale, y: c.y * peopleScale }));
   const peopleCoordsMap = new Map(peopleCoords.map(c => [c.id, c]));
+  console.log(`[artifacts] People world scale: ×${peopleScale.toFixed(1)} → range ±${peopleScale.toFixed(0)}`);
 
   // Genre → color palette (packed 0xRRGGBB)
   const GENRE_COLORS = {

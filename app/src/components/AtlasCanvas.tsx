@@ -87,7 +87,7 @@ export function AtlasCanvas() {
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
       {/* Zoom hint */}
-      <div style={styles.zoomHint}>Scroll to zoom · Drag to pan · Click a node to explore</div>
+      <div style={styles.zoomHint}>Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles</div>
 
       {/* Empty state for People mode */}
       {visibleCount === 0 && (
