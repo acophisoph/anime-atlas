@@ -62,6 +62,9 @@ jobs:
       - name: Build artifacts
         env:
           DATA_DIR: ${{ github.workspace }}/data
+          # GitHub Actions runners have ~7 GB RAM. The default Node heap is 4 GB
+          # which is too small for UMAP on 18k+ media + 38k people. Set to 6 GB.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build:artifacts
 
       - name: Sanity check artifacts

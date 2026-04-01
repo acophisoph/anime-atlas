@@ -1,32 +1,51 @@
 /**
  * Coordinate computation from tag/genre similarity.
  * Falls back to deterministic grid layout for small datasets.
+ *
+ * Memory budget (GitHub Actions runner: ~7 GB RAM, default Node heap: 4 GB):
+ *   n=18k media, dim=500 → 18k × 500 × 8B = 72 MB  ✓
+ *   n=38k people, dim=300 → 38k × 300 × 8B = 91 MB  ✓
+ *   Without dimension cap: 18k × 10k × 8 = 1.44 GB per dataset → OOM.
  */
 
 const UMAP_THRESHOLD = 200; // minimum points to attempt UMAP
 
+// Maximum tag dimensions to include in feature vectors.
+// Only the most-used tags are kept — rare tags add noise and eat memory.
+const MEDIA_TAG_DIM_LIMIT  = 500;
+const PEOPLE_TAG_DIM_LIMIT = 300;
+
 /**
  * Build feature vectors for media items from their tags and genres.
+ * Genres always included (only ~20). Tags capped to top MEDIA_TAG_DIM_LIMIT by usage.
  */
 export function buildMediaFeatureVectors(mediaRows) {
-  // Collect all unique tags and genres
-  const tagSet = new Set();
+  // Count tag frequencies across all media
+  const tagFreq = new Map();
   const genreSet = new Set();
 
   for (const m of mediaRows) {
-    const tags = JSON.parse(m.tags_json || '[]');
+    const tags   = JSON.parse(m.tags_json   || '[]');
     const genres = JSON.parse(m.genres_json || '[]');
-    tags.forEach(t => tagSet.add(`tag:${t.name}`));
     genres.forEach(g => genreSet.add(`genre:${g}`));
+    tags.forEach(t => tagFreq.set(`tag:${t.name}`, (tagFreq.get(`tag:${t.name}`) || 0) + 1));
   }
 
-  const features = [...genreSet, ...tagSet];
+  // Keep only the top-N tags by usage frequency
+  const topTags = [...tagFreq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MEDIA_TAG_DIM_LIMIT)
+    .map(([name]) => name);
+
+  const features     = [...genreSet, ...topTags];
   const featureIndex = new Map(features.map((f, i) => [f, i]));
-  const dim = features.length;
+  const dim          = features.length;
+
+  console.log(`[coords] media features: ${genreSet.size} genres + ${topTags.length} tags = dim ${dim}`);
 
   const vectors = mediaRows.map(m => {
-    const vec = new Float32Array(dim);
-    const tags = JSON.parse(m.tags_json || '[]');
+    const vec    = new Float32Array(dim);
+    const tags   = JSON.parse(m.tags_json   || '[]');
     const genres = JSON.parse(m.genres_json || '[]');
 
     for (const g of genres) {
@@ -44,27 +63,37 @@ export function buildMediaFeatureVectors(mediaRows) {
 }
 
 /**
- * Build feature vectors for people from their credited roles + associated media tags.
+ * Build feature vectors for people from credited roles + associated media tags.
+ * Roles always included (few unique values). Tags capped to top PEOPLE_TAG_DIM_LIMIT.
  */
 export function buildPeopleFeatureVectors(peopleRows, creditsMap, mediaTagMap) {
   const roleSet = new Set();
-  const tagSet = new Set();
+  const tagFreq = new Map();
 
   for (const p of peopleRows) {
     const credits = creditsMap.get(p.id) || [];
     for (const c of credits) {
-      if (!c.is_localization) roleSet.add(`role:${c.role}`);
-      const tags = mediaTagMap.get(c.media_id) || [];
-      tags.forEach(t => tagSet.add(`tag:${t}`));
+      if (!c.is_localization) {
+        roleSet.add(`role:${c.role}`);
+        const tags = mediaTagMap.get(c.media_id) || [];
+        tags.forEach(t => tagFreq.set(`tag:${t}`, (tagFreq.get(`tag:${t}`) || 0) + 1));
+      }
     }
   }
 
-  const features = [...roleSet, ...tagSet];
+  const topTags = [...tagFreq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, PEOPLE_TAG_DIM_LIMIT)
+    .map(([name]) => name);
+
+  const features     = [...roleSet, ...topTags];
   const featureIndex = new Map(features.map((f, i) => [f, i]));
-  const dim = features.length;
+  const dim          = features.length;
+
+  console.log(`[coords] people features: ${roleSet.size} roles + ${topTags.length} tags = dim ${dim}`);
 
   const vectors = peopleRows.map(p => {
-    const vec = new Float32Array(dim);
+    const vec     = new Float32Array(dim);
     const credits = creditsMap.get(p.id) || [];
     for (const c of credits) {
       if (!c.is_localization) {
@@ -93,9 +122,8 @@ export async function computeCoordinates(vectors, ids) {
     return deterministicLayout(ids);
   }
 
-  // Filter out all-zero vectors — UMAP produces NaN for identical zero vectors.
-  // Keep a fallback position map for them and only UMAP the non-zero subset.
-  const spiral = deterministicLayout(ids);
+  // Filter out all-zero vectors — UMAP produces NaN for these.
+  const spiral    = deterministicLayout(ids);
   const spiralMap = new Map(spiral.map(p => [p.id, p]));
 
   const nonZeroIdx = [];
@@ -108,34 +136,50 @@ export async function computeCoordinates(vectors, ids) {
     return spiral;
   }
 
+  const n = nonZeroIdx.length;
+  console.log(`[coords] UMAP on ${n} non-zero vectors (${vectors.length - n} zero-vector stubs → spiral)`);
+
   try {
     const { UMAP } = await import('umap-js');
 
-    // L2-normalize each vector so Euclidean distance ≈ cosine similarity.
-    // Critical for sparse high-dim genre/tag vectors — raw Euclidean in high
-    // dimensions causes all points to appear equidistant, collapsing to blobs.
-    const rawVecs = nonZeroIdx.map(i => Array.from(vectors[i]));
-    const subVectors = rawVecs.map(v => {
-      const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
-      return v.map(x => x / norm);
+    // L2-normalize + convert to number[] in a single pass.
+    // Keeps only one copy of the data in memory (no separate rawVecs intermediate).
+    // Normalization makes Euclidean ≈ cosine similarity — critical for sparse
+    // high-dimensional genre/tag vectors where raw Euclidean distance is dominated
+    // by vector magnitude rather than directional similarity.
+    const subVectors = nonZeroIdx.map(i => {
+      const raw  = vectors[i];
+      let norm2  = 0;
+      for (let j = 0; j < raw.length; j++) norm2 += raw[j] * raw[j];
+      const norm = Math.sqrt(norm2) || 1;
+      const out  = new Array(raw.length);
+      for (let j = 0; j < raw.length; j++) out[j] = raw[j] / norm;
+      return out;
     });
+
+    // Free Float32Array memory — subVectors is now the only copy needed
+    for (let i = 0; i < vectors.length; i++) vectors[i] = null;
+
     const subIds = nonZeroIdx.map(i => ids[i]);
+
+    // Adaptive UMAP params: fewer neighbors + epochs for very large n to
+    // reduce peak memory (UMAP internal kNN matrix is O(n × nNeighbors)).
+    const nNeighbors = n > 20000 ? 15 : n > 5000 ? 20 : 30;
+    const nEpochs    = n > 20000 ? 300 : n > 5000 ? 400 : 500;
+
+    console.log(`[coords] UMAP params: nNeighbors=${nNeighbors} minDist=0.5 spread=3.5 nEpochs=${nEpochs}`);
 
     const umap = new UMAP({
       nComponents: 2,
-      // More neighbors = stronger global structure across genre clusters
-      nNeighbors: Math.min(30, subVectors.length - 1),
-      // High minDist: individual points spread apart within each cluster
+      nNeighbors,
       minDist: 0.5,
-      // High spread: clusters pushed far apart — wide open map
-      spread: 3.5,
-      nEpochs: 500,
+      spread:  3.5,
+      nEpochs,
       random: seededRandom(42),
     });
 
     const embedding = umap.fit(subVectors);
 
-    // Build result: UMAP coords for non-zero vectors, spiral for zero-vector stubs
     const resultMap = new Map();
     for (let i = 0; i < subIds.length; i++) {
       const [x, y] = embedding[i];
@@ -152,11 +196,10 @@ export async function computeCoordinates(vectors, ids) {
 }
 
 function deterministicLayout(ids) {
-  // Stable spiral layout seeded by index
-  const n = ids.length;
-  const goldenAngle = 2.399963229728653; // radians
+  const n           = ids.length;
+  const goldenAngle = 2.399963229728653;
   return ids.map((id, i) => {
-    const r = Math.sqrt(i / n) * 10;
+    const r     = Math.sqrt(i / n) * 10;
     const theta = i * goldenAngle;
     return { id, x: r * Math.cos(theta), y: r * Math.sin(theta) };
   });
