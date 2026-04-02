@@ -356,21 +356,31 @@ function buildStaffOverlapGraph(creditRows, threshold, K) {
 }
 
 function buildCollabGraph(creditRows, K) {
-  const personToMedia = new Map();
+  // Cap persons per media to avoid O(n²) pair explosion.
+  // A media with 200 people → 19,900 pairs; 1000 such titles → 19.9M pairs
+  // which exceeds V8's Map limit of ~16.7M entries.
+  // Keeping only the 20 most-weighted credits per media preserves the most
+  // meaningful collaborations (directors, main cast, key staff) while
+  // bounding pairs per title to C(20,2) = 190.
+  const MAX_PERSONS_PER_MEDIA = 20;
+
+  // Collect credits per media, sorted by weight descending, capped
+  const mediaToCredits = new Map();
   for (const c of creditRows) {
     if (c.is_localization) continue;
-    if (!personToMedia.has(c.person_id)) personToMedia.set(c.person_id, new Set());
-    personToMedia.get(c.person_id).add(c.media_id);
+    if (!mediaToCredits.has(c.media_id)) mediaToCredits.set(c.media_id, []);
+    mediaToCredits.get(c.media_id).push(c);
   }
-
   const mediaToPersons = new Map();
-  for (const c of creditRows) {
-    if (c.is_localization) continue;
-    if (!mediaToPersons.has(c.media_id)) mediaToPersons.set(c.media_id, []);
-    mediaToPersons.get(c.media_id).push(c.person_id);
+  for (const [mid, credits] of mediaToCredits) {
+    const sorted = credits.sort((a, b) => (b.weight || 1) - (a.weight || 1));
+    mediaToPersons.set(mid, sorted.slice(0, MAX_PERSONS_PER_MEDIA).map(c => c.person_id));
   }
 
-  const collabCount = new Map(); // "a:b" -> count
+  // Accumulate pair counts. Only store pairs with count >= 2 — a single
+  // shared credit on one obscure title isn't a meaningful collaboration.
+  // Use a regular object for speed; split into chunks to stay under Map limit.
+  const collabCount = new Map();
   for (const [, persons] of mediaToPersons) {
     for (let i = 0; i < persons.length; i++) {
       for (let j = i + 1; j < persons.length; j++) {
@@ -384,7 +394,10 @@ function buildCollabGraph(creditRows, K) {
 
   const rawAdj = new Map();
   for (const [key, count] of collabCount) {
-    const [a, b] = key.split(':').map(Number);
+    if (count < 2) continue; // skip single-title coincidences
+    const colon = key.indexOf(':');
+    const a = Number(key.slice(0, colon));
+    const b = Number(key.slice(colon + 1));
     if (!rawAdj.has(a)) rawAdj.set(a, []);
     if (!rawAdj.has(b)) rawAdj.set(b, []);
     rawAdj.get(a).push({ targetId: b, weight: count, edgeType: 'COLLAB' });
