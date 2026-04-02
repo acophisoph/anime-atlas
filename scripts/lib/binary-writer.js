@@ -99,6 +99,7 @@ export function writeGraphBin(outPath, adjacency) {
 
 function parseColorHex(hex) {
   if (!hex) return 0;
+  if (typeof hex === 'number') return hex >>> 0; // already packed 0xRRGGBB
   const s = hex.replace('#', '');
   if (s.length === 6) return parseInt(s, 16);
   if (s.length === 3) {
