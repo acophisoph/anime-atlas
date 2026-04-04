@@ -1,212 +1,212 @@
 [
   {
     "id": 0,
-    "x": 226.46193093303444,
-    "y": 476.11552739714045,
-    "size": 6615,
-    "label": "Romance · Comedy · Heterosexual"
+    "x": 410.2141743936084,
+    "y": -1374.3800119489047,
+    "size": 3411,
+    "label": "Fantasy · Adventure · Male Protagonist"
   },
   {
     "id": 1,
-    "x": 176.1362067272522,
-    "y": -266.72117601196885,
-    "size": 11275,
-    "label": "Comedy · Romance · School"
+    "x": 241.19724159552905,
+    "y": 401.0623988442258,
+    "size": 7535,
+    "label": "Romance · Comedy · Heterosexual"
   },
   {
     "id": 2,
-    "x": -1084.075448020008,
-    "y": 260.22573846558004,
-    "size": 4872,
-    "label": "Romance · Slice of Life · Shoujo"
+    "x": -249.92615597223192,
+    "y": -273.75002434761444,
+    "size": 12940,
+    "label": "Comedy · Romance · Yuri"
   },
   {
     "id": 3,
-    "x": 1492.549206013189,
-    "y": -91.31337999944301,
-    "size": 2942,
-    "label": "Hentai · Psychological · Anthology"
+    "x": 683.6040471998458,
+    "y": -664.8490223923244,
+    "size": 12632,
+    "label": "Romance · Hentai · Boys' Love"
   },
   {
     "id": 4,
-    "x": -510.35523278058633,
-    "y": -1124.6868576586626,
-    "size": 9560,
-    "label": "Hentai · Sports · School"
+    "x": -957.513842137542,
+    "y": -199.81368645095932,
+    "size": 6823,
+    "label": "Romance · Drama · Boys' Love"
   },
   {
     "id": 5,
-    "x": -534.2786642045997,
-    "y": 241.85303194741405,
-    "size": 8068,
-    "label": "Fantasy · Action · Male Protagonist"
+    "x": -639.5203194204609,
+    "y": 775.1309943090323,
+    "size": 2599,
+    "label": "Hentai · Music · Flat Chest"
   },
   {
     "id": 6,
-    "x": 615.5228825652711,
-    "y": 131.90760545319972,
-    "size": 6749,
-    "label": "Drama · Romance · Full Color"
-  },
-  {
-    "id": 7,
-    "x": -406.53845390775433,
-    "y": 1049.1327149180588,
-    "size": 7103,
-    "label": "Hentai · Romance · Large Breasts"
-  },
-  {
-    "id": 8,
-    "x": -1014.4955935712775,
-    "y": -508.9024612129311,
-    "size": 5184,
-    "label": "Drama · Romance · Boys' Love"
-  },
-  {
-    "id": 9,
-    "x": 574.2566995877065,
-    "y": -1153.061439221147,
-    "size": 2457,
-    "label": "Romance · Adventure · Boys' Love"
-  },
-  {
-    "id": 10,
-    "x": -150.62879120793477,
-    "y": -424.25948769669805,
-    "size": 16124,
-    "label": "Romance · Fantasy · Full Color"
-  },
-  {
-    "id": 11,
-    "x": 828.4569405455414,
-    "y": 1072.7510899245037,
-    "size": 2152,
+    "x": 830.8638323675747,
+    "y": 1103.2418006685234,
+    "size": 1850,
     "label": "Comedy · Psychological · School"
   },
   {
-    "id": 12,
-    "x": -1560.7398147827453,
-    "y": -646.0163092788565,
-    "size": 2164,
-    "label": "Romance · Mystery · Teens' Love"
-  },
-  {
-    "id": 13,
-    "x": -135.17524623404273,
-    "y": 155.04812389930993,
-    "size": 15434,
-    "label": "Supernatural · Drama · Male Protagonist"
-  },
-  {
-    "id": 14,
-    "x": -1157.21527092289,
-    "y": 1132.6229082686575,
-    "size": 1583,
-    "label": "Mixed"
-  },
-  {
-    "id": 15,
-    "x": 117.15035442402909,
-    "y": -1116.7609345170988,
-    "size": 4093,
-    "label": "Comedy · Slice of Life · Female Protagonist"
-  },
-  {
-    "id": 16,
-    "x": -1300.7664360848453,
-    "y": -1501.6873618844138,
-    "size": 2454,
-    "label": "Mixed"
-  },
-  {
-    "id": 17,
-    "x": 1532.839207289862,
-    "y": -830.6362088805037,
-    "size": 3753,
-    "label": "Mixed"
-  },
-  {
-    "id": 18,
-    "x": 670.5901387546389,
-    "y": -561.0984245317974,
-    "size": 4896,
-    "label": "Romance · Hentai · Boys' Love"
-  },
-  {
-    "id": 19,
-    "x": -247.34208485915897,
-    "y": 635.7306305094838,
-    "size": 6073,
-    "label": "Romance · Drama · Full Color"
-  },
-  {
-    "id": 20,
-    "x": -519.4191664191001,
-    "y": -438.270758198808,
-    "size": 7897,
-    "label": "Romance · Comedy · Boys' Love"
-  },
-  {
-    "id": 21,
-    "x": 289.76945694638425,
-    "y": -645.7067247560625,
-    "size": 7815,
-    "label": "Slice of Life · Comedy · Seinen"
-  },
-  {
-    "id": 22,
-    "x": 919.8135403022528,
-    "y": -184.99169931042098,
-    "size": 3146,
-    "label": "Action · Sports · Shounen"
-  },
-  {
-    "id": 23,
-    "x": 208.551824847338,
-    "y": 1334.8306364949028,
-    "size": 4136,
-    "label": "Fantasy · Psychological · Female Protagonist"
-  },
-  {
-    "id": 24,
-    "x": 521.3161772456554,
-    "y": 670.1465001000647,
-    "size": 5190,
+    "id": 7,
+    "x": -189.97132071213275,
+    "y": -630.0896333108641,
+    "size": 12806,
     "label": "Fantasy · Romance · Full Color"
   },
   {
-    "id": 25,
-    "x": -997.6357920426179,
-    "y": -27.061703578043144,
-    "size": 5272,
-    "label": "Romance · Slice of Life · Shoujo"
+    "id": 8,
+    "x": 514.3946532842272,
+    "y": -59.20160487245027,
+    "size": 7294,
+    "label": "Drama · Romance · Full Color"
   },
   {
-    "id": 26,
-    "x": -1164.3864459292884,
-    "y": 689.8899216390845,
-    "size": 3229,
-    "label": "Fantasy · Comedy · Josei"
+    "id": 9,
+    "x": -494.49594023043556,
+    "y": -1049.970757992301,
+    "size": 8583,
+    "label": "Hentai · Sports · School"
   },
   {
-    "id": 27,
-    "x": 1090.6902032997027,
-    "y": 525.1283569790633,
-    "size": 2688,
+    "id": 10,
+    "x": 1447.7782614317932,
+    "y": -1118.8679405246821,
+    "size": 1696,
+    "label": "Mixed"
+  },
+  {
+    "id": 11,
+    "x": 1122.9659538146589,
+    "y": 449.0602241257564,
+    "size": 4161,
     "label": "Romance · Hentai · Boys' Love"
   },
   {
+    "id": 12,
+    "x": -1277.8267677435008,
+    "y": 695.0105809319805,
+    "size": 3114,
+    "label": "Fantasy · Comedy · Josei"
+  },
+  {
+    "id": 13,
+    "x": 294.15494536191966,
+    "y": 1279.635340618424,
+    "size": 4047,
+    "label": "Fantasy · Psychological · Female Protagonist"
+  },
+  {
+    "id": 14,
+    "x": -135.088106491187,
+    "y": 68.68901548005029,
+    "size": 13124,
+    "label": "Drama · Supernatural · Male Protagonist"
+  },
+  {
+    "id": 15,
+    "x": -1233.958471104102,
+    "y": -775.1642095169382,
+    "size": 4890,
+    "label": "Slice of Life · Romance · Female Protagonist"
+  },
+  {
+    "id": 16,
+    "x": -464.4260312072168,
+    "y": -5.119191376419384,
+    "size": 8144,
+    "label": "Action · Drama · Male Protagonist"
+  },
+  {
+    "id": 17,
+    "x": 169.9951603062919,
+    "y": -946.3272722580695,
+    "size": 5884,
+    "label": "Comedy · Slice of Life · Female Protagonist"
+  },
+  {
+    "id": 18,
+    "x": -543.5812351741655,
+    "y": -1580.2434568714666,
+    "size": 2436,
+    "label": "Mixed"
+  },
+  {
+    "id": 19,
+    "x": 1335.1267366633765,
+    "y": -326.44184114873144,
+    "size": 4046,
+    "label": "Hentai · Psychological · Anthology"
+  },
+  {
+    "id": 20,
+    "x": -353.5347087938124,
+    "y": 1048.4005931847018,
+    "size": 6397,
+    "label": "Hentai · Romance · Large Breasts"
+  },
+  {
+    "id": 21,
+    "x": -1305.2308718101626,
+    "y": 161.75406148601388,
+    "size": 3430,
+    "label": "Comedy · Romance · School"
+  },
+  {
+    "id": 22,
+    "x": -745.453553081167,
+    "y": 313.346516771326,
+    "size": 4901,
+    "label": "Fantasy · Romance · Male Protagonist"
+  },
+  {
+    "id": 23,
+    "x": 163.9156958926803,
+    "y": -38.37490081394812,
+    "size": 15378,
+    "label": "Romance · Drama · Female Protagonist"
+  },
+  {
+    "id": 24,
+    "x": 889.5811853718013,
+    "y": -69.5556618479181,
+    "size": 4837,
+    "label": "Action · Fantasy · Male Protagonist"
+  },
+  {
+    "id": 25,
+    "x": 540.9235980603827,
+    "y": 578.9930213018903,
+    "size": 4484,
+    "label": "Fantasy · Romance · Full Color"
+  },
+  {
+    "id": 26,
+    "x": -598.0368164564904,
+    "y": -557.2470638732285,
+    "size": 6013,
+    "label": "Romance · Comedy · Boys' Love"
+  },
+  {
+    "id": 27,
+    "x": 974.0528338800036,
+    "y": 1670.725141032815,
+    "size": 1524,
+    "label": "Mixed"
+  },
+  {
     "id": 28,
-    "x": 219.2623992464554,
-    "y": 49.870628618694305,
-    "size": 13522,
-    "label": "Drama · Romance · Female Protagonist"
+    "x": 187.95140902913533,
+    "y": -415.97890233896476,
+    "size": 12133,
+    "label": "Comedy · Romance · School"
   },
   {
     "id": 29,
-    "x": -354.69329415741475,
-    "y": -51.06299753561457,
-    "size": 13870,
-    "label": "Action · Drama · Male Protagonist"
+    "x": -225.40735251006495,
+    "y": 485.6803348713362,
+    "size": 7448,
+    "label": "Romance · Drama · Full Color"
   }
 ]
