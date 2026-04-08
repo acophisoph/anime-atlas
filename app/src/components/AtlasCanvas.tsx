@@ -52,9 +52,12 @@ export function AtlasCanvas() {
     if (genres.length > 0 && genreIndex) {
       for (const g of genres) {
         const ids = new Set<number>(genreIndex[g] ?? []);
-        genreAllowed = genreAllowed
-          ? new Set([...genreAllowed].filter(id => ids.has(id)))
-          : ids;
+        if (genreAllowed === null) {
+          genreAllowed = ids;
+        } else {
+          const prev: Set<number> = genreAllowed;
+          genreAllowed = new Set(Array.from(prev).filter((id: number) => ids.has(id)));
+        }
       }
     }
 
@@ -62,9 +65,12 @@ export function AtlasCanvas() {
     if (tags.length > 0 && tagIndex) {
       for (const t of tags) {
         const ids = new Set<number>(tagIndex[t] ?? []);
-        tagAllowed = tagAllowed
-          ? new Set([...tagAllowed].filter(id => ids.has(id)))
-          : ids;
+        if (tagAllowed === null) {
+          tagAllowed = ids;
+        } else {
+          const prev: Set<number> = tagAllowed;
+          tagAllowed = new Set(Array.from(prev).filter((id: number) => ids.has(id)));
+        }
       }
     }
 
