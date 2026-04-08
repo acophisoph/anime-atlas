@@ -286,17 +286,26 @@ export class AtlasRenderer {
 
   setGenreMap(gm: Map<number, string[]>) { this.genreMap = gm; }
 
-  setPoints(raw: Point[], mode: 'media' | 'people') {
+  // fitCamera: true when switching modes (reset camera to show all points),
+  // false when applying filters (keep current camera position).
+  setPoints(raw: Point[], mode: 'media' | 'people', fitCamera = true) {
+    const vis = raw.filter(p =>
+      mode === 'media' ? p.kind === 'media' : p.kind === 'person'
+    );
+
+    // If the new mode has no visible points, don't wipe the current sprites.
+    // The empty-state overlay in AtlasCanvas handles the UI; the canvas keeps
+    // its last content so there's no jarring black flash on mode switch.
+    if (!vis.length) {
+      this.mode = mode;
+      return;
+    }
+
     this.mode = mode;
     this.dotCtr.removeChildren();
     this.pts   = [];
     this.ptMap.clear();
     this.grid.clear();
-
-    const vis = raw.filter(p =>
-      mode === 'media' ? p.kind === 'media' : p.kind === 'person'
-    );
-    if (!vis.length) return;
 
     // Data bounds
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -334,7 +343,7 @@ export class AtlasRenderer {
       this.grid.get(key)!.push(i);
     }
 
-    this.autoFit(vis);
+    if (fitCamera) this.autoFit(vis);
   }
 
   autoFit(points: Point[] = this.pts) {

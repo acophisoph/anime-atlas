@@ -1,25 +1,101 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { AtlasRenderer, EdgeData } from '../lib/atlas-renderer';
-import { getNeighborhood } from '../lib/graph-utils';
+import { getGenreToMedia, getTagToMedia } from '../lib/data-loader';
 
 export function AtlasCanvas() {
-  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<AtlasRenderer | null>(null);
-  const wrapRef    = useRef<HTMLDivElement>(null);
+  const wrapRef     = useRef<HTMLDivElement>(null);
+  // Track previous mode to know when to reset camera
+  const prevModeRef = useRef<string>('media');
 
-  const points        = useStore(s => s.points);
-  const clusters      = useStore(s => s.clusters);
-  const mode          = useStore(s => s.mode);
-  const neighborhood  = useStore(s => s.neighborhoodMap);
-  const selectedId    = useStore(s => s.selectedId);
+  const points         = useStore(s => s.points);
+  const clusters       = useStore(s => s.clusters);
+  const mode           = useStore(s => s.mode);
+  const mediaFilters   = useStore(s => s.mediaFilters);
+  const neighborhood   = useStore(s => s.neighborhoodMap);
+  const selectedId     = useStore(s => s.selectedId);
+  const searchEntries  = useStore(s => s.searchEntries);
   const graphRelations = useStore(s => s.graphRelations);
   const graphStaff     = useStore(s => s.graphStaff);
   const graphCollab    = useStore(s => s.graphCollab);
-  const setHovered    = useStore(s => s.setHovered);
-  const setSelected   = useStore(s => s.setSelected);
+  const setHovered     = useStore(s => s.setHovered);
+  const setSelected    = useStore(s => s.setSelected);
 
-  // Init renderer
+  // Lazy-loaded filter indices
+  const [genreIndex, setGenreIndex] = useState<Record<string, number[]> | null>(null);
+  const [tagIndex,   setTagIndex]   = useState<Record<string, number[]> | null>(null);
+
+  useEffect(() => {
+    getGenreToMedia().then(setGenreIndex).catch(() => {});
+    getTagToMedia().then(setTagIndex).catch(() => {});
+  }, []);
+
+  // Build a fast lookup map from search entries: id → entry
+  const mediaEntryMap = useMemo(() => {
+    const m = new Map<number, { type?: string; year?: number; isAdult?: boolean; genres?: string }>();
+    for (const e of searchEntries) {
+      if (e.kind === 'media') m.set(e.id, e);
+    }
+    return m;
+  }, [searchEntries]);
+
+  // ── Compute filtered point set ────────────────────────────────────────────
+  const filteredPoints = useMemo(() => {
+    if (mode !== 'media') return points; // people mode: no media filters apply
+
+    const { mediaType, yearMin, yearMax, showNSFW, genres, tags } = mediaFilters;
+
+    // Pre-compute genre/tag allowed sets (intersect across all selected)
+    let genreAllowed: Set<number> | null = null;
+    if (genres.length > 0 && genreIndex) {
+      for (const g of genres) {
+        const ids = new Set<number>(genreIndex[g] ?? []);
+        genreAllowed = genreAllowed
+          ? new Set([...genreAllowed].filter(id => ids.has(id)))
+          : ids;
+      }
+    }
+
+    let tagAllowed: Set<number> | null = null;
+    if (tags.length > 0 && tagIndex) {
+      for (const t of tags) {
+        const ids = new Set<number>(tagIndex[t] ?? []);
+        tagAllowed = tagAllowed
+          ? new Set([...tagAllowed].filter(id => ids.has(id)))
+          : ids;
+      }
+    }
+
+    return points.filter(p => {
+      if (p.kind !== 'media') return true; // person points always pass
+
+      const entry = mediaEntryMap.get(p.id);
+
+      // NSFW: hide adult media unless toggled on
+      if (!showNSFW && entry?.isAdult) return false;
+      // Fallback heuristic for old data without isAdult field: check genres string
+      if (!showNSFW && entry?.genres?.includes('Hentai')) return false;
+
+      // Media type (ANIME / MANGA)
+      if (mediaType !== 'BOTH' && entry?.type && entry.type !== mediaType) return false;
+
+      // Year range
+      if (yearMin && entry?.year && entry.year < yearMin) return false;
+      if (yearMax && entry?.year && entry.year > yearMax) return false;
+
+      // Genre filter (requires index, loaded async)
+      if (genreAllowed && !genreAllowed.has(p.id)) return false;
+
+      // Tag filter (requires index, loaded async)
+      if (tagAllowed && !tagAllowed.has(p.id)) return false;
+
+      return true;
+    });
+  }, [points, mode, mediaFilters, mediaEntryMap, genreIndex, tagIndex]);
+
+  // ── Renderer init ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!canvasRef.current || !wrapRef.current) return;
     const { width, height } = wrapRef.current.getBoundingClientRect();
@@ -43,33 +119,31 @@ export function AtlasCanvas() {
     return () => { obs.disconnect(); renderer.destroy(); rendererRef.current = null; };
   }, []);
 
-  // Build genre map from points + meta — use search entries genre field when available
-  // For now derive from points colorRGB (enough for initial render)
-  // Points update → rebuild sprites + autofit
+  // ── Send filtered points to renderer ──────────────────────────────────────
   useEffect(() => {
     const r = rendererRef.current;
-    if (!r || points.length === 0) return;
-    r.setPoints(points, mode === 'media' ? 'media' : 'people');
-  }, [points, mode]);
+    if (!r || filteredPoints.length === 0) return;
+    const rendererMode = mode === 'media' ? 'media' : 'people';
+    const modeChanged = prevModeRef.current !== mode;
+    prevModeRef.current = mode;
+    r.setPoints(filteredPoints, rendererMode, modeChanged);
+  }, [filteredPoints, mode]);
 
+  // ── Clusters ──────────────────────────────────────────────────────────────
   useEffect(() => {
     rendererRef.current?.setClusters(clusters);
   }, [clusters]);
 
-  // Neighborhood + edges
+  // ── Neighborhood + edges ──────────────────────────────────────────────────
   useEffect(() => {
     const r = rendererRef.current;
     if (!r) return;
     r.setNeighborhood(neighborhood);
     r.setSelected(selectedId);
 
-    // Build edge list for drawing lines
     if (selectedId !== null && neighborhood.size > 0) {
       const edges: EdgeData[] = [];
-      // Gather all graphs that might have edges
-      const graphs = [graphRelations, graphStaff, graphCollab].filter(Boolean);
       for (const [nodeId, hop] of neighborhood) {
-        // Find which graph connects selectedId → nodeId (or nodeId → other nodes at further hops)
         edges.push({ fromId: selectedId, toId: nodeId, hop });
       }
       r.setEdges(edges);
@@ -78,27 +152,32 @@ export function AtlasCanvas() {
     }
   }, [neighborhood, selectedId, graphRelations, graphStaff, graphCollab]);
 
-  const visibleCount = points.filter(p =>
+  const visibleCount = filteredPoints.filter(p =>
     mode === 'media' ? p.kind === 'media' : p.kind === 'person'
   ).length;
 
   return (
-    <div ref={wrapRef} style={{ width: '100%', height: '100%', position: 'relative', background: '#080810' }}>
+    <div ref={wrapRef} style={{ width: '100%', height: '100%', position: 'relative', background: '#07070f' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
-      {/* Zoom hint */}
-      <div style={styles.zoomHint}>Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles</div>
+      <div style={styles.zoomHint}>
+        Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles
+      </div>
 
-      {/* Empty state for People mode */}
       {visibleCount === 0 && (
         <div style={styles.emptyState}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>👤</div>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>
+            {mode === 'people' ? '👤' : '🔍'}
+          </div>
           <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: '#c8c8f8' }}>
-            People data not yet ingested
+            {mode === 'people'
+              ? 'People data not yet ingested'
+              : 'No media matches these filters'}
           </div>
           <div style={{ fontSize: 13, color: '#6666a0', maxWidth: 300, textAlign: 'center', lineHeight: 1.6 }}>
-            Staff and voice actor data is fetched in later ingest batches.
-            Check back after the next scheduled run (every 6 hours).
+            {mode === 'people'
+              ? 'Staff and voice actor data is fetched in later ingest batches. Check back after the next scheduled run (every 6 hours).'
+              : 'Try relaxing your filters or reset them to see all media.'}
           </div>
         </div>
       )}
@@ -114,6 +193,6 @@ const styles: Record<string, React.CSSProperties> = {
   emptyState: {
     position: 'absolute', inset: 0,
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    pointerEvents: 'none',
+    pointerEvents: 'none', background: '#07070f',
   },
 };

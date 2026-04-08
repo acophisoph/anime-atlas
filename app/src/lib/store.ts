@@ -92,6 +92,7 @@ export const useStore = create<AtlasState>((set) => ({
     genres: [],
     tags: [],
     studio: null,
+    showNSFW: false,
   },
   peopleFilters: {
     includeVA: true,

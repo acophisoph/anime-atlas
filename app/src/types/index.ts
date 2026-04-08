@@ -72,6 +72,8 @@ export interface SearchEntry {
   ro: string;
   year?: number;
   type?: string;
+  isAdult?: boolean;   // populated after next ingest rebuild
+  genres?: string;     // comma-separated genre list (for client-side filter)
 }
 
 export interface GraphNode {
@@ -98,6 +100,7 @@ export interface MediaFilters {
   genres: string[];
   tags: string[];
   studio: string | null;
+  showNSFW: boolean;
 }
 
 export interface PeopleFilters {

@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
+import { getRoleToPeople } from '../lib/data-loader';
+import { AutocompleteInput } from './AutocompleteInput';
 
 export function PeopleFiltersPanel() {
   const filters    = useStore(s => s.peopleFilters);
   const setFilters = useStore(s => s.setPeopleFilters);
+  const [roleInput,   setRoleInput]   = useState('');
+  const [roleOptions, setRoleOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    getRoleToPeople()
+      .then(m => setRoleOptions(Object.keys(m).sort()))
+      .catch(() => {});
+  }, []);
 
   return (
-    <div style={styles.wrap}>
+    <div style={s.wrap}>
       <Section label="Voice Actors">
-        <label style={styles.checkLabel}>
+        <label style={s.checkLabel}>
           <input type="checkbox" checked={filters.includeVA}
             onChange={e => setFilters({ includeVA: e.target.checked })} />
           Include Voice Actors
@@ -16,16 +26,34 @@ export function PeopleFiltersPanel() {
       </Section>
 
       <Section label="Roles">
-        <TagInput
-          values={filters.roles}
-          placeholder="e.g. Director…"
-          onChange={roles => setFilters({ roles })}
-        />
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+          <AutocompleteInput
+            value={roleInput}
+            onChange={setRoleInput}
+            onSelect={role => {
+              if (!filters.roles.includes(role)) setFilters({ roles: [...filters.roles, role] });
+              setRoleInput('');
+            }}
+            options={roleOptions}
+            selected={filters.roles}
+            placeholder="e.g. Director…"
+          />
+        </div>
+        <div style={s.chips}>
+          {filters.roles.map(r => (
+            <span key={r} style={s.chip}>
+              {r}
+              <span style={s.chipX}
+                onClick={() => setFilters({ roles: filters.roles.filter(x => x !== r) })}>×</span>
+            </span>
+          ))}
+        </div>
       </Section>
 
-      <button style={styles.resetBtn} onClick={() => setFilters({
-        includeVA: true, roles: [], studio: null,
-      })}>Reset Filters</button>
+      <button style={s.resetBtn}
+        onClick={() => setFilters({ includeVA: true, roles: [], studio: null })}>
+        Reset Filters
+      </button>
     </div>
   );
 }
@@ -40,51 +68,16 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function TagInput({ values, placeholder, onChange }: {
-  values: string[]; placeholder: string; onChange: (v: string[]) => void;
-}) {
-  const [input, setInput] = React.useState('');
-  function add() {
-    const v = input.trim();
-    if (v && !values.includes(v)) onChange([...values, v]);
-    setInput('');
-  }
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-        <input style={{ ...styles.textInput, flex: 1 }} value={input} placeholder={placeholder}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && add()} />
-        <button style={styles.addBtn} onClick={add}>+</button>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {values.map(v => (
-          <span key={v} style={styles.tag}>
-            {v}<span style={styles.tagX} onClick={() => onChange(values.filter(x => x !== v))}>×</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  wrap: { display: 'flex', flexDirection: 'column' },
+const s: Record<string, React.CSSProperties> = {
+  wrap:       { display: 'flex', flexDirection: 'column' },
   checkLabel: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#c8c8e8', cursor: 'pointer' },
-  textInput: {
-    padding: '5px 8px', borderRadius: 5, border: '1px solid #2a2a40',
-    background: '#1a1a28', color: '#c8c8e8', fontSize: 12, outline: 'none',
+  chips:      { display: 'flex', flexWrap: 'wrap', gap: 4 },
+  chip: {
+    display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
+    borderRadius: 12, background: '#1e1e38', border: '1px solid #2a2a50',
+    color: '#9090c8', fontSize: 11,
   },
-  addBtn: {
-    padding: '5px 10px', borderRadius: 5, border: '1px solid #2a2a40',
-    background: '#2a2a4a', color: '#c8c8f8', cursor: 'pointer', fontSize: 14,
-  },
-  tag: {
-    display: 'flex', alignItems: 'center', gap: 4,
-    padding: '2px 8px', borderRadius: 12, background: '#1e1e38',
-    border: '1px solid #2a2a50', color: '#9090c8', fontSize: 11,
-  },
-  tagX: { cursor: 'pointer', color: '#666688', fontWeight: 700 },
+  chipX:   { cursor: 'pointer', color: '#666688', fontWeight: 700 },
   resetBtn: {
     marginTop: 8, width: '100%', padding: '7px 0', borderRadius: 6,
     border: '1px solid #2a2a40', background: 'transparent',

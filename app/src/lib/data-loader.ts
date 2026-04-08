@@ -147,3 +147,12 @@ export async function getRoleToPeople(): Promise<Record<string, number[]>> {
   }
   return roleTopeople;
 }
+
+let genreToMediaCache: Record<string, number[]> | null = null;
+
+export async function getGenreToMedia(): Promise<Record<string, number[]>> {
+  if (!genreToMediaCache) {
+    genreToMediaCache = await fetchJson<Record<string, number[]>>('index/genre_to_media.json');
+  }
+  return genreToMediaCache;
+}

@@ -240,19 +240,27 @@ async function main() {
   // --- SEARCH INDEX ---
   console.log('[artifacts] Building search index...');
   const searchEntries = [
-    ...mediaRows.map(m => ({
-      id: m.id, kind: 'media',
-      en: m.title_english || m.title_romaji || '',
-      jp: m.title_native || m.title_romaji || '',
-      ro: m.title_romaji || '',
-      year: m.season_year,
-      type: m.type,
-    })),
+    ...mediaRows.map(m => {
+      const genres = JSON.parse(m.genres_json || '[]');
+      // isAdult: genre 'Hentai' is the canonical AniList adult marker.
+      // (The DB doesn't store AniList's isAdult flag directly, so we derive it.)
+      const isAdult = genres.includes('Hentai');
+      return {
+        id: m.id, kind: 'media',
+        en: m.title_english || m.title_romaji || '',
+        jp: m.title_native  || m.title_romaji  || '',
+        ro: m.title_romaji  || '',
+        year: m.season_year,
+        type: m.type,
+        isAdult,
+        genres: genres.join(','),
+      };
+    }),
     ...peopleRows.map(p => ({
       id: p.id, kind: 'person',
-      en: p.name_full || '',
+      en: p.name_full   || '',
       jp: p.name_native || p.name_full || '',
-      ro: p.name_full || '',
+      ro: p.name_full   || '',
     })),
   ];
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'search.json'), JSON.stringify(searchEntries));
@@ -267,6 +275,17 @@ async function main() {
     }
   }
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'tag_to_media.json'), JSON.stringify(tagToMedia));
+
+  // --- GENRE TO MEDIA ---
+  const genreToMedia = {};
+  for (const m of mediaRows) {
+    const genres = JSON.parse(m.genres_json || '[]');
+    for (const g of genres) {
+      if (!genreToMedia[g]) genreToMedia[g] = [];
+      genreToMedia[g].push(m.id);
+    }
+  }
+  fs.writeFileSync(path.join(DATA_DIR, 'index', 'genre_to_media.json'), JSON.stringify(genreToMedia));
 
   // --- ROLE TO PEOPLE ---
   const roleTopeople = {};
