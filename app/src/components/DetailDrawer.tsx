@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useStore } from '../lib/store';
 import { loadMediaMeta, loadPersonMeta } from '../lib/data-loader';
 import { getNeighborhood } from '../lib/graph-utils';
+import { t, translateGenre, translateTag } from '../lib/i18n';
 import type { MediaMeta, PersonMeta, Graph } from '../types';
 
 type ConnTab = 'info' | 'connections' | 'similar';
@@ -102,7 +103,7 @@ export function DetailDrawer() {
           )}
           {m.popularity ? (
             <span style={styles.popPill}>
-              🔥 {m.popularity.toLocaleString()} fans
+              🔥 {m.popularity.toLocaleString()} {t('fans', lang)}
             </span>
           ) : null}
         </div>
@@ -110,17 +111,21 @@ export function DetailDrawer() {
 
       {/* Tabs */}
       <div style={styles.tabs}>
-        {(['info', 'connections', 'similar'] as ConnTab[]).map(t => (
-          <button key={t} style={{ ...styles.tab, ...(tab === t ? styles.tabActive : {}) }}
-            onClick={() => setTab(t)}>
-            {t === 'info' ? 'Info' : t === 'connections' ? `Connections${neighborhoodMap.size > 0 ? ` (${neighborhoodMap.size})` : ''}` : 'Similar'}
+        {(['info', 'connections', 'similar'] as ConnTab[]).map(tab_ => (
+          <button key={tab_} style={{ ...styles.tab, ...(tab === tab_ ? styles.tabActive : {}) }}
+            onClick={() => setTab(tab_)}>
+            {tab_ === 'info'
+              ? t('Info', lang)
+              : tab_ === 'connections'
+                ? `${t('Connections', lang)}${neighborhoodMap.size > 0 ? ` (${neighborhoodMap.size})` : ''}`
+                : t('Similar', lang)}
           </button>
         ))}
       </div>
 
       <div style={styles.body}>
         {tab === 'info' && (
-          <InfoTab meta={meta} isMedia={isMedia} />
+          <InfoTab meta={meta} isMedia={isMedia} lang={lang} />
         )}
 
         {tab === 'connections' && (
@@ -161,27 +166,31 @@ export function DetailDrawer() {
 }
 
 // ---- Info Tab ----
-function InfoTab({ meta, isMedia }: { meta: MediaMeta | PersonMeta | null; isMedia: boolean }) {
-  if (!meta) return <div style={styles.loading}>Loading…</div>;
+function InfoTab({ meta, isMedia, lang }: { meta: MediaMeta | PersonMeta | null; isMedia: boolean; lang: string }) {
+  if (!meta) return <div style={styles.loading}>{t('Loading…', lang)}</div>;
 
   if (isMedia) {
     const m = meta as MediaMeta;
     return (
       <div style={styles.infoWrap}>
         {m.genres.length > 0 && (
-          <Section label="Genres">
-            <div style={styles.tagRow}>{m.genres.map(g => <Tag key={g} label={g} genre={g} />)}</div>
+          <Section label={t('Genres', lang)}>
+            <div style={styles.tagRow}>
+              {m.genres.map(g => <Tag key={g} label={translateGenre(g, lang)} genre={g} />)}
+            </div>
           </Section>
         )}
         {m.tags.slice(0, 10).length > 0 && (
-          <Section label="Tags">
+          <Section label={t('Tags', lang)}>
             <div style={styles.tagRow}>
-              {m.tags.slice(0, 10).map(t => <Tag key={t.id} label={`${t.name} (${t.rank})`} />)}
+              {m.tags.slice(0, 10).map(tag => (
+                <Tag key={tag.id} label={`${translateTag(tag.name, lang)} (${tag.rank})`} />
+              ))}
             </div>
           </Section>
         )}
         {m.studios.filter(s => s.isAnimationStudio).length > 0 && (
-          <Section label="Animation Studio">
+          <Section label={t('Animation Studio', lang)}>
             <div style={styles.tagRow}>
               {m.studios.filter(s => s.isAnimationStudio).map(s => (
                 <Tag key={s.id} label={s.name} color="#1e3a5f" />
@@ -198,11 +207,11 @@ function InfoTab({ meta, isMedia }: { meta: MediaMeta | PersonMeta | null; isMed
     <div style={styles.infoWrap}>
       {p.siteUrl && (
         <a href={p.siteUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
-          AniList Profile ↗
+          {t('AniList Profile ↗', lang)}
         </a>
       )}
       {p.description && (
-        <Section label="About">
+        <Section label={t('About', lang)}>
           <p style={styles.bio}>{p.description.replace(/<[^>]*>/g, '').slice(0, 400)}…</p>
         </Section>
       )}
@@ -222,24 +231,24 @@ function ConnectionsTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Method selector */}
       <div>
-        <Label>Edge type</Label>
+        <Label>{t('Edge Type', lang)}</Label>
         <div style={styles.segGroup}>
           {isMedia && (
             <>
               <SegBtn active={connMethod === 'relations'} onClick={() => setConnMethod('relations')}
                 disabled={!graphAvailable(graphRelations)}>
-                Relations {!graphAvailable(graphRelations) && '(loading)'}
+                {t('Relations', lang)}{!graphAvailable(graphRelations) && ` ${t('(loading)', lang)}`}
               </SegBtn>
               <SegBtn active={connMethod === 'staff'} onClick={() => setConnMethod('staff')}
                 disabled={!graphAvailable(graphStaff)}>
-                Staff overlap {!graphAvailable(graphStaff) && '(loading)'}
+                {t('Staff overlap', lang)}{!graphAvailable(graphStaff) && ` ${t('(loading)', lang)}`}
               </SegBtn>
             </>
           )}
           {!isMedia && (
             <SegBtn active={connMethod === 'collab'} onClick={() => setConnMethod('collab')}
               disabled={!graphAvailable(graphCollab)}>
-              Collaborators {!graphAvailable(graphCollab) && '(loading)'}
+              {t('Collaborators', lang)}{!graphAvailable(graphCollab) && ` ${t('(loading)', lang)}`}
             </SegBtn>
           )}
         </div>
@@ -247,7 +256,7 @@ function ConnectionsTab({
 
       {/* Hop depth */}
       <div>
-        <Label>Hops out — {hopDepth}</Label>
+        <Label>{t('Hops out', lang)} — {hopDepth}</Label>
         <input type="range" min={1} max={3} value={hopDepth}
           onChange={e => setHopDepth(+e.target.value)}
           style={{ width: '100%', accentColor: '#5b9cf6' }} />
@@ -259,10 +268,10 @@ function ConnectionsTab({
       {/* Actions */}
       <div style={{ display: 'flex', gap: 6 }}>
         <button style={styles.primaryBtn} onClick={onExplore}>
-          Show connections
+          {t('Show connections', lang)}
         </button>
         {neighborEntries.length > 0 && (
-          <button style={styles.ghostBtn} onClick={onClear}>Clear</button>
+          <button style={styles.ghostBtn} onClick={onClear}>{t('Clear', lang)}</button>
         )}
       </div>
 
@@ -272,7 +281,7 @@ function ConnectionsTab({
           {[1,2,3].map((h,i) => (
             <span key={h} style={styles.hopPill}>
               <span style={{ ...styles.hopDot, background: hopColors[i] }} />
-              {h} hop
+              {h} {t('hop', lang)}
             </span>
           ))}
         </div>
@@ -281,7 +290,7 @@ function ConnectionsTab({
       {/* Neighbor list */}
       {neighborEntries.length > 0 && (
         <div>
-          <Label>{neighborEntries.length} nodes reachable</Label>
+          <Label>{neighborEntries.length} {t('nodes reachable', lang)}</Label>
           <div style={styles.neighborList}>
             {neighborEntries.map(({ id, hop, name, kind }: any) => (
               <div key={id} style={styles.neighborRow} onClick={() => onSelectNode(id, kind)}>
@@ -296,7 +305,7 @@ function ConnectionsTab({
 
       {neighborEntries.length === 0 && (
         <div style={styles.hint}>
-          Select an edge type and click "Show connections" to explore the network from this node.
+          {t('Select an edge type and click "Show connections" to explore the network from this node.', lang)}
         </div>
       )}
     </div>
@@ -314,7 +323,7 @@ function SimilarTab({ selectedId, isMedia, graphRelations, graphStaff, searchEnt
     : null;
 
   if (!graph || graph.nodeCount === 0) {
-    return <div style={styles.hint}>Similar items are computed from staff overlap graphs — available after more ingest runs complete.</div>;
+    return <div style={styles.hint}>{t('Similar items are computed from staff overlap graphs — available after more ingest runs complete.', lang)}</div>;
   }
   const map = getNeighborhood(graph, selectedId, 1, 0);
   const similar = [...map.keys()].slice(0, 20).map(id => {

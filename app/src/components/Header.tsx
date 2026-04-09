@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useStore } from '../lib/store';
+import { t } from '../lib/i18n';
 import type { SearchEntry } from '../types';
 
 export function Header() {
@@ -41,24 +42,24 @@ export function Header() {
     <header style={styles.header}>
       <div style={styles.brand}>
         <span style={styles.logo}>⚛️</span>
-        <span style={styles.title}>Anime Atlas</span>
+        <span style={styles.title}>{t('Anime Atlas', lang)}</span>
       </div>
 
       <div style={styles.modeGroup}>
         <button
           style={{ ...styles.modeBtn, ...(mode === 'media' ? styles.modeBtnActive : {}) }}
           onClick={() => setMode('media')}
-        >Media</button>
+        >{t('Media', lang)}</button>
         <button
           style={{ ...styles.modeBtn, ...(mode === 'people' ? styles.modeBtnActive : {}) }}
           onClick={() => setMode('people')}
-        >People</button>
+        >{t('People', lang)}</button>
       </div>
 
       <div style={styles.searchWrap}>
         <input
           style={styles.searchInput}
-          placeholder={mode === 'media' ? 'Search anime / manga…' : 'Search staff / VA…'}
+          placeholder={mode === 'media' ? t('Search anime / manga…', lang) : t('Search staff / VA…', lang)}
           value={query}
           onChange={e => handleSearch(e.target.value)}
           onFocus={() => setFocused(true)}

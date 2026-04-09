@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../lib/store';
 import { getRoleToPeople, getTagToMedia } from '../lib/data-loader';
+import { t, translateRole, translateTag, roleToEN, tagToEN } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 import type { TalentResult } from '../types';
 
 export function TalentFinder() {
   const query       = useStore(s => s.talentQuery);
   const results     = useStore(s => s.talentResults);
+  const lang        = useStore(s => s.lang);
   const setQuery    = useStore(s => s.setTalentQuery);
   const setResults  = useStore(s => s.setTalentResults);
   const setSelected = useStore(s => s.setSelected);
@@ -22,6 +24,10 @@ export function TalentFinder() {
     getRoleToPeople().then(m => setRoleOptions(Object.keys(m).sort())).catch(() => {});
     getTagToMedia().then(m => setTagOptions(Object.keys(m).sort())).catch(() => {});
   }, []);
+
+  // Translated display options
+  const displayRoleOptions = roleOptions.map(r => translateRole(r, lang));
+  const displayTagOptions  = tagOptions.map(tag => translateTag(tag, lang));
 
   const runSearch = useCallback(async () => {
     setLoading(true);
@@ -63,23 +69,24 @@ export function TalentFinder() {
     <div style={css.wrap}>
       {/* Roles */}
       <div style={css.section}>
-        <div style={css.label}>Roles</div>
+        <div style={css.label}>{t('Roles', lang)}</div>
         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
           <AutocompleteInput
             value={roleInput}
             onChange={setRoleInput}
-            onSelect={role => {
-              if (!query.roles.includes(role)) setQuery({ roles: [...query.roles, role] });
+            onSelect={display => {
+              const en = roleToEN(display, lang);
+              if (!query.roles.includes(en)) setQuery({ roles: [...query.roles, en] });
               setRoleInput('');
             }}
-            options={roleOptions}
-            selected={query.roles}
-            placeholder="e.g. Director"
+            options={displayRoleOptions}
+            selected={query.roles.map(r => translateRole(r, lang))}
+            placeholder={t('e.g. Director', lang)}
           />
         </div>
         <div style={css.chips}>
           {query.roles.map(r => (
-            <Chip key={r} label={r}
+            <Chip key={r} label={translateRole(r, lang)}
               onRemove={() => setQuery({ roles: query.roles.filter(x => x !== r) })} />
           ))}
         </div>
@@ -87,35 +94,36 @@ export function TalentFinder() {
 
       {/* Tags / Genres */}
       <div style={css.section}>
-        <div style={css.label}>Tags / Genres</div>
+        <div style={css.label}>{t('Tags / Genres', lang)}</div>
         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
           <AutocompleteInput
             value={tagInput}
             onChange={setTagInput}
-            onSelect={tag => {
-              if (!query.tags.includes(tag)) setQuery({ tags: [...query.tags, tag] });
+            onSelect={display => {
+              const en = tagToEN(display, lang);
+              if (!query.tags.includes(en)) setQuery({ tags: [...query.tags, en] });
               setTagInput('');
             }}
-            options={tagOptions}
-            selected={query.tags}
-            placeholder="e.g. Isekai"
+            options={displayTagOptions}
+            selected={query.tags.map(tag => translateTag(tag, lang))}
+            placeholder={t('e.g. Isekai', lang)}
           />
         </div>
         <div style={css.chips}>
-          {query.tags.map(t => (
-            <Chip key={t} label={t}
-              onRemove={() => setQuery({ tags: query.tags.filter(x => x !== t) })} />
+          {query.tags.map(tag => (
+            <Chip key={tag} label={translateTag(tag, lang)}
+              onRemove={() => setQuery({ tags: query.tags.filter(x => x !== tag) })} />
           ))}
         </div>
       </div>
 
       <button style={css.searchBtn} onClick={runSearch} disabled={loading}>
-        {loading ? 'Searching…' : 'Find Talent'}
+        {loading ? t('Searching…', lang) : t('Find Talent', lang)}
       </button>
 
       {results.length > 0 && (
         <div style={css.results}>
-          <div style={css.label}>{results.length} results</div>
+          <div style={css.label}>{results.length} {t('results', lang)}</div>
           {results.map(r => {
             const se = entries.find(e => e.id === r.personId && e.kind === 'person');
             return (
@@ -123,8 +131,8 @@ export function TalentFinder() {
                 onClick={() => setSelected(r.personId, 'person')}>
                 <div style={css.resultName}>{se?.en || String(r.personId)}</div>
                 <div style={css.scores}>
-                  <Score label="Role" value={r.roleFit} />
-                  <Score label="Tag"  value={r.tagFit} />
+                  <Score label={t('Role', lang)} value={r.roleFit} />
+                  <Score label={t('Tag', lang)}  value={r.tagFit} />
                 </div>
               </div>
             );

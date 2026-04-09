@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../lib/store';
+import { t } from '../lib/i18n';
 import { MediaFiltersPanel } from './MediaFiltersPanel';
 import { PeopleFiltersPanel } from './PeopleFiltersPanel';
 import { TalentFinder } from './TalentFinder';
@@ -8,16 +9,17 @@ type Tab = 'filters' | 'talent';
 
 export function LeftPanel() {
   const mode = useStore(s => s.mode);
+  const lang = useStore(s => s.lang);
   const [tab, setTab] = useState<Tab>('filters');
 
   return (
     <aside style={styles.panel}>
       <div style={styles.tabs}>
         <button style={{ ...styles.tab, ...(tab === 'filters' ? styles.tabActive : {}) }}
-          onClick={() => setTab('filters')}>Filters</button>
+          onClick={() => setTab('filters')}>{t('Filters', lang)}</button>
         {mode === 'people' && (
           <button style={{ ...styles.tab, ...(tab === 'talent' ? styles.tabActive : {}) }}
-            onClick={() => setTab('talent')}>Talent Finder</button>
+            onClick={() => setTab('talent')}>{t('Talent Finder', lang)}</button>
         )}
       </div>
       <div style={styles.content}>

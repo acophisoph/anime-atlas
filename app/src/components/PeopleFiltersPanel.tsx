@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
 import { getRoleToPeople } from '../lib/data-loader';
+import { t, translateRole, roleToEN } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 
 export function PeopleFiltersPanel() {
   const filters    = useStore(s => s.peopleFilters);
   const setFilters = useStore(s => s.setPeopleFilters);
+  const lang       = useStore(s => s.lang);
   const [roleInput,   setRoleInput]   = useState('');
   const [roleOptions, setRoleOptions] = useState<string[]>([]);
 
@@ -15,34 +17,38 @@ export function PeopleFiltersPanel() {
       .catch(() => {});
   }, []);
 
+  // Show JP-translated role options when in JP mode
+  const displayRoleOptions = roleOptions.map(r => translateRole(r, lang));
+
   return (
     <div style={s.wrap}>
-      <Section label="Voice Actors">
+      <Section label={t('Voice Actors', lang)}>
         <label style={s.checkLabel}>
           <input type="checkbox" checked={filters.includeVA}
             onChange={e => setFilters({ includeVA: e.target.checked })} />
-          Include Voice Actors
+          {t('Include Voice Actors', lang)}
         </label>
       </Section>
 
-      <Section label="Roles">
+      <Section label={t('Roles', lang)}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
           <AutocompleteInput
             value={roleInput}
             onChange={setRoleInput}
-            onSelect={role => {
-              if (!filters.roles.includes(role)) setFilters({ roles: [...filters.roles, role] });
+            onSelect={display => {
+              const en = roleToEN(display, lang);
+              if (!filters.roles.includes(en)) setFilters({ roles: [...filters.roles, en] });
               setRoleInput('');
             }}
-            options={roleOptions}
-            selected={filters.roles}
-            placeholder="e.g. Director…"
+            options={displayRoleOptions}
+            selected={filters.roles.map(r => translateRole(r, lang))}
+            placeholder={t('e.g. Director…', lang)}
           />
         </div>
         <div style={s.chips}>
           {filters.roles.map(r => (
             <span key={r} style={s.chip}>
-              {r}
+              {translateRole(r, lang)}
               <span style={s.chipX}
                 onClick={() => setFilters({ roles: filters.roles.filter(x => x !== r) })}>×</span>
             </span>
@@ -52,7 +58,7 @@ export function PeopleFiltersPanel() {
 
       <button style={s.resetBtn}
         onClick={() => setFilters({ includeVA: true, roles: [], studio: null })}>
-        Reset Filters
+        {t('Reset Filters', lang)}
       </button>
     </div>
   );

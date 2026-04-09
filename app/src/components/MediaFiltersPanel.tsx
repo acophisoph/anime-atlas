@@ -1,25 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
-import { getTagToMedia, getGenreToMedia } from '../lib/data-loader';
+import { getTagToMedia } from '../lib/data-loader';
+import { t, GENRE_JP, translateGenre, translateTag, genreToEN, tagToEN } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 
-// Fixed AniList genre list with JP translations.
-// Tags are English-only (AniList API doesn't expose native-language tag names).
 const GENRES_EN = [
   'Action', 'Adventure', 'Comedy', 'Drama', 'Ecchi', 'Fantasy',
   'Hentai', 'Horror', 'Mahou Shoujo', 'Mecha', 'Music', 'Mystery',
   'Psychological', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports',
   'Supernatural', 'Thriller',
 ];
-const GENRE_JP: Record<string, string> = {
-  'Action': 'アクション', 'Adventure': 'アドベンチャー', 'Comedy': 'コメディ',
-  'Drama': 'ドラマ', 'Ecchi': 'エッチ', 'Fantasy': 'ファンタジー',
-  'Hentai': 'ヘンタイ', 'Horror': 'ホラー', 'Mahou Shoujo': '魔法少女',
-  'Mecha': 'メカ', 'Music': '音楽', 'Mystery': 'ミステリー',
-  'Psychological': '心理', 'Romance': 'ロマンス', 'Sci-Fi': 'SF',
-  'Slice of Life': '日常', 'Sports': 'スポーツ',
-  'Supernatural': '超自然', 'Thriller': 'スリラー',
-};
 
 export function MediaFiltersPanel() {
   const filters    = useStore(s => s.mediaFilters);
@@ -36,41 +26,33 @@ export function MediaFiltersPanel() {
   }, []);
 
   // Display genre names in selected lang; stored value is always EN
-  const genreOptions = lang === 'jp'
-    ? GENRES_EN.map(g => GENRE_JP[g] || g)
-    : GENRES_EN;
+  const genreOptions = GENRES_EN.map(g => translateGenre(g, lang));
 
   // Convert stored EN genre to display name
-  function genreDisplay(en: string) {
-    return lang === 'jp' ? (GENRE_JP[en] || en) : en;
-  }
-  // Convert display name back to EN for storage
-  function genreToEN(display: string): string {
-    if (lang === 'jp') {
-      return GENRES_EN.find(g => GENRE_JP[g] === display) ?? display;
-    }
-    return display;
-  }
+  function genreDisplay(en: string) { return translateGenre(en, lang); }
+
+  // Tag options: show JP translation when available
+  const displayTagOptions = tagOptions.map(tag => translateTag(tag, lang));
 
   return (
     <div style={s.wrap}>
       {/* Media Type */}
-      <Section label="Media Type">
+      <Section label={t('Media Type', lang)}>
         <div style={s.btnGroup}>
-          {(['BOTH', 'ANIME', 'MANGA'] as const).map(t => (
-            <button key={t}
-              style={{ ...s.btn, ...(filters.mediaType === t ? s.btnActive : {}) }}
-              onClick={() => setFilters({ mediaType: t })}>
-              {t === 'BOTH' ? 'Both' : t.charAt(0) + t.slice(1).toLowerCase()}
+          {(['BOTH', 'ANIME', 'MANGA'] as const).map(mt => (
+            <button key={mt}
+              style={{ ...s.btn, ...(filters.mediaType === mt ? s.btnActive : {}) }}
+              onClick={() => setFilters({ mediaType: mt })}>
+              {mt === 'BOTH' ? t('Both', lang) : mt === 'ANIME' ? t('Anime', lang) : t('Manga', lang)}
             </button>
           ))}
         </div>
       </Section>
 
       {/* NSFW */}
-      <Section label="Content">
+      <Section label={t('Content', lang)}>
         <label style={s.toggle}>
-          <span style={s.toggleLabel}>Show NSFW (18+)</span>
+          <span style={s.toggleLabel}>{t('Show NSFW (18+)', lang)}</span>
           <div style={{ ...s.toggleTrack, ...(filters.showNSFW ? s.toggleTrackOn : {}) }}
             onClick={() => setFilters({ showNSFW: !filters.showNSFW })}>
             <div style={{ ...s.toggleThumb, ...(filters.showNSFW ? s.toggleThumbOn : {}) }} />
@@ -79,32 +61,32 @@ export function MediaFiltersPanel() {
       </Section>
 
       {/* Year Range */}
-      <Section label="Year Range">
+      <Section label={t('Year Range', lang)}>
         <div style={s.row}>
-          <input type="number" placeholder="From" style={s.numInput}
+          <input type="number" placeholder={t('From', lang)} style={s.numInput}
             value={filters.yearMin ?? ''}
             onChange={e => setFilters({ yearMin: e.target.value ? +e.target.value : null })} />
           <span style={{ color: '#555' }}>–</span>
-          <input type="number" placeholder="To" style={s.numInput}
+          <input type="number" placeholder={t('To', lang)} style={s.numInput}
             value={filters.yearMax ?? ''}
             onChange={e => setFilters({ yearMax: e.target.value ? +e.target.value : null })} />
         </div>
       </Section>
 
       {/* Genres */}
-      <Section label={lang === 'jp' ? 'ジャンル' : 'Genres'}>
+      <Section label={t('Genres', lang)}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
           <AutocompleteInput
             value={genreInput}
             onChange={setGenreInput}
             onSelect={display => {
-              const en = genreToEN(display);
+              const en = genreToEN(display, lang);
               if (!filters.genres.includes(en)) setFilters({ genres: [...filters.genres, en] });
               setGenreInput('');
             }}
             options={genreOptions}
             selected={filters.genres.map(genreDisplay)}
-            placeholder={lang === 'jp' ? 'ジャンルを追加…' : 'Add genre…'}
+            placeholder={t('Add genre…', lang)}
           />
         </div>
         <div style={s.chips}>
@@ -116,24 +98,25 @@ export function MediaFiltersPanel() {
       </Section>
 
       {/* Tags */}
-      <Section label={lang === 'jp' ? 'タグ' : 'Tags'}>
+      <Section label={t('Tags', lang)}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
           <AutocompleteInput
             value={tagInput}
             onChange={setTagInput}
-            onSelect={tag => {
-              if (!filters.tags.includes(tag)) setFilters({ tags: [...filters.tags, tag] });
+            onSelect={display => {
+              const en = tagToEN(display, lang);
+              if (!filters.tags.includes(en)) setFilters({ tags: [...filters.tags, en] });
               setTagInput('');
             }}
-            options={tagOptions}
-            selected={filters.tags}
-            placeholder={lang === 'jp' ? 'タグを追加…' : 'Add tag…'}
+            options={displayTagOptions}
+            selected={filters.tags.map(tag => translateTag(tag, lang))}
+            placeholder={t('Add tag…', lang)}
           />
         </div>
         <div style={s.chips}>
-          {filters.tags.map(t => (
-            <Chip key={t} label={t}
-              onRemove={() => setFilters({ tags: filters.tags.filter(x => x !== t) })} />
+          {filters.tags.map(tag => (
+            <Chip key={tag} label={translateTag(tag, lang)}
+              onRemove={() => setFilters({ tags: filters.tags.filter(x => x !== tag) })} />
           ))}
         </div>
       </Section>
@@ -141,7 +124,7 @@ export function MediaFiltersPanel() {
       <button style={s.resetBtn} onClick={() => setFilters({
         mediaType: 'BOTH', yearMin: null, yearMax: null,
         genres: [], tags: [], studio: null, showNSFW: false,
-      })}>Reset Filters</button>
+      })}>{t('Reset Filters', lang)}</button>
     </div>
   );
 }

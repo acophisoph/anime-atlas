@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { AtlasRenderer, EdgeData } from '../lib/atlas-renderer';
 import { getGenreToMedia, getTagToMedia } from '../lib/data-loader';
+import { t } from '../lib/i18n';
 
 export function AtlasCanvas() {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -20,6 +21,7 @@ export function AtlasCanvas() {
   const graphRelations = useStore(s => s.graphRelations);
   const graphStaff     = useStore(s => s.graphStaff);
   const graphCollab    = useStore(s => s.graphCollab);
+  const lang           = useStore(s => s.lang);
   const setHovered     = useStore(s => s.setHovered);
   const setSelected    = useStore(s => s.setSelected);
 
@@ -175,7 +177,7 @@ export function AtlasCanvas() {
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
       <div style={styles.zoomHint}>
-        Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles
+        {t('Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles', lang)}
       </div>
 
       {visibleCount === 0 && (
@@ -185,13 +187,13 @@ export function AtlasCanvas() {
           </div>
           <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: '#c8c8f8' }}>
             {mode === 'people'
-              ? 'People data not yet ingested'
-              : 'No media matches these filters'}
+              ? t('People data not yet ingested', lang)
+              : t('No media matches these filters', lang)}
           </div>
           <div style={{ fontSize: 13, color: '#6666a0', maxWidth: 300, textAlign: 'center', lineHeight: 1.6 }}>
             {mode === 'people'
-              ? 'Staff and voice actor data is fetched in later ingest batches. Check back after the next scheduled run (every 6 hours).'
-              : 'Try relaxing your filters or reset them to see all media.'}
+              ? t('Staff and voice actor data is fetched in later ingest batches. Check back after the next scheduled run (every 6 hours).', lang)
+              : t('Try relaxing your filters or reset them to see all media.', lang)}
           </div>
         </div>
       )}
