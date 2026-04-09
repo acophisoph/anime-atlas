@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generated_at": 1775754019150,
-  "last_ingest_run_timestamp": 1775753910010,
+  "generated_at": 1775775457149,
+  "last_ingest_run_timestamp": 1775775356634,
   "total_media_in_db": 111813,
   "total_plottable_media": 79606,
   "total_people_in_db": 143734,
-  "completed_batches_count": 192158,
-  "pending_batches_count": 20612,
-  "failed_batches_count": 9,
+  "completed_batches_count": 199913,
+  "pending_batches_count": 12856,
+  "failed_batches_count": 10,
   "completeness": {
     "has_staff_for_all_media": false,
     "has_characters_for_all_media": false,
