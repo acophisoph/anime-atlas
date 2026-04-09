@@ -74,14 +74,22 @@ export function AtlasCanvas() {
       }
     }
 
+    // Build adult-ID set from the genre index — works with current live data
+    // even before isAdult/genres fields are backfilled into search.json.
+    const adultIds: Set<number> | null = (!showNSFW && genreIndex)
+      ? new Set<number>(genreIndex['Hentai'] ?? [])
+      : null;
+
     return points.filter(p => {
       if (p.kind !== 'media') return true; // person points always pass
 
       const entry = mediaEntryMap.get(p.id);
 
-      // NSFW: hide adult media unless toggled on
+      // NSFW: hide adult media unless toggled on.
+      // Primary check uses the genre index (works with current live artifacts).
+      // Fallback checks use the isAdult/genres fields once they're in search.json.
+      if (adultIds && adultIds.has(p.id)) return false;
       if (!showNSFW && entry?.isAdult) return false;
-      // Fallback heuristic for old data without isAdult field: check genres string
       if (!showNSFW && entry?.genres?.includes('Hentai')) return false;
 
       // Media type (ANIME / MANGA)

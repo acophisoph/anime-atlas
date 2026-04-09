@@ -412,7 +412,13 @@ export class AtlasRenderer {
   }
 
   private render() {
-    const hasNb    = this.nbMap.size > 0;
+    // Only apply neighborhood highlighting when the neighbor IDs actually
+    // intersect the currently displayed sprites.  Without this check, a stale
+    // neighborhood from a previous media-mode selection would dim every single
+    // person sprite to DIM_ALPHA (0.06 ≈ invisible), making the canvas look
+    // completely black when the user switches to People mode or interacts.
+    const hasNb = this.nbMap.size > 0 &&
+      [...this.nbMap.keys()].some(id => this.ptMap.has(id));
     const W = this.W(), H = this.H();
     // Relative zoom: how many times we've zoomed in vs the full overview.
     const relZ = this.zoom / (this.autoFitZoom || 1);
