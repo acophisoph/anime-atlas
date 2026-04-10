@@ -1172,11 +1172,13 @@ export function translateGenre(en: string, lang: string): string {
 }
 
 export function translateRole(en: string, lang: string): string {
-  // Trim any trailing whitespace (some AniList role strings have trailing spaces).
-  const trimmed = en.trim();
-  // Strip episode qualifiers like " (ep 2)", " (eps 1-3)" — they carry no useful meaning.
-  const parenIdx = trimmed.indexOf(' (');
-  const base = parenIdx > 0 ? trimmed.slice(0, parenIdx) : trimmed;
+  // Trim trailing whitespace (some AniList role strings have trailing spaces).
+  let s = en.trim();
+  // Strip quoted title prefixes: '"Sword Art Online" Animation Director' → 'Animation Director'
+  s = s.replace(/^"[^"]*"\s*/, '').replace(/^「[^」]*」\s*/, '');
+  // Strip episode qualifiers like ' (ep 2)', ' (eps 1-3)' — carry no display value.
+  const parenIdx = s.indexOf(' (');
+  const base = parenIdx > 0 ? s.slice(0, parenIdx) : s;
   // Consolidate hyper-specific variants into canonical role names.
   const canonical = ROLE_CONSOLIDATION[base] ?? base;
   if (lang !== 'jp') return canonical;

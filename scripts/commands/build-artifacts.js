@@ -73,7 +73,9 @@ const ROLE_CONSOLIDATION = {
 function normalizeRole(raw) {
   if (!raw || typeof raw !== 'string') return 'Unknown';
   const clean = raw
-    .replace(/\s*\(ep[s.]?[^)]*\)\s*$/i, '')
+    .replace(/^"[^"]*"\s*/, '')           // strip quoted title prefix: '"Title" Role' → 'Role'
+    .replace(/^「[^」]*」\s*/, '')          // same for Japanese quotes
+    .replace(/\s*\(ep[s.]?[^)]*\)\s*$/i, '') // strip episode qualifiers ' (ep 2)'
     .replace(/\s*;[^)]*\)\s*$/, '')
     .trim();
   if (!clean || clean === ')' || /^\)+$/.test(clean)) return 'Unknown';

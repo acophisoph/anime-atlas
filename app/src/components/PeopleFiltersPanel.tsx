@@ -17,8 +17,10 @@ export function PeopleFiltersPanel() {
       .catch(() => {});
   }, []);
 
-  // Show JP-translated role options when in JP mode
-  const displayRoleOptions = roleOptions.map(r => translateRole(r, lang));
+  // Translate, consolidate, deduplicate, and sort role options.
+  // Multiple raw roles can map to the same canonical name after consolidation
+  // (e.g. '2nd Key Animation' and '"Title" Animation Director' both → 'Animation Director').
+  const displayRoleOptions = [...new Set(roleOptions.map(r => translateRole(r, lang)))].sort();
 
   return (
     <div style={s.wrap}>
