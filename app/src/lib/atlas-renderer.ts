@@ -7,6 +7,7 @@ export interface RendererConfig {
   height: number;
   onHover: (id: number | null) => void;
   onClick: (id: number | null, kind: 'media' | 'person' | null) => void;
+  onPanStart?: () => void;
 }
 
 export interface EdgeData {
@@ -41,7 +42,7 @@ const DEFAULT_MEDIA_COLOR  = 0x5b9cf6;
 const DEFAULT_PERSON_COLOR = 0xf97316;
 const HOP_COLORS  = [0xfbbf24, 0xfb923c, 0xf87171];
 const EDGE_COLORS = [0xfbbf24, 0xfb923c, 0xf87171];
-const DIM_ALPHA   = 0.06;
+const DIM_ALPHA   = 0.18;
 
 // ─── Node size model (Nomic-style) ─────────────────────────────────────────
 //
@@ -198,7 +199,10 @@ export class AtlasRenderer {
       if (this.drag) {
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
-        if (Math.abs(dx) + Math.abs(dy) > 3) this.moved = true;
+        if (!this.moved && Math.abs(dx) + Math.abs(dy) > 3) {
+          this.moved = true;
+          this.cfg.onPanStart?.();
+        }
         this.camX = this.dragStart.cx - dx / this.zoom;
         this.camY = this.dragStart.cy - dy / this.zoom;
         if (this.hovId !== null) { this.hovId = null; this.cfg.onHover(null); }
@@ -241,12 +245,28 @@ export class AtlasRenderer {
       e.preventDefault();
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
-      this.moved = true;
+      if (!this.moved) {
+        this.moved = true;
+        this.cfg.onPanStart?.();
+      }
       this.camX = this.dragStart.cx - (t.clientX - this.dragStart.x) / this.zoom;
       this.camY = this.dragStart.cy - (t.clientY - this.dragStart.y) / this.zoom;
     }, { passive: false });
 
-    v.addEventListener('touchend', () => { this.drag = false; });
+    v.addEventListener('touchend', (e) => {
+      if (this.drag && !this.moved) {
+        const touch = e.changedTouches[0];
+        const rect = v.getBoundingClientRect();
+        const id = this.hitTest(touch.clientX - rect.left, touch.clientY - rect.top);
+        if (id !== null) {
+          const sp = this.ptMap.get(id);
+          if (sp) this.cfg.onClick(id, sp.kind);
+        } else {
+          this.cfg.onClick(null, null);
+        }
+      }
+      this.drag = false;
+    });
   }
 
   // Hit test: always exactly HIT_PX screen pixels of pickup radius.

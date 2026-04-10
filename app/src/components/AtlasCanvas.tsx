@@ -163,6 +163,7 @@ export function AtlasCanvas() {
         if (id === null) { clearNeighborhood(); setSelected(null, null); }
         else setSelected(id, kind);
       },
+      onPanStart: () => clearNeighborhood(),
     });
     rendererRef.current = renderer;
 

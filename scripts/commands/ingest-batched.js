@@ -20,8 +20,8 @@ const TIME_BUDGET_MS =
 const RUN_BATCH_LIMIT = parseInt(process.env.RUN_BATCH_LIMIT ?? '0', 10);
 const BATCH_MAX_RETRIES = parseInt(process.env.BATCH_MAX_RETRIES ?? '5', 10);
 
-// Priority order: list pages first (they unlock more work), then details
-const BATCH_PRIORITY = ['ANIME_LIST', 'MANGA_LIST', 'MEDIA_STAFF', 'MEDIA_CHARACTERS', 'JIKAN_PATCH'];
+// Priority order: list pages first (they unlock more work), then details, then per-person enrichment
+const BATCH_PRIORITY = ['ANIME_LIST', 'MANGA_LIST', 'MEDIA_STAFF', 'MEDIA_CHARACTERS', 'PERSON_DETAILS'];
 
 async function main() {
   const db = openDb(DB_PATH);

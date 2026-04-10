@@ -118,8 +118,9 @@ const css: Record<string, React.CSSProperties> = {
   dropdown: {
     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
     background: '#12121e', border: '1px solid #2a2a50', borderRadius: 6,
-    marginTop: 2, overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.7)',
-    maxHeight: 320, overflowY: 'auto',
+    marginTop: 2, overflowX: 'hidden', overflowY: 'auto',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.7)',
+    maxHeight: 'min(540px, 55vh)',
   },
   item: {
     padding: '6px 10px', fontSize: 12, color: '#b0b0d0',

@@ -1,5 +1,5 @@
 import { anilistQuery, sleep } from './http-client.js';
-import { QUERY_MEDIA_LIST, QUERY_MEDIA_STAFF, QUERY_MEDIA_CHARACTERS } from './queries.js';
+import { QUERY_MEDIA_LIST, QUERY_MEDIA_STAFF, QUERY_MEDIA_CHARACTERS, QUERY_PERSON } from './queries.js';
 import { isLocalizationRole, getRoleWeight } from './roles.js';
 
 const PER_PAGE = 50;
@@ -19,6 +19,9 @@ export async function executeBatch(db, batch) {
   } else if (batch_type === 'MEDIA_CHARACTERS') {
     const mediaId = parseInt(scope_key.replace('MEDIA_CHARACTERS:', ''), 10);
     await executeCharactersBatch(db, mediaId);
+  } else if (batch_type === 'PERSON_DETAILS') {
+    const personId = parseInt(scope_key.replace('PERSON_DETAILS:', ''), 10);
+    await executePersonDetailsBatch(db, personId);
   } else {
     throw new Error(`Unknown batch_type: ${batch_type}`);
   }
@@ -197,6 +200,10 @@ async function executeStaffBatch(db, mediaId) {
       ON CONFLICT(media_id, person_id, role, is_voice_actor) DO UPDATE SET
         is_localization=excluded.is_localization, weight=excluded.weight
     `);
+    const insertPersonDetailsBatch = db.prepare(`
+      INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
+      VALUES ('PERSON_DETAILS', ?, 'PENDING')
+    `);
 
     for (const edge of allEdges) {
       const node = edge.node;
@@ -216,6 +223,7 @@ async function executeStaffBatch(db, mediaId) {
         is_localization: isLocalizationRole(edge.role) ? 1 : 0,
         weight: getRoleWeight(edge.role),
       });
+      insertPersonDetailsBatch.run(`PERSON_DETAILS:${node.id}`);
     }
   })();
 
@@ -272,6 +280,10 @@ async function executeCharactersBatch(db, mediaId) {
       VALUES (@media_id, @person_id, 'Voice Actor', 1, 0, 1.0)
       ON CONFLICT(media_id, person_id, role, is_voice_actor) DO NOTHING
     `);
+    const insertPersonDetailsBatch = db.prepare(`
+      INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
+      VALUES ('PERSON_DETAILS', ?, 'PENDING')
+    `);
 
     for (const edge of allEdges) {
       const char = edge.node;
@@ -297,9 +309,41 @@ async function executeCharactersBatch(db, mediaId) {
         });
         upsertVA.run(mediaId, char.id, va.id);
         upsertVACredit.run({ media_id: mediaId, person_id: va.id });
+        insertPersonDetailsBatch.run(`PERSON_DETAILS:${va.id}`);
       }
     }
   })();
 
   console.log(`[batch] MEDIA_CHARACTERS:${mediaId} done — ${allEdges.length} characters`);
+}
+
+async function executePersonDetailsBatch(db, personId) {
+  console.log(`[batch] PERSON_DETAILS:${personId} fetching`);
+  const data = await anilistQuery(
+    QUERY_PERSON,
+    { id: personId },
+    `PERSON_DETAILS:${personId}`
+  );
+
+  const staff = data.Staff;
+  if (!staff) return;
+
+  db.transaction(() => {
+    db.prepare(`
+      UPDATE people SET
+        name_full=?, name_native=?, language=?, image_large=?, site_url=?, description=?, updated_at=?
+      WHERE id=?
+    `).run(
+      staff.name?.full ?? null,
+      staff.name?.native ?? null,
+      staff.languageV2 ?? null,
+      staff.image?.large ?? null,
+      staff.siteUrl ?? null,
+      staff.description ?? null,
+      Date.now(),
+      personId
+    );
+  })();
+
+  console.log(`[batch] PERSON_DETAILS:${personId} done`);
 }
