@@ -24,6 +24,60 @@ const STAFF_OVERLAP_THRESHOLD = 1.5; // min weighted overlap score
 
 function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }
 
+/**
+ * Normalise a raw AniList role string:
+ *   - Strip episode qualifiers like " (ep 2)", " (eps 1-3)", " (ep.14)"
+ *   - Return 'Unknown' for blank/garbage entries
+ */
+function normalizeRole(raw) {
+  if (!raw || typeof raw !== 'string') return 'Unknown';
+  const clean = raw
+    .replace(/\s*\(ep[s.]?[^)]*\)\s*$/i, '')
+    .replace(/\s*;[^)]*\)\s*$/, '')
+    .trim();
+  if (!clean || clean === ')' || /^\)+$/.test(clean)) return 'Unknown';
+  return clean;
+}
+
+// Color palette: person nodes colored by their primary creative role
+const PERSON_ROLE_COLORS = {
+  'Director': 0x8b5cf6, 'Series Director': 0x8b5cf6, 'General Director': 0x8b5cf6,
+  'Chief Episode Director': 0x8b5cf6, 'Unit Director': 0x8b5cf6,
+  'Character Design': 0xec4899, 'Original Character Design': 0xec4899,
+  'Chief Animation Director': 0xdb2777,
+  'Animation Director': 0x3b82f6, 'Supervising Animation Director': 0x3b82f6,
+  'Key Animation': 0x06b6d4, '2nd Key Animation': 0x06b6d4,
+  'In-Between Animation': 0x22d3ee, 'Animation Check': 0x22d3ee,
+  'Music': 0xeab308, 'Music Producer': 0xeab308,
+  'Theme Song Performance': 0xf59e0b, 'Insert Song Performance': 0xf59e0b,
+  'Script': 0x22c55e, 'Screenplay': 0x22c55e, 'Series Composition': 0x16a34a,
+  'Original Creator': 0x16a34a, 'Story': 0x22c55e,
+  'Episode Director': 0x6366f1, 'Storyboard': 0x818cf8,
+  'Art Director': 0x84cc16, 'Background Art': 0x84cc16,
+  'Background Design': 0x65a30d, 'Color Design': 0xa3e635,
+  'Producer': 0x14b8a6, 'Executive Producer': 0x0d9488,
+  'Line Producer': 0x14b8a6, 'Production Manager': 0x14b8a6,
+  'Sound Director': 0xf97316, 'Sound Effects': 0xfb923c,
+  'Voice Actor': 0xfbbf24,
+  'CG Director': 0x0ea5e9, '3D Director': 0x0ea5e9, '3D CGI Director': 0x0ea5e9,
+  'Mechanical Design': 0x64748b, 'Mecha Design': 0x64748b,
+};
+
+function getPrimaryRoleColor(personId, creditsMap, mediaYearMap) {
+  const credits = creditsMap.get(personId);
+  if (!credits || !credits.length) return 0xf97316;
+  const sorted = [...credits].sort((a, b) => {
+    const wDiff = (b.weight || 1) - (a.weight || 1);
+    if (Math.abs(wDiff) > 0.1) return wDiff;
+    return (mediaYearMap.get(b.media_id) || 0) - (mediaYearMap.get(a.media_id) || 0);
+  });
+  for (const c of sorted) {
+    const col = PERSON_ROLE_COLORS[normalizeRole(c.role)];
+    if (col) return col;
+  }
+  return 0xf97316;
+}
+
 async function main() {
   const db = openDb(DB_PATH);
   ensureDir(DATA_DIR);
@@ -86,7 +140,10 @@ async function main() {
   const mediaCoordsMap = new Map(mediaCoords.map(c => [c.id, c]));
   console.log(`[artifacts] Media world scale: ×${mediaScale.toFixed(1)} → range ±${mediaScale.toFixed(0)}`);
 
-  // Build credits maps for people
+  // Build lookup maps for people credits
+  const mediaYearMap = new Map(mediaRows.map(m => [m.id, m.season_year || 0]));
+  const mediaRowsMap = new Map(mediaRows.map(m => [m.id, m]));
+
   const creditsMap = new Map();
   const mediaTagMap = new Map();
   for (const m of mediaRows) {
@@ -149,7 +206,7 @@ async function main() {
         id: p.id, kind: 'person',
         x: c.x, y: c.y,
         popularity: 0, averageScore: 0,
-        color: 0xf97316,
+        color: getPrimaryRoleColor(p.id, creditsMap, mediaYearMap),
       };
     }),
   ];
@@ -217,10 +274,32 @@ async function main() {
     const fname = `people_${String(chunkIdx).padStart(5, '0')}.json`;
     const chunkData = {};
     for (const p of chunk) {
+      // Top credits: highest-weight roles, up to 8, with media title
+      const personCredits = creditsMap.get(p.id) || [];
+      const topCredits = personCredits
+        .filter(c => !c.is_localization)
+        .map(c => ({ ...c, nRole: normalizeRole(c.role), year: mediaYearMap.get(c.media_id) || 0 }))
+        .sort((a, b) => {
+          const wDiff = (b.weight || 1) - (a.weight || 1);
+          if (Math.abs(wDiff) > 0.1) return wDiff;
+          return b.year - a.year;
+        })
+        .slice(0, 8)
+        .map(c => {
+          const m = mediaRowsMap.get(c.media_id);
+          return {
+            mediaId: c.media_id,
+            role: c.nRole,
+            title: m?.title_english || m?.title_romaji || String(c.media_id),
+            year: c.year || null,
+          };
+        });
+
       chunkData[p.id] = {
         id: p.id, nameFull: p.name_full, nameNative: p.name_native,
         language: p.language, imageLarge: p.image_large, siteUrl: p.site_url,
         description: p.description,
+        topCredits,
       };
       peopleChunkMap[p.id] = fname;
     }
@@ -288,12 +367,14 @@ async function main() {
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'genre_to_media.json'), JSON.stringify(genreToMedia));
 
   // --- ROLE TO PEOPLE ---
+  // Use normalised role names: "Key Animation (ep 2)" → "Key Animation"
   const roleTopeople = {};
   for (const c of creditRows) {
     if (c.is_localization) continue;
-    const key = c.role || 'Unknown';
+    const key = normalizeRole(c.role);
+    if (key === 'Unknown') continue;
     if (!roleTopeople[key]) roleTopeople[key] = [];
-    roleTopeople[key].push(c.person_id);
+    if (!roleTopeople[key].includes(c.person_id)) roleTopeople[key].push(c.person_id);
   }
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'role_to_people.json'), JSON.stringify(roleTopeople));
 

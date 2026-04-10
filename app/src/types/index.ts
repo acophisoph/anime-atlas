@@ -62,6 +62,7 @@ export interface PersonMeta {
   imageLarge: string | null;
   siteUrl: string | null;
   description: string | null;
+  topCredits?: Array<{ mediaId: number; role: string; title: string; year: number | null }>;
 }
 
 export interface SearchEntry {

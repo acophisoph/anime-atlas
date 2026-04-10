@@ -14,19 +14,27 @@ export function Header() {
   const setQuery   = useStore(s => s.setSearchQuery);
   const setResults = useStore(s => s.setSearchResults);
   const setSelected = useStore(s => s.setSelected);
+  const mediaFilters = useStore(s => s.mediaFilters);
   const [focused, setFocused] = useState(false);
 
   const handleSearch = useCallback((q: string) => {
     setQuery(q);
     if (!q.trim()) { setResults([]); return; }
     const lower = q.toLowerCase();
-    const hits = entries.filter(e =>
-      e.en.toLowerCase().includes(lower) ||
-      e.jp.toLowerCase().includes(lower) ||
-      e.ro.toLowerCase().includes(lower)
-    ).slice(0, 20);
+    const showNSFW = mediaFilters.showNSFW;
+    const hits = entries.filter(e => {
+      if (!showNSFW && e.kind === "media") {
+        if (e.isAdult) return false;
+        if (e.genres?.split(",").includes("Hentai")) return false;
+      }
+      return (
+        e.en.toLowerCase().includes(lower) ||
+        e.jp.toLowerCase().includes(lower) ||
+        e.ro.toLowerCase().includes(lower)
+      );
+    }).slice(0, 20);
     setResults(hits);
-  }, [entries, setQuery, setResults]);
+  }, [entries, mediaFilters.showNSFW, setQuery, setResults]);
 
   function pickResult(entry: SearchEntry) {
     setSelected(entry.id, entry.kind);

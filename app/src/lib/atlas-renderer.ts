@@ -300,6 +300,10 @@ export class AtlasRenderer {
     // The empty-state overlay in AtlasCanvas handles the UI; the canvas keeps
     // its last content so there's no jarring black flash on mode switch.
     if (!vis.length) {
+      if (fitCamera) {
+        this.selId = null; this.hovId = null;
+        this.nbMap = new Map(); this._hasVisibleNb = false; this.edges = [];
+      }
       this.mode = mode;
       return;
     }
@@ -433,7 +437,8 @@ export class AtlasRenderer {
   }
 
   private render() {
-    // _hasVisibleNb is pre-computed in setNeighborhood / setPoints so this is O(1).
+    // _hasVisibleNb is pre-computed; add a defensive guard against stale cache.
+    if (this.nbMap.size === 0) this._hasVisibleNb = false;
     const hasNb = this._hasVisibleNb;
     const W = this.W(), H = this.H();
     // Relative zoom: how many times we've zoomed in vs the full overview.

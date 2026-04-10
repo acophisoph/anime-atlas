@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useStore } from '../lib/store';
 import { loadMediaMeta, loadPersonMeta } from '../lib/data-loader';
 import { getNeighborhood } from '../lib/graph-utils';
-import { t, translateGenre, translateTag } from '../lib/i18n';
+import { t, translateGenre, translateTag, translateRole } from '../lib/i18n';
 import type { MediaMeta, PersonMeta, Graph } from '../types';
 
 type ConnTab = 'info' | 'connections' | 'similar';
@@ -19,6 +19,7 @@ export function DetailDrawer() {
   const graphStaff     = useStore(s => s.graphStaff);
   const graphCollab    = useStore(s => s.graphCollab);
   const searchEntries  = useStore(s => s.searchEntries);
+  const mediaFilters   = useStore(s => s.mediaFilters);
   const points         = useStore(s => s.points);
 
   const [meta, setMeta] = useState<MediaMeta | PersonMeta | null>(null);
@@ -74,7 +75,14 @@ export function DetailDrawer() {
     .map(([id, hop]) => {
       const se = searchEntries.find(e => e.id === id);
       const name = se ? (lang === 'jp' ? se.jp : se.en) || se.ro : String(id);
-      return { id, hop, name, kind: se?.kind ?? 'media' };
+      return { id, hop, name, kind: se?.kind ?? 'media', isAdult: se?.isAdult ?? false, genres: se?.genres ?? '' };
+    })
+    .filter(({ kind, isAdult, genres }: { kind: string; isAdult: boolean; genres: string }) => {
+      if (!mediaFilters.showNSFW && kind === 'media') {
+        if (isAdult) return false;
+        if (genres?.split(',').includes('Hentai')) return false;
+      }
+      return true;
     });
 
   const graphAvailable = (g: typeof graphRelations) => g && g.nodeCount > 0;
@@ -207,6 +215,9 @@ function InfoTab({ meta, isMedia, lang }: { meta: MediaMeta | PersonMeta | null;
   const p = meta as PersonMeta;
   return (
     <div style={styles.infoWrap}>
+      {p.imageLarge && (
+        <img src={p.imageLarge} alt={p.nameFull ?? ''} style={styles.personPhoto} />
+      )}
       {p.siteUrl && (
         <a href={p.siteUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
           {t('AniList Profile ↗', lang)}
@@ -214,7 +225,19 @@ function InfoTab({ meta, isMedia, lang }: { meta: MediaMeta | PersonMeta | null;
       )}
       {p.description && (
         <Section label={t('About', lang)}>
-          <p style={styles.bio}>{p.description.replace(/<[^>]*>/g, '').slice(0, 400)}…</p>
+          <p style={styles.bio}>{p.description.replace(/<[^>]*>/g, '').slice(0, 300)}…</p>
+        </Section>
+      )}
+      {p.topCredits && p.topCredits.length > 0 && (
+        <Section label={t('Notable Works', lang)}>
+          <div style={styles.creditList}>
+            {p.topCredits.map((c, i) => (
+              <div key={i} style={styles.creditRow}>
+                <span style={styles.creditRole}>{translateRole(c.role, lang)}</span>
+                <span style={styles.creditTitle}>{c.title}{c.year ? ` (${c.year})` : ''}</span>
+              </div>
+            ))}
+          </div>
         </Section>
       )}
     </div>
@@ -487,4 +510,9 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   neighborKind: { fontSize: 13, flexShrink: 0 },
+  personPhoto: { width: '100%', maxHeight: 200, objectFit: 'cover' as const, objectPosition: 'top', flexShrink: 0, borderBottom: '1px solid #1a1a2e' },
+  creditList: { display: 'flex', flexDirection: 'column' as const, gap: 4 },
+  creditRow: { display: 'flex', flexDirection: 'column' as const, gap: 1, padding: '4px 0', borderBottom: '1px solid #0e0e1a' },
+  creditRole: { fontSize: 10, color: '#5b9cf6', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  creditTitle: { fontSize: 12, color: '#c8c8e8' },
 };

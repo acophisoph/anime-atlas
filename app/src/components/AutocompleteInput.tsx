@@ -17,7 +17,7 @@ interface Props {
  */
 export function AutocompleteInput({
   value, onChange, onSelect, options, selected = [],
-  placeholder = 'Search…', maxSuggestions = 8,
+  placeholder = 'Search…', maxSuggestions = 300,
 }: Props) {
   const [open, setOpen]           = useState(false);
   const [focusIdx, setFocusIdx]   = useState(0);
@@ -119,7 +119,7 @@ const css: Record<string, React.CSSProperties> = {
     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
     background: '#12121e', border: '1px solid #2a2a50', borderRadius: 6,
     marginTop: 2, overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.7)',
-    maxHeight: 240, overflowY: 'auto',
+    maxHeight: 320, overflowY: 'auto',
   },
   item: {
     padding: '6px 10px', fontSize: 12, color: '#b0b0d0',

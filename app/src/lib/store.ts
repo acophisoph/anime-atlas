@@ -120,7 +120,12 @@ export const useStore = create<AtlasState>((set) => ({
     set(name === 'relations' ? { graphRelations: g }
       : name === 'staff' ? { graphStaff: g }
       : { graphCollab: g }),
-  setSelected: (selectedId, selectedKind) => set({ selectedId, selectedKind }),
+  setSelected: (selectedId, selectedKind) => set(s => ({
+    selectedId,
+    selectedKind,
+    // Clear neighborhood when switching to a different node so stale dimming does not persist
+    neighborhoodMap: (selectedId !== null && selectedId !== s.selectedId) ? new Map() : s.neighborhoodMap,
+  })),
   setHovered: (hoveredId) => set({ hoveredId }),
   setNeighborhood: (neighborhoodMap) => set({ neighborhoodMap }),
   clearNeighborhood: () => set({ neighborhoodMap: new Map() }),
