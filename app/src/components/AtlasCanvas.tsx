@@ -26,8 +26,9 @@ export function AtlasCanvas() {
   const graphStaff     = useStore(s => s.graphStaff);
   const graphCollab    = useStore(s => s.graphCollab);
   const lang           = useStore(s => s.lang);
-  const setHovered     = useStore(s => s.setHovered);
-  const setSelected    = useStore(s => s.setSelected);
+  const setHovered        = useStore(s => s.setHovered);
+  const setSelected       = useStore(s => s.setSelected);
+  const clearNeighborhood = useStore(s => s.clearNeighborhood);
 
   // Lazy-loaded filter indices
   const [genreIndex, setGenreIndex] = useState<Record<string, number[]> | null>(null);
@@ -158,7 +159,10 @@ export function AtlasCanvas() {
       width,
       height,
       onHover: (id) => setHovered(id),
-      onClick: (id, kind) => setSelected(id, kind),
+      onClick: (id, kind) => {
+        if (id === null) { clearNeighborhood(); setSelected(null, null); }
+        else setSelected(id, kind);
+      },
     });
     rendererRef.current = renderer;
 

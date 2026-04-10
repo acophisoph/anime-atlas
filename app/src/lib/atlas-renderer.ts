@@ -6,7 +6,7 @@ export interface RendererConfig {
   width: number;
   height: number;
   onHover: (id: number | null) => void;
-  onClick: (id: number, kind: 'media' | 'person') => void;
+  onClick: (id: number | null, kind: 'media' | 'person' | null) => void;
 }
 
 export interface EdgeData {
@@ -222,6 +222,8 @@ export class AtlasRenderer {
         if (id !== null) {
           const sp = this.ptMap.get(id);
           if (sp) this.cfg.onClick(id, sp.kind);
+        } else {
+          this.cfg.onClick(null, null);
         }
       }
       this.drag = false;
