@@ -902,6 +902,8 @@ export const TAG_JP: Record<string, string> = {
   'Murder Mystery':                '殺人ミステリー',
   'No Dialogue':                   'セリフなし',
   'Noir':                          'ノワール',
+  'Non-fiction':                   'ノンフィクション',
+  'Non-Fiction':                   'ノンフィクション',
   'Nurse':                         '看護師',
   'Office Romance':                '社内恋愛',
   'Ojou-sama':                     'お嬢様',
@@ -986,7 +988,7 @@ export const TAG_JP: Record<string, string> = {
   'Deepthroat':                    'ディープスロート',
   'Defloration':                   '破瓜',
   'Desert':                        '砂漠',
-  'DILF':                          'DILF',
+  'DILF':                          '熟男',
   'Dissociative Identities':       '多重人格',
   'Double Penetration':            '二穴同時挿入',
   'Drawing':                       '絵描き',
@@ -1062,7 +1064,7 @@ export const TAG_JP: Record<string, string> = {
   'Memory Manipulation':           '記憶操作',
   'Mermaid':                       'マーメイド',
   'Metal Music':                   'メタル音楽',
-  'MILF':                          'MILF',
+  'MILF':                          '人妻',
   'Mixed Gender Harem':            '混合ハーレム',
   'Mixed Media':                   'ミックスメディア',
   'Modeling':                      'モデル',
@@ -1144,6 +1146,7 @@ export const TAG_JP: Record<string, string> = {
   'Vore':                          'ヴォア',
   'Voyeur':                        '覗き',
   'VTuber':                        'VTuber',
+  'Vtuber':                        'VTuber',   // AniList casing variant
   'Watersports':                   'ウォータースポーツ',
   'Werewolf':                      '人狼',
   'Wilderness':                    '荒野',
@@ -1163,6 +1166,32 @@ export const ROLE_JP_TO_EN: Record<string, string> =
 
 export const TAG_JP_TO_EN: Record<string, string> =
   Object.fromEntries(Object.entries(TAG_JP).map(([en, jp]) => [jp, en]));
+
+/**
+ * Hardcoded set of NSFW / adult-only tags that must always be hidden when
+ * showNSFW is off.  Used as a fallback before adult_tags.json loads, and
+ * to catch any tags that AniList may not have flagged with isAdult=true.
+ */
+export const NSFW_TAGS = new Set<string>([
+  // Explicit sexual acts
+  'Anal', 'Anal Sex', 'Ahegao', 'Ashikoki', 'Asphyxiation',
+  'Bondage', 'Boobjob', 'Cervix Penetration', 'Cunnilingus', 'Cumflation',
+  'Deepthroat', 'Defloration', 'Double Penetration',
+  'Erotic Piercings', 'Exhibitionism', 'Explicit',
+  'Facial', 'Feet', 'Femdom', 'Fingering', 'Fisting', 'Futanari',
+  'Group Sex', 'Hair Pulling', 'Handjob', 'Human Pet', 'Hypersexuality',
+  'Incest', 'Inseki', 'Irrumatio',
+  'Lactation', 'Large Breasts', 'Masochism', 'Masturbation', 'Masturebation',
+  'Mating Press', 'MILF', 'DILF',
+  'Nakadashi', 'Netorare', 'Netorase', 'Netori', 'Nudity',
+  'Oyakodon', 'Pet Play', 'Prostitution', 'Psychosexual', 'Public Sex',
+  'Rape', 'Rimjob', 'Sadism', 'Scat', 'Scissoring',
+  'Sex', 'Sex Toys', 'Shibari', 'Shimaidon', 'Small Breasts', 'Softcore',
+  'Squirting', 'Sumata', 'Swapping', 'Tentacles', 'Threesome',
+  'Vore', 'Voyeur', 'Watersports', 'X-Rated', 'Zoophilia',
+  // Other adult-flagged content
+  'Ero Guro', 'Femboy',
+]);
 
 // ─── Translation helpers ──────────────────────────────────────────────────────
 

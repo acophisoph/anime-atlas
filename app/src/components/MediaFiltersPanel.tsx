@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
 import { getTagToMedia, getAdultTags } from '../lib/data-loader';
-import { t, GENRE_JP, translateGenre, translateTag, genreToEN, tagToEN } from '../lib/i18n';
+import { t, translateGenre, translateTag, genreToEN, tagToEN, NSFW_TAGS } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 
 const GENRES_EN = [
@@ -40,10 +40,10 @@ export function MediaFiltersPanel() {
   // Convert stored EN genre to display name
   function genreDisplay(en: string) { return translateGenre(en, lang); }
 
-  // Filter NSFW tags when showNSFW is off
+  // Filter NSFW tags when showNSFW is off — union of loaded adult_tags.json and hardcoded fallback
   const visibleTagOptions = filters.showNSFW
     ? tagOptions
-    : tagOptions.filter(tag => !adultTags.has(tag));
+    : tagOptions.filter(tag => !adultTags.has(tag) && !NSFW_TAGS.has(tag));
 
   // Tag options: show JP translation when available
   const displayTagOptions = visibleTagOptions.map(tag => translateTag(tag, lang));
@@ -75,7 +75,7 @@ export function MediaFiltersPanel() {
                 setFilters({
                   showNSFW: false,
                   genres: filters.genres.filter(g => !NSFW_GENRES.has(g)),
-                  tags: filters.tags.filter(tag => !adultTags.has(tag)),
+                  tags: filters.tags.filter(tag => !adultTags.has(tag) && !NSFW_TAGS.has(tag)),
                 });
               } else {
                 setFilters({ showNSFW: true });

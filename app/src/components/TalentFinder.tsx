@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../lib/store';
 import { getRoleToPeople, getTagToMedia } from '../lib/data-loader';
-import { t, translateRole, translateTag, roleToEN, tagToEN } from '../lib/i18n';
+import { t, translateRole, translateTag, roleToEN, tagToEN, canonicalRoleEN, ROLE_JP, NSFW_TAGS } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 import type { TalentResult } from '../types';
 
@@ -25,9 +25,21 @@ export function TalentFinder() {
     getTagToMedia().then(m => setTagOptions(Object.keys(m).sort())).catch(() => {});
   }, []);
 
-  // Translated display options
-  const displayRoleOptions = roleOptions.map(r => translateRole(r, lang));
-  const displayTagOptions  = tagOptions.map(tag => translateTag(tag, lang));
+  const showNSFW = useStore(s => s.mediaFilters.showNSFW);
+
+  // Canonical roles: strip brand prefixes, consolidate variants, dedup
+  const displayRoleOptions = [...new Set(
+    roleOptions.flatMap(r => {
+      const c = canonicalRoleEN(r);
+      if (!c) return [];
+      return [lang === 'jp' ? (ROLE_JP[c] ?? c) : c];
+    })
+  )].sort();
+
+  // Tags: hide NSFW when showNSFW is off
+  const displayTagOptions = tagOptions
+    .filter(tag => showNSFW || !NSFW_TAGS.has(tag))
+    .map(tag => translateTag(tag, lang));
 
   const runSearch = useCallback(async () => {
     setLoading(true);
