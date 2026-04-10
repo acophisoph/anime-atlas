@@ -183,6 +183,24 @@ export const ROLE_JP: Record<string, string> = {
   'Voice Actor':                     '声優',
   'Voice Director':                  '音響演出',
   'Art':                             'アート',
+
+  // Additional role variants
+  'Action Animation Director':       'アクションアニメーション監督',
+  'Creature Design':                 'クリーチャーデザイン',
+  'Design Assistance':               'デザイン補佐',
+  'Director of Photography':         '撮影監督',
+  'Effect Animation Director':       'エフェクトアニメーション監督',
+  'General Director':                '総監督',
+  'Insert Song Lyrics':              '挿入歌作詞',
+  'Insert Song Composition':         '挿入歌作曲',
+  'Line Producer':                   'ラインプロデューサー',
+  'Mecha Design':                    'メカデザイン',
+  'Original Concept':                '原案',
+  'Original Design':                 '原案デザイン',
+  'Series Director':                 'シリーズ監督',
+  'Theme Song Arrangement':          '主題歌編曲',
+  'Unit Director':                   'ユニット監督',
+  'Work Producer':                   'ワーキングプロデューサー',
 };
 
 // ─── Tag translations (AniList content tags) ─────────────────────────────────
@@ -447,6 +465,112 @@ export const TAG_JP: Record<string, string> = {
   'Overpowered Main Character': '最強主人公',
   'Quest':                      'クエスト',
   'Villainess':                 '悪役令嬢',
+
+  // Additional AniList tags (expanded)
+  '4-koma':                        '4コマ',
+  'Achromatic':                    'モノクロ調',
+  'Achronological Order':          '時系列非順序',
+  'Acrobatics':                    'アクロバット',
+  'Acting':                        '演技',
+  'Advertisement':                 '広告',
+  'Afterlife':                     '死後の世界',
+  'Age Regression':                '幼児退行',
+  'Alchemy':                       '錬金術',
+  'Animal Characteristics':        '動物的特徴',
+  'Animals':                       '動物',
+  'Assassination':                 '暗殺',
+  'Astronomy':                     '天文学',
+  'Augmented Reality':             '拡張現実',
+  'Aviation':                      '航空',
+  'Band':                          'バンド',
+  'Bartender':                     'バーテンダー',
+  'Beach':                         'ビーチ',
+  'Books':                         '本',
+  "Boys' Love":                    'ボーイズラブ',  // AniList uses apostrophe in some places
+  'Bullying':                      'いじめ',
+  'Calligraphy':                   '書道',
+  'Cars':                          '自動車',
+  'Chess':                         'チェス',
+  'Chuunibyou':                    '中二病',
+  'Circus':                        'サーカス',
+  'Conspiracy':                    '陰謀',
+  'Cosplay':                       'コスプレ',
+  'Cult':                          'カルト',
+  'Dancing':                       'ダンス',
+  'Dark Fantasy':                  'ダークファンタジー',
+  'Denpa':                         '電波',
+  'Depression':                    'うつ病',
+  'Dinosaurs':                     '恐竜',
+  'Disability':                    '障害',
+  'Drag Racing':                   'ドラッグレース',
+  'Drugs':                         '薬物',
+  'Educational':                   '教育',
+  'Election':                      '選挙',
+  'Episodic':                      'エピソード形式',
+  'Ero Guro':                      'エログロ',
+  'Espionage':                     'スパイ',
+  'Exercise':                      '運動',
+  'Fairy Tale':                    'おとぎ話',
+  'Fashion':                       'ファッション',
+  'Fishing':                       '釣り',
+  'Full CGI':                      'フルCGI',
+  'Full Color':                    'フルカラー',
+  'Ghost':                         '幽霊',
+  "Girls' Love":                   '百合',
+  'Go':                            '囲碁',
+  'Gothloli':                      'ゴスロリ',
+  'Heist':                         '強盗',
+  'Immortality':                   '不死',
+  'Investigation':                 '捜査',
+  'Knight':                        '騎士',
+  'Large Breasts':                 '巨乳',
+  'Love at First Sight':           '一目惚れ',
+  'Manhua':                        'マンファ',
+  'Manhwa':                        'マンファ',
+  'Medical':                       '医療',
+  'Mental Illness':                '精神疾患',
+  'Meta':                          'メタフィクション',
+  'Middle School':                 '中学校',
+  'Miko':                          '巫女',
+  'Mind Control':                  'マインドコントロール',
+  'Monsters':                      'モンスター',
+  'Motorcycles':                   'バイク',
+  'Murder Mystery':                '殺人ミステリー',
+  'No Dialogue':                   'セリフなし',
+  'Noir':                          'ノワール',
+  'Nurse':                         '看護師',
+  'Office Romance':                '社内恋愛',
+  'Ojou-sama':                     'お嬢様',
+  'Pandemic':                      'パンデミック',
+  'Parent-Child Relationship':     '親子関係',
+  'Performing Arts':               '芸能',
+  'Photography':                   '写真',
+  'Piloted Mecha':                 '搭乗型メカ',
+  'Pirates':                       '海賊',
+  'Politics':                      '政治',
+  'Prison':                        '刑務所',
+  'Racing':                        'レース',
+  'Rakugo':                        '落語',
+  'Religion':                      '宗教',
+  'Rural':                         '田舎',
+  'Satire':                        '風刺',
+  'Shogi':                         '将棋',
+  'Shrine':                        '神社',
+  'Singing':                       '歌',
+  'Soft Sci-Fi':                   'ソフトSF',
+  'Space Opera':                   'スペースオペラ',
+  'Sudden Girlfriend Appearance':  '突然の彼女出現',
+  'Surfing':                       'サーフィン',
+  'Suspense':                      'サスペンス',
+  'Tearjerker':                    '涙腺崩壊',
+  'Tentacles':                     '触手',
+  'Time Loop':                     'タイムループ',
+  'Underworld':                    '冥界',
+  'Urban':                         '都市',
+  'Urban Fantasy':                 'アーバンファンタジー',
+  'Voice Acting':                  '声優業',
+  'Wuxia':                         '武侠',
+  'Xianxia':                       '仙侠',
 };
 
 // Reverse lookup maps (JP → EN) for use in onSelect callbacks
@@ -468,6 +592,14 @@ export function translateGenre(en: string, lang: string): string {
 
 export function translateRole(en: string, lang: string): string {
   if (lang !== 'jp') return en;
+  // Roles often carry episode qualifiers: "Director (ep 2)" or "Key Animation (eps 1-3, 5)".
+  // Strip the qualifier, translate the base role, then reattach the qualifier.
+  const parenIdx = en.indexOf(' (');
+  if (parenIdx > 0) {
+    const base      = en.slice(0, parenIdx);
+    const qualifier = en.slice(parenIdx);       // " (ep 2)" etc.
+    return (ROLE_JP[base] ?? base) + qualifier;
+  }
   return ROLE_JP[en] ?? en;
 }
 
@@ -479,6 +611,13 @@ export function translateTag(en: string, lang: string): string {
 /** Convert a displayed value (possibly JP) back to the canonical EN key. */
 export function roleToEN(display: string, lang: string): string {
   if (lang !== 'jp') return display;
+  // Handle roles with episode qualifiers: "第二原画 (ep 2)" → "2nd Key Animation (ep 2)"
+  const parenIdx = display.indexOf(' (');
+  if (parenIdx > 0) {
+    const jpBase    = display.slice(0, parenIdx);
+    const qualifier = display.slice(parenIdx);
+    return (ROLE_JP_TO_EN[jpBase] ?? jpBase) + qualifier;
+  }
   return ROLE_JP_TO_EN[display] ?? display;
 }
 
@@ -490,4 +629,16 @@ export function tagToEN(display: string, lang: string): string {
 export function genreToEN(display: string, lang: string): string {
   if (lang !== 'jp') return display;
   return GENRE_JP_TO_EN[display] ?? display;
+}
+
+/**
+ * Translate a cluster label like "Fantasy · Action · Male Protagonist".
+ * Each segment is looked up first in GENRE_JP, then TAG_JP.
+ */
+export function translateClusterLabel(label: string, lang: string): string {
+  if (lang !== 'jp') return label;
+  return label
+    .split(' · ')
+    .map(part => GENRE_JP[part] ?? TAG_JP[part] ?? part)
+    .join(' · ');
 }

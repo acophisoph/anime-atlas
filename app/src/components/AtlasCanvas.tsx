@@ -2,7 +2,10 @@ import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { AtlasRenderer, EdgeData } from '../lib/atlas-renderer';
 import { getGenreToMedia, getTagToMedia } from '../lib/data-loader';
-import { t } from '../lib/i18n';
+import { t, translateClusterLabel } from '../lib/i18n';
+
+// Cluster label segments that indicate adult content — hide them when NSFW is off
+const NSFW_LABEL_TERMS = new Set(['Hentai', 'Large Breasts', 'Softcore', 'Explicit']);
 
 export function AtlasCanvas() {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -147,8 +150,20 @@ export function AtlasCanvas() {
 
   // ── Clusters ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    rendererRef.current?.setClusters(clusters);
-  }, [clusters]);
+    const r = rendererRef.current;
+    if (!r) return;
+    const showNSFW = mediaFilters.showNSFW;
+    // Hide clusters whose labels contain adult-content terms when NSFW is off
+    const visible = showNSFW
+      ? clusters
+      : clusters.filter(cl =>
+          !cl.label.split(' · ').some(part => NSFW_LABEL_TERMS.has(part))
+        );
+    // Translate each label segment in JP mode
+    r.setClusters(
+      visible.map(cl => ({ ...cl, label: translateClusterLabel(cl.label, lang) }))
+    );
+  }, [clusters, mediaFilters.showNSFW, lang]);
 
   // ── Neighborhood + edges ──────────────────────────────────────────────────
   useEffect(() => {

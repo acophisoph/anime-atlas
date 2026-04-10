@@ -121,6 +121,9 @@ export class AtlasRenderer {
 
   private mode: 'media' | 'people' = 'media';
   private nbMap  = new Map<number, number>();
+  // Cached result of "does nbMap intersect ptMap?".  Recomputed only when
+  // nbMap or ptMap changes (not every frame) so the render loop stays O(1).
+  private _hasVisibleNb = false;
   private selId: number | null = null;
   private hovId: number | null = null;
   private edges: EdgeData[] = [];
@@ -301,6 +304,18 @@ export class AtlasRenderer {
       return;
     }
 
+    // On a genuine mode switch (fitCamera=true), flush any selection /
+    // neighborhood state that was set for the previous mode.  Without this,
+    // a media selection with a large neighbourhood would bleed into People mode
+    // and dim every single person sprite to DIM_ALPHA (≈ invisible / "black").
+    if (fitCamera) {
+      this.selId = null;
+      this.hovId = null;
+      this.nbMap = new Map();
+      this._hasVisibleNb = false;
+      this.edges = [];
+    }
+
     this.mode = mode;
     this.dotCtr.removeChildren();
     this.pts   = [];
@@ -342,6 +357,9 @@ export class AtlasRenderer {
       if (!this.grid.has(key)) this.grid.set(key, []);
       this.grid.get(key)!.push(i);
     }
+
+    // Recompute neighbourhood-visibility cache now that ptMap is fully built.
+    this._hasVisibleNb = this.nbMap.size > 0 && [...this.nbMap.keys()].some(id => this.ptMap.has(id));
 
     if (fitCamera) this.autoFit(vis);
   }
@@ -394,7 +412,10 @@ export class AtlasRenderer {
     }
   }
 
-  setNeighborhood(m: Map<number, number>) { this.nbMap  = m; }
+  setNeighborhood(m: Map<number, number>) {
+    this.nbMap = m;
+    this._hasVisibleNb = m.size > 0 && [...m.keys()].some(id => this.ptMap.has(id));
+  }
   setSelected(id: number | null)          { this.selId  = id; }
   setEdges(e: EdgeData[])                 { this.edges  = e; }
 
@@ -412,13 +433,8 @@ export class AtlasRenderer {
   }
 
   private render() {
-    // Only apply neighborhood highlighting when the neighbor IDs actually
-    // intersect the currently displayed sprites.  Without this check, a stale
-    // neighborhood from a previous media-mode selection would dim every single
-    // person sprite to DIM_ALPHA (0.06 ≈ invisible), making the canvas look
-    // completely black when the user switches to People mode or interacts.
-    const hasNb = this.nbMap.size > 0 &&
-      [...this.nbMap.keys()].some(id => this.ptMap.has(id));
+    // _hasVisibleNb is pre-computed in setNeighborhood / setPoints so this is O(1).
+    const hasNb = this._hasVisibleNb;
     const W = this.W(), H = this.H();
     // Relative zoom: how many times we've zoomed in vs the full overview.
     const relZ = this.zoom / (this.autoFitZoom || 1);
