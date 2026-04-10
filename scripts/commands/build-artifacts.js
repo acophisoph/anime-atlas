@@ -344,16 +344,19 @@ async function main() {
   ];
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'search.json'), JSON.stringify(searchEntries));
 
-  // --- TAG TO MEDIA ---
+  // --- TAG TO MEDIA + ADULT TAGS ---
   const tagToMedia = {};
+  const adultTagNames = new Set();
   for (const m of mediaRows) {
     const tags = JSON.parse(m.tags_json || '[]');
     for (const t of tags) {
       if (!tagToMedia[t.name]) tagToMedia[t.name] = [];
       tagToMedia[t.name].push(m.id);
+      if (t.isAdult) adultTagNames.add(t.name);
     }
   }
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'tag_to_media.json'), JSON.stringify(tagToMedia));
+  fs.writeFileSync(path.join(DATA_DIR, 'index', 'adult_tags.json'), JSON.stringify([...adultTagNames]));
 
   // --- GENRE TO MEDIA ---
   const genreToMedia = {};

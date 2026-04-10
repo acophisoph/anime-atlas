@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useStore } from '../lib/store';
 import { loadMediaMeta, loadPersonMeta } from '../lib/data-loader';
 import type { MediaMeta, PersonMeta } from '../types';
@@ -9,6 +9,13 @@ export function Tooltip() {
   const lang      = useStore(s => s.lang);
   const [meta, setMeta] = useState<MediaMeta | PersonMeta | null>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // O(1) lookup — rebuilt only when the points array reference changes (not on every hover)
+  const pointsById = useMemo(
+    () => new Map(points.map(p => [p.id, p])),
+    [points]
+  );
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
@@ -17,19 +24,27 @@ export function Tooltip() {
   }, []);
 
   useEffect(() => {
-    if (hoveredId === null) { setMeta(null); return; }
-    const pt = points.find(p => p.id === hoveredId);
-    if (!pt) return;
-    if (pt.kind === 'media') {
-      loadMediaMeta(hoveredId).then(setMeta).catch(() => setMeta(null));
-    } else {
-      loadPersonMeta(hoveredId).then(setMeta).catch(() => setMeta(null));
+    if (hoveredId === null) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setMeta(null);
+      return;
     }
-  }, [hoveredId, points]);
+    const pt = pointsById.get(hoveredId);
+    if (!pt) return;
+    // Debounce meta fetches — don't fire a network request on every hover tick
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (pt.kind === 'media') {
+        loadMediaMeta(hoveredId).then(setMeta).catch(() => setMeta(null));
+      } else {
+        loadPersonMeta(hoveredId).then(setMeta).catch(() => setMeta(null));
+      }
+    }, 80);
+  }, [hoveredId, pointsById]);
 
   if (!meta || hoveredId === null) return null;
 
-  const pt = points.find(p => p.id === hoveredId);
+  const pt = pointsById.get(hoveredId);
   const isMedia = pt?.kind === 'media';
 
   let name: string;

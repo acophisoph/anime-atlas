@@ -156,3 +156,13 @@ export async function getGenreToMedia(): Promise<Record<string, number[]>> {
   }
   return genreToMediaCache;
 }
+
+let adultTagsCache: Set<string> | null = null;
+
+export async function getAdultTags(): Promise<Set<string>> {
+  if (!adultTagsCache) {
+    const list = await fetchJson<string[]>('index/adult_tags.json').catch(() => [] as string[]);
+    adultTagsCache = new Set(list);
+  }
+  return adultTagsCache;
+}

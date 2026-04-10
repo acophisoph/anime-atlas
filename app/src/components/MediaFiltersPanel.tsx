@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
-import { getTagToMedia } from '../lib/data-loader';
+import { getTagToMedia, getAdultTags } from '../lib/data-loader';
 import { t, GENRE_JP, translateGenre, translateTag, genreToEN, tagToEN } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 
@@ -11,6 +11,8 @@ const GENRES_EN = [
   'Supernatural', 'Thriller',
 ];
 
+const NSFW_GENRES = new Set(['Hentai', 'Ecchi']);
+
 export function MediaFiltersPanel() {
   const filters    = useStore(s => s.mediaFilters);
   const setFilters = useStore(s => s.setMediaFilters);
@@ -19,20 +21,32 @@ export function MediaFiltersPanel() {
   const [genreInput, setGenreInput] = useState('');
   const [tagInput,   setTagInput]   = useState('');
   const [tagOptions, setTagOptions] = useState<string[]>([]);
+  const [adultTags,  setAdultTags]  = useState<Set<string>>(new Set());
 
-  // Load tag names once
+  // Load tag names and adult tag set once
   useEffect(() => {
     getTagToMedia().then(m => setTagOptions(Object.keys(m).sort())).catch(() => {});
+    getAdultTags().then(setAdultTags).catch(() => {});
   }, []);
 
+  // Filter NSFW genres when showNSFW is off
+  const visibleGenres = filters.showNSFW
+    ? GENRES_EN
+    : GENRES_EN.filter(g => !NSFW_GENRES.has(g));
+
   // Display genre names in selected lang; stored value is always EN
-  const genreOptions = GENRES_EN.map(g => translateGenre(g, lang));
+  const genreOptions = visibleGenres.map(g => translateGenre(g, lang));
 
   // Convert stored EN genre to display name
   function genreDisplay(en: string) { return translateGenre(en, lang); }
 
+  // Filter NSFW tags when showNSFW is off
+  const visibleTagOptions = filters.showNSFW
+    ? tagOptions
+    : tagOptions.filter(tag => !adultTags.has(tag));
+
   // Tag options: show JP translation when available
-  const displayTagOptions = tagOptions.map(tag => translateTag(tag, lang));
+  const displayTagOptions = visibleTagOptions.map(tag => translateTag(tag, lang));
 
   return (
     <div style={s.wrap}>
@@ -54,7 +68,19 @@ export function MediaFiltersPanel() {
         <label style={s.toggle}>
           <span style={s.toggleLabel}>{t('Show NSFW (18+)', lang)}</span>
           <div style={{ ...s.toggleTrack, ...(filters.showNSFW ? s.toggleTrackOn : {}) }}
-            onClick={() => setFilters({ showNSFW: !filters.showNSFW })}>
+            onClick={() => {
+              const turningOff = filters.showNSFW;
+              if (turningOff) {
+                // Remove any selected NSFW genres and tags
+                setFilters({
+                  showNSFW: false,
+                  genres: filters.genres.filter(g => !NSFW_GENRES.has(g)),
+                  tags: filters.tags.filter(tag => !adultTags.has(tag)),
+                });
+              } else {
+                setFilters({ showNSFW: true });
+              }
+            }}>
             <div style={{ ...s.toggleThumb, ...(filters.showNSFW ? s.toggleThumbOn : {}) }} />
           </div>
         </label>
