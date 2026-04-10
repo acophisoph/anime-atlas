@@ -24,9 +24,50 @@ const STAFF_OVERLAP_THRESHOLD = 1.5; // min weighted overlap score
 
 function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }
 
+// Merge hyper-specific role variants into canonical names (mirrors ROLE_CONSOLIDATION in i18n.ts)
+const ROLE_CONSOLIDATION = {
+  '2nd Key Animation':                'Key Animation',
+  'Main Animator':                    'Key Animation',
+  'Key Frame Check':                  'Animation Check',
+  'In-Between Animation Check':       'Animation Check',
+  'In-Betweens Check':                'Animation Check',
+  'In-Between Check':                 'Animation Check',
+  'Digital In-Betweens Check':        'Animation Check',
+  'Digital In-Between Animation':     'In-Between Animation',
+  'Finish Animation':                 'In-Between Animation',
+  'Flash Animation':                  'Animation',
+  'Effect Animation Director':        'Animation Director',
+  'Effects Animation Director':       'Animation Director',
+  'Action Animation Director':        'Animation Director',
+  'Mechanical Animation Director':    'Animation Director',
+  'Character Animation Director':     'Animation Director',
+  'Assistant Animation Director':     'Animation Director',
+  'Assistant Character Animation Director': 'Animation Director',
+  'Supervising Animation Director':   'Chief Animation Director',
+  'Assistant Chief Animation Director': 'Chief Animation Director',
+  'Chief Episode Director':           'Episode Director',
+  'Special Episode Director':         'Episode Director',
+  'Series Unit Director':             'Unit Director',
+  'Guest Storyboard':                 'Storyboard',
+  'Intro Storyboard':                 'Storyboard',
+  'Opening Storyboard':               'Storyboard',
+  'Outro Storyboard':                 'Storyboard',
+  'Storyboard Composition':           'Storyboard',
+  '3D CGI Director':                  '3D Director',
+  'Director of 3D':                   '3D Director',
+  'Background Design':                'Background Art',
+  'Photography Director':             'Director of Photography',
+  'Digital Photography':              'Photography',
+  'CG Photography':                   'Photography',
+  'Sub Series Composition':           'Series Composition',
+  'Opening Animation Direction':      'Opening Animation',
+  'Ending Animation Direction':       'Ending Animation',
+};
+
 /**
  * Normalise a raw AniList role string:
  *   - Strip episode qualifiers like " (ep 2)", " (eps 1-3)", " (ep.14)"
+ *   - Consolidate hyper-specific variants into canonical role names
  *   - Return 'Unknown' for blank/garbage entries
  */
 function normalizeRole(raw) {
@@ -36,7 +77,7 @@ function normalizeRole(raw) {
     .replace(/\s*;[^)]*\)\s*$/, '')
     .trim();
   if (!clean || clean === ')' || /^\)+$/.test(clean)) return 'Unknown';
-  return clean;
+  return ROLE_CONSOLIDATION[clean] ?? clean;
 }
 
 // Color palette: person nodes colored by their primary creative role

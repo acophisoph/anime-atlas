@@ -119,6 +119,55 @@ export const GENRE_JP: Record<string, string> = {
   'Thriller':      'スリラー',
 };
 
+// ─── Role consolidation — merges overly-specific variants into canonical roles ─
+// Applied before translation so both EN and JP see the collapsed name.
+export const ROLE_CONSOLIDATION: Record<string, string> = {
+  // Animation
+  '2nd Key Animation':                'Key Animation',
+  'Main Animator':                    'Key Animation',
+  'Key Frame Check':                  'Animation Check',
+  'In-Between Animation Check':       'Animation Check',
+  'In-Betweens Check':                'Animation Check',
+  'In-Between Check':                 'Animation Check',
+  'Digital In-Betweens Check':        'Animation Check',
+  'Digital In-Between Animation':     'In-Between Animation',
+  'Finish Animation':                 'In-Between Animation',
+  'Flash Animation':                  'Animation',
+  // Animation directing
+  'Effect Animation Director':        'Animation Director',
+  'Effects Animation Director':       'Animation Director',
+  'Action Animation Director':        'Animation Director',
+  'Mechanical Animation Director':    'Animation Director',
+  'Character Animation Director':     'Animation Director',
+  'Assistant Animation Director':     'Animation Director',
+  'Assistant Character Animation Director': 'Animation Director',
+  'Supervising Animation Director':   'Chief Animation Director',
+  'Assistant Chief Animation Director': 'Chief Animation Director',
+  // Directing
+  'Chief Episode Director':           'Episode Director',
+  'Special Episode Director':         'Episode Director',
+  'Series Unit Director':             'Unit Director',
+  'Guest Storyboard':                 'Storyboard',
+  'Intro Storyboard':                 'Storyboard',
+  'Opening Storyboard':               'Storyboard',
+  'Outro Storyboard':                 'Storyboard',
+  'Storyboard Composition':           'Storyboard',
+  // CG
+  '3D CGI Director':                  '3D Director',
+  'Director of 3D':                   '3D Director',
+  // Art / Backgrounds
+  'Background Design':                'Background Art',
+  // Photography
+  'Photography Director':             'Director of Photography',
+  'Digital Photography':              'Photography',
+  'CG Photography':                   'Photography',
+  // Series composition
+  'Sub Series Composition':           'Series Composition',
+  // Opening / Ending animation — keep the category, drop the specific sub-role
+  'Opening Animation Direction':      'Opening Animation',
+  'Ending Animation Direction':       'Ending Animation',
+};
+
 // ─── Role translations (AniList staff roles) ──────────────────────────────────
 export const ROLE_JP: Record<string, string> = {
   'ADR Director':                    'ADR監督',
@@ -1123,18 +1172,15 @@ export function translateGenre(en: string, lang: string): string {
 }
 
 export function translateRole(en: string, lang: string): string {
-  if (lang !== 'jp') return en;
   // Trim any trailing whitespace (some AniList role strings have trailing spaces).
   const trimmed = en.trim();
-  // Roles often carry episode qualifiers: "Director (ep 2)" or "Key Animation (eps 1-3, 5)".
-  // Strip the qualifier, translate the base role, then reattach the qualifier.
+  // Strip episode qualifiers like " (ep 2)", " (eps 1-3)" — they carry no useful meaning.
   const parenIdx = trimmed.indexOf(' (');
-  if (parenIdx > 0) {
-    const base      = trimmed.slice(0, parenIdx);
-    const qualifier = trimmed.slice(parenIdx);       // " (ep 2)" etc.
-    return (ROLE_JP[base] ?? base) + qualifier;
-  }
-  return ROLE_JP[trimmed] ?? trimmed;
+  const base = parenIdx > 0 ? trimmed.slice(0, parenIdx) : trimmed;
+  // Consolidate hyper-specific variants into canonical role names.
+  const canonical = ROLE_CONSOLIDATION[base] ?? base;
+  if (lang !== 'jp') return canonical;
+  return ROLE_JP[canonical] ?? canonical;
 }
 
 export function translateTag(en: string, lang: string): string {
@@ -1145,14 +1191,10 @@ export function translateTag(en: string, lang: string): string {
 /** Convert a displayed value (possibly JP) back to the canonical EN key. */
 export function roleToEN(display: string, lang: string): string {
   if (lang !== 'jp') return display;
-  // Handle roles with episode qualifiers: "第二原画 (ep 2)" → "2nd Key Animation (ep 2)"
+  // Strip any residual episode qualifier (shouldn't appear after translateRole, but be safe)
   const parenIdx = display.indexOf(' (');
-  if (parenIdx > 0) {
-    const jpBase    = display.slice(0, parenIdx);
-    const qualifier = display.slice(parenIdx);
-    return (ROLE_JP_TO_EN[jpBase] ?? jpBase) + qualifier;
-  }
-  return ROLE_JP_TO_EN[display] ?? display;
+  const base = parenIdx > 0 ? display.slice(0, parenIdx) : display;
+  return ROLE_JP_TO_EN[base] ?? base;
 }
 
 export function tagToEN(display: string, lang: string): string {

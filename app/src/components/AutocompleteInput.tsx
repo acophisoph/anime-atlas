@@ -17,10 +17,11 @@ interface Props {
  * by parent overflow:hidden containers (e.g. the LeftPanel sidebar).
  * On empty input, shows the full scrollable list. As the user types, filters
  * and sorts (prefix matches first, then contains matches).
+ * The dropdown flips above the input when there is insufficient viewport space below.
  */
 export function AutocompleteInput({
   value, onChange, onSelect, options, selected = [],
-  placeholder = 'Search…', maxSuggestions = 300,
+  placeholder = 'Search…', maxSuggestions = 2000,
 }: Props) {
   const [open, setOpen]         = useState(false);
   const [focusIdx, setFocusIdx] = useState(0);
@@ -85,13 +86,22 @@ export function AutocompleteInput({
     ? ReactDOM.createPortal(
         <div
           id="autocomplete-portal"
-          style={{
-            ...css.dropdown,
-            position: 'fixed',
-            top: dropRect.bottom + 2,
-            left: dropRect.left,
-            width: dropRect.width,
-          }}
+          style={(() => {
+            const spaceBelow = window.innerHeight - dropRect.bottom - 4;
+            const spaceAbove = dropRect.top - 4;
+            const maxH = Math.min(540, window.innerHeight * 0.55);
+            const fitsBelow = spaceBelow >= 120;
+            return {
+              ...css.dropdown,
+              position: 'fixed' as const,
+              left: dropRect.left,
+              width: dropRect.width,
+              maxHeight: Math.min(maxH, fitsBelow ? spaceBelow : spaceAbove),
+              ...(fitsBelow
+                ? { top: dropRect.bottom + 2 }
+                : { bottom: window.innerHeight - dropRect.top + 2 }),
+            };
+          })()}
         >
           {suggestions.map((s, i) => (
             <div
@@ -158,7 +168,6 @@ const css: Record<string, React.CSSProperties> = {
     background: '#12121e', border: '1px solid #2a2a50', borderRadius: 6,
     overflowX: 'hidden', overflowY: 'auto',
     boxShadow: '0 6px 20px rgba(0,0,0,0.7)',
-    maxHeight: 'min(540px, 55vh)',
   },
   item: {
     padding: '6px 10px', fontSize: 12, color: '#b0b0d0',
