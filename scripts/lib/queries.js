@@ -23,6 +23,24 @@ query QueryMediaList($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaS
 }
 `;
 
+export const QUERY_MEDIA_DETAIL = `
+query QueryMediaDetail($id: Int) {
+  Media(id: $id) {
+    id
+    type
+    format
+    seasonYear
+    popularity
+    averageScore
+    title { romaji english native }
+    coverImage { large color }
+    genres
+    tags { id name category rank isAdult }
+    studios { nodes { id name isAnimationStudio } }
+  }
+}
+`;
+
 export const QUERY_MEDIA_STAFF = `
 query QueryMediaStaff($id: Int, $page: Int, $perPage: Int) {
   Media(id: $id) {

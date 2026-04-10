@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 
 interface Props {
   value: string;
@@ -12,15 +13,18 @@ interface Props {
 
 /**
  * Autocomplete text input with keyboard navigation and match highlighting.
- * On empty input, shows top options. As the user types, filters and sorts
- * (prefix matches first, then contains matches).
+ * The dropdown renders via a portal at document root so it is never clipped
+ * by parent overflow:hidden containers (e.g. the LeftPanel sidebar).
+ * On empty input, shows the full scrollable list. As the user types, filters
+ * and sorts (prefix matches first, then contains matches).
  */
 export function AutocompleteInput({
   value, onChange, onSelect, options, selected = [],
   placeholder = 'Search…', maxSuggestions = 300,
 }: Props) {
-  const [open, setOpen]           = useState(false);
-  const [focusIdx, setFocusIdx]   = useState(0);
+  const [open, setOpen]         = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const [dropRect, setDropRect] = useState<DOMRect | null>(null);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -41,10 +45,30 @@ export function AutocompleteInput({
 
   useEffect(() => { setFocusIdx(0); }, [suggestions.length]);
 
+  // Recompute anchor position whenever the dropdown opens or window scrolls/resizes
+  const updateRect = useCallback(() => {
+    if (wrapRef.current) setDropRect(wrapRef.current.getBoundingClientRect());
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updateRect();
+    window.addEventListener('scroll', updateRect, true);
+    window.addEventListener('resize', updateRect);
+    return () => {
+      window.removeEventListener('scroll', updateRect, true);
+      window.removeEventListener('resize', updateRect);
+    };
+  }, [open, updateRect]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        // Also allow clicks inside the portal dropdown
+        const portal = document.getElementById('autocomplete-portal');
+        if (portal && portal.contains(e.target as Node)) return;
         setOpen(false);
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -57,6 +81,33 @@ export function AutocompleteInput({
     inputRef.current?.focus();
   }
 
+  const dropdown = open && suggestions.length > 0 && dropRect
+    ? ReactDOM.createPortal(
+        <div
+          id="autocomplete-portal"
+          style={{
+            ...css.dropdown,
+            position: 'fixed',
+            top: dropRect.bottom + 2,
+            left: dropRect.left,
+            width: dropRect.width,
+          }}
+        >
+          {suggestions.map((s, i) => (
+            <div
+              key={s}
+              style={{ ...css.item, ...(i === focusIdx ? css.itemHover : {}) }}
+              onMouseEnter={() => setFocusIdx(i)}
+              onMouseDown={e => { e.preventDefault(); pick(s); }}
+            >
+              {highlight(s, q)}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <div ref={wrapRef} style={{ position: 'relative', flex: 1 }}>
       <input
@@ -66,7 +117,7 @@ export function AutocompleteInput({
         placeholder={placeholder}
         autoComplete="off"
         onChange={e => { onChange(e.target.value); setOpen(true); setFocusIdx(0); }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => { setOpen(true); updateRect(); }}
         onKeyDown={e => {
           if (e.key === 'ArrowDown')  { e.preventDefault(); setFocusIdx(i => Math.min(i + 1, suggestions.length - 1)); }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setFocusIdx(i => Math.max(i - 1, 0)); }
@@ -78,20 +129,7 @@ export function AutocompleteInput({
           else if (e.key === 'Escape') setOpen(false);
         }}
       />
-      {open && suggestions.length > 0 && (
-        <div style={css.dropdown}>
-          {suggestions.map((s, i) => (
-            <div
-              key={s}
-              style={{ ...css.item, ...(i === focusIdx ? css.itemHover : {}) }}
-              onMouseEnter={() => setFocusIdx(i)}
-              onMouseDown={e => { e.preventDefault(); pick(s); }}
-            >
-              {highlight(s, q)}
-            </div>
-          ))}
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }
@@ -116,9 +154,9 @@ const css: Record<string, React.CSSProperties> = {
     color: '#c8c8e8', fontSize: 12, outline: 'none', boxSizing: 'border-box',
   },
   dropdown: {
-    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+    zIndex: 9999,
     background: '#12121e', border: '1px solid #2a2a50', borderRadius: 6,
-    marginTop: 2, overflowX: 'hidden', overflowY: 'auto',
+    overflowX: 'hidden', overflowY: 'auto',
     boxShadow: '0 6px 20px rgba(0,0,0,0.7)',
     maxHeight: 'min(540px, 55vh)',
   },

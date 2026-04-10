@@ -222,9 +222,12 @@ export function AtlasCanvas() {
     }
   }, [neighborhood, selectedId, graphRelations, graphStaff, graphCollab]);
 
-  const visibleCount = filteredPoints.filter(p =>
-    mode === 'media' ? p.kind === 'media' : p.kind === 'person'
-  ).length;
+  // "No people data" = zero person nodes in the raw dataset (not yet ingested).
+  // We do NOT show this overlay based on visibleCount (filtered count) because
+  // transient filter states can make visibleCount=0 and the solid background
+  // causes the "black screen" bug during normal interaction.
+  const hasPeopleData = points.some(p => p.kind === 'person');
+  const mediaVisibleCount = filteredPoints.filter(p => p.kind === 'media').length;
 
   return (
     <div ref={wrapRef} style={{ width: '100%', height: '100%', position: 'relative', background: '#07070f' }}>
@@ -234,20 +237,24 @@ export function AtlasCanvas() {
         {t('Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles', lang)}
       </div>
 
-      {visibleCount === 0 && (
+      {/* People not yet ingested — only when data truly doesn't exist */}
+      {mode !== 'media' && !hasPeopleData && (
         <div style={styles.emptyState}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>
-            {mode === 'people' ? '👤' : '🔍'}
-          </div>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>👤</div>
           <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: '#c8c8f8' }}>
-            {mode === 'people'
-              ? t('People data not yet ingested', lang)
-              : t('No media matches these filters', lang)}
+            {t('People data not yet ingested', lang)}
           </div>
           <div style={{ fontSize: 13, color: '#6666a0', maxWidth: 300, textAlign: 'center', lineHeight: 1.6 }}>
-            {mode === 'people'
-              ? t('Staff and voice actor data is fetched in later ingest batches. Check back after the next scheduled run (every 6 hours).', lang)
-              : t('Try relaxing your filters or reset them to see all media.', lang)}
+            {t('Staff and voice actor data is fetched in later ingest batches. Check back after the next scheduled run (every 6 hours).', lang)}
+          </div>
+        </div>
+      )}
+
+      {/* Media filters returned nothing — non-blocking, no solid background */}
+      {mode === 'media' && mediaVisibleCount === 0 && hasPeopleData !== undefined && (
+        <div style={styles.filterEmpty}>
+          <div style={{ fontSize: 13, color: '#6666a0' }}>
+            🔍 {t('No media matches these filters', lang)}
           </div>
         </div>
       )}
@@ -259,6 +266,11 @@ const styles: Record<string, React.CSSProperties> = {
   zoomHint: {
     position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
     fontSize: 11, color: '#444466', pointerEvents: 'none', whiteSpace: 'nowrap',
+  },
+  filterEmpty: {
+    position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)',
+    background: 'rgba(7,7,15,0.85)', borderRadius: 8, padding: '8px 16px',
+    pointerEvents: 'none',
   },
   emptyState: {
     position: 'absolute', inset: 0,

@@ -20,8 +20,8 @@ const TIME_BUDGET_MS =
 const RUN_BATCH_LIMIT = parseInt(process.env.RUN_BATCH_LIMIT ?? '0', 10);
 const BATCH_MAX_RETRIES = parseInt(process.env.BATCH_MAX_RETRIES ?? '5', 10);
 
-// Priority order: list pages first (they unlock more work), then details, then per-person enrichment
-const BATCH_PRIORITY = ['ANIME_LIST', 'MANGA_LIST', 'MEDIA_STAFF', 'MEDIA_CHARACTERS', 'PERSON_DETAILS'];
+// Priority order: list pages → staff/characters → refresh stubs → person bios
+const BATCH_PRIORITY = ['ANIME_LIST', 'MANGA_LIST', 'MEDIA_STAFF', 'MEDIA_CHARACTERS', 'MEDIA_REFRESH', 'PERSON_DETAILS'];
 
 async function main() {
   const db = openDb(DB_PATH);
@@ -101,16 +101,43 @@ function seedInitialBatches(db) {
     "SELECT COUNT(*) as n FROM batches WHERE batch_type IN ('ANIME_LIST','MANGA_LIST')"
   ).get().n;
 
-  if (existingCount > 0) return; // Already seeded
+  if (existingCount === 0) {
+    console.log('[ingest] Seeding initial list batches...');
+    const insert = db.prepare(`
+      INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
+      VALUES (?, ?, 'PENDING')
+    `);
+    // Start with first pages; more pages get seeded dynamically as we discover hasNextPage
+    insert.run('ANIME_LIST', 'ANIME:page:1');
+    insert.run('MANGA_LIST', 'MANGA:page:1');
+  }
 
-  console.log('[ingest] Seeding initial list batches...');
-  const insert = db.prepare(`
-    INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
-    VALUES (?, ?, 'PENDING')
-  `);
-  // Start with first pages; more pages get seeded dynamically as we discover hasNextPage
-  insert.run('ANIME_LIST', 'ANIME:page:1');
-  insert.run('MANGA_LIST', 'MANGA:page:1');
+  // Seed MEDIA_REFRESH for any stub media (popularity=0 and genres_json='[]').
+  // These are relation-referenced titles that were never returned in list pages.
+  // Only seed if we have media in the DB and media_refresh hasn't been seeded yet.
+  const hasTables = db.prepare("SELECT COUNT(*) as n FROM sqlite_master WHERE type='table' AND name='media'").get().n;
+  if (!hasTables) return;
+
+  const stubCount = db.prepare(
+    "SELECT COUNT(*) as n FROM batches WHERE batch_type='MEDIA_REFRESH'"
+  ).get().n;
+
+  if (stubCount === 0) {
+    const stubs = db.prepare(
+      "SELECT id FROM media WHERE popularity=0 AND genres_json='[]' LIMIT 50000"
+    ).all();
+    if (stubs.length > 0) {
+      console.log(`[ingest] Seeding ${stubs.length} MEDIA_REFRESH batches for stub media...`);
+      const insert = db.prepare(`
+        INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
+        VALUES ('MEDIA_REFRESH', ?, 'PENDING')
+      `);
+      const insertMany = db.transaction((rows) => {
+        for (const r of rows) insert.run(`MEDIA_REFRESH:${r.id}`);
+      });
+      insertMany(stubs);
+    }
+  }
 }
 
 function getNextBatch(db) {

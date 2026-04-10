@@ -1,5 +1,5 @@
 import { anilistQuery, sleep } from './http-client.js';
-import { QUERY_MEDIA_LIST, QUERY_MEDIA_STAFF, QUERY_MEDIA_CHARACTERS, QUERY_PERSON } from './queries.js';
+import { QUERY_MEDIA_LIST, QUERY_MEDIA_STAFF, QUERY_MEDIA_CHARACTERS, QUERY_PERSON, QUERY_MEDIA_DETAIL } from './queries.js';
 import { isLocalizationRole, getRoleWeight } from './roles.js';
 
 const PER_PAGE = 50;
@@ -22,6 +22,9 @@ export async function executeBatch(db, batch) {
   } else if (batch_type === 'PERSON_DETAILS') {
     const personId = parseInt(scope_key.replace('PERSON_DETAILS:', ''), 10);
     await executePersonDetailsBatch(db, personId);
+  } else if (batch_type === 'MEDIA_REFRESH') {
+    const mediaId = parseInt(scope_key.replace('MEDIA_REFRESH:', ''), 10);
+    await executeMediaRefreshBatch(db, mediaId);
   } else {
     throw new Error(`Unknown batch_type: ${batch_type}`);
   }
@@ -346,4 +349,45 @@ async function executePersonDetailsBatch(db, personId) {
   })();
 
   console.log(`[batch] PERSON_DETAILS:${personId} done`);
+}
+
+async function executeMediaRefreshBatch(db, mediaId) {
+  console.log(`[batch] MEDIA_REFRESH:${mediaId} fetching`);
+  const data = await anilistQuery(
+    QUERY_MEDIA_DETAIL,
+    { id: mediaId },
+    `MEDIA_REFRESH:${mediaId}`
+  );
+
+  const m = data.Media;
+  if (!m) return;
+
+  db.transaction(() => {
+    db.prepare(`
+      UPDATE media SET
+        type=?, format=?, season_year=?, popularity=?, average_score=?,
+        title_romaji=?, title_english=?, title_native=?,
+        cover_large=?, cover_color=?, genres_json=?, tags_json=?, studios_json=?,
+        updated_at=?
+      WHERE id=?
+    `).run(
+      m.type ?? null,
+      m.format ?? null,
+      m.seasonYear ?? null,
+      m.popularity ?? 0,
+      m.averageScore ?? null,
+      m.title?.romaji ?? null,
+      m.title?.english ?? null,
+      m.title?.native ?? null,
+      m.coverImage?.large ?? null,
+      m.coverImage?.color ?? null,
+      JSON.stringify(m.genres ?? []),
+      JSON.stringify(m.tags ?? []),
+      JSON.stringify(m.studios?.nodes ?? []),
+      Date.now(),
+      mediaId
+    );
+  })();
+
+  console.log(`[batch] MEDIA_REFRESH:${mediaId} done`);
 }

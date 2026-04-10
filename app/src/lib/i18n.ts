@@ -342,6 +342,81 @@ export const ROLE_JP: Record<string, string> = {
   'Digital Coloring':                'デジタルカラー',
   'Effects Animation Director':      'エフェクト作画監督',
   'Public Relations':                '広報',
+
+  // Additional high-frequency roles
+  'Costume Design':                  '衣装デザイン',
+  'In-Between Animation Assistance': '動画補佐',
+  'Key Animation Assistance':        '原画補佐',
+  'CG Assistance':                   'CG補佐',
+  'Digital Finishing':               'デジタル仕上げ',
+  'Design':                          'デザイン',
+  'CG Animation Assistance':         'CGアニメーション補佐',
+  'Domestic License':                '国内ライセンス',
+  'Music Production Assistance':     '音楽制作補佐',
+  'CG Production Assistant':         'CG制作進行',
+  'Visual Effects':                  'ビジュアルエフェクト',
+  'Motion Graphics':                 'モーショングラフィックス',
+  'Color Design Assistance':         '色彩設計補佐',
+  'Eyecatch':                        'アイキャッチ',
+  'Tracing':                         'トレス',
+  'Advertising Manager':             '宣伝マネージャー',
+  'CG Production Manager':           'CG制作管理',
+  'Monitor Graphics':                'モニターグラフィックス',
+  'CG Modeling Assistance':          'CGモデリング補佐',
+  'Supporting Staff':                'サポートスタッフ',
+  'Music Production':                '音楽制作',
+  'CG Rigging':                      'CGリギング',
+  'Storyboard Composition':          '絵コンテ構成',
+  'Sound Production':                '音響制作',
+  'Art Design Assistance':           '美術設定補佐',
+  'License':                         'ライセンス',
+  'Concept Design':                  'コンセプトデザイン',
+  'Script Assistance':               '台本補佐',
+  'Literary Arts':                   '文芸',
+  'In-Betweens Manager':             '動画管理',
+  'Animation Supervisor':            'アニメーション監修',
+  'Storyboard Assistance':           '絵コンテ補佐',
+  'Cel Check':                       'セル検査',
+  'Image Board':                     'イメージボード',
+  'Theme Song Assistance':           '主題歌補佐',
+  'Line Test':                       'ラインテスト',
+  'Layout Supervisor':               'レイアウト監修',
+  'CG Supervisor':                   'CGスーパーバイザー',
+  'Painted Line Animation':          '彩色動画',
+  'CG Production Assistance':        'CG制作補佐',
+  'Assistant Character Animation Director': 'キャラクターアニメーション監督補佐',
+  'Monitor Works':                   'モニターワークス',
+  'Animation Assistance':            'アニメーション補佐',
+  'CG Photography':                  'CG撮影',
+  'Graphic Design':                  'グラフィックデザイン',
+  'Opening Animation Direction':     'オープニングアニメーション演出',
+  'Ending Animation Direction':      'エンディングアニメーション演出',
+  'CG Work':                         'CGワーク',
+  'Photography Manager':             '撮影管理',
+  'Key Frame Check':                 '原画チェック',
+  'Art Assistance':                  '美術補佐',
+  'Background Art Modeling':         '背景美術モデリング',
+  'Digital Compositor':              'デジタルコンポジター',
+  'Color Coordinator':               'カラーコーディネーター',
+  'Costume':                         '衣装',
+  'Prop':                            'プロップ',
+  'CGI':                             'CGI',
+  'Original Art':                    '原画',
+  'Comic Adaptation':                'コミカライズ',
+  'Novelization':                    'ノベライズ',
+  'Character Draft':                 'キャラクター草案',
+  'Set Design Assistance':           'セットデザイン補佐',
+  'Sound Assistance':                '音響補佐',
+  'Photography Assistant':           '撮影アシスタント',
+  'Music Supervision':               '音楽監修',
+  'Vocal Direction':                 'ボーカルディレクション',
+  'Guest Illustration':              'ゲストイラスト',
+  'In-Between Check':                '動画チェック',
+  'Digital In-Betweens Check':       'デジタル動画チェック',
+  'Assistant Art Board':             'アートボード補佐',
+  'Background CG':                   '背景CG',
+  'Model Sheet':                     'モデルシート',
+  'Production Support':              '制作サポート',
 };
 
 // ─── Tag translations (AniList content tags) ─────────────────────────────────
@@ -1049,15 +1124,17 @@ export function translateGenre(en: string, lang: string): string {
 
 export function translateRole(en: string, lang: string): string {
   if (lang !== 'jp') return en;
+  // Trim any trailing whitespace (some AniList role strings have trailing spaces).
+  const trimmed = en.trim();
   // Roles often carry episode qualifiers: "Director (ep 2)" or "Key Animation (eps 1-3, 5)".
   // Strip the qualifier, translate the base role, then reattach the qualifier.
-  const parenIdx = en.indexOf(' (');
+  const parenIdx = trimmed.indexOf(' (');
   if (parenIdx > 0) {
-    const base      = en.slice(0, parenIdx);
-    const qualifier = en.slice(parenIdx);       // " (ep 2)" etc.
+    const base      = trimmed.slice(0, parenIdx);
+    const qualifier = trimmed.slice(parenIdx);       // " (ep 2)" etc.
     return (ROLE_JP[base] ?? base) + qualifier;
   }
-  return ROLE_JP[en] ?? en;
+  return ROLE_JP[trimmed] ?? trimmed;
 }
 
 export function translateTag(en: string, lang: string): string {
