@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
 import { getRoleToPeople } from '../lib/data-loader';
-import { t, translateRole, roleToEN } from '../lib/i18n';
+import { t, translateRole, roleToEN, canonicalRoleEN, ROLE_JP } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 
 export function PeopleFiltersPanel() {
@@ -17,10 +17,14 @@ export function PeopleFiltersPanel() {
       .catch(() => {});
   }, []);
 
-  // Translate, consolidate, deduplicate, and sort role options.
-  // Multiple raw roles can map to the same canonical name after consolidation
-  // (e.g. '2nd Key Animation' and '"Title" Animation Director' both → 'Animation Director').
-  const displayRoleOptions = [...new Set(roleOptions.map(r => translateRole(r, lang)))].sort();
+  // Canonicalize every raw role, drop unrecognizable ones, translate, dedup, sort.
+  const displayRoleOptions = [...new Set(
+    roleOptions.flatMap(r => {
+      const c = canonicalRoleEN(r);
+      if (!c) return [];
+      return [lang === 'jp' ? (ROLE_JP[c] ?? c) : c];
+    })
+  )].sort();
 
   return (
     <div style={s.wrap}>

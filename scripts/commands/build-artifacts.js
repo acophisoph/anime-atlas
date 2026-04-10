@@ -70,16 +70,69 @@ const ROLE_CONSOLIDATION = {
  *   - Consolidate hyper-specific variants into canonical role names
  *   - Return 'Unknown' for blank/garbage entries
  */
+// Suffix patterns mirror canonicalRoleEN() in i18n.ts — keep in sync.
+const ROLE_SUFFIX_PATTERNS = [
+  [/\bChief Animation Director\b/,  'Chief Animation Director'],
+  [/\bAnimation Director\b/,        'Animation Director'],
+  [/\bEpisode Director\b/,          'Episode Director'],
+  [/\bUnit Director\b/,             'Unit Director'],
+  [/\bSeries Composition\b/,        'Series Composition'],
+  [/\bCharacter Design\b/,          'Character Design'],
+  [/\bMonster Design\b/,            'Monster Design'],
+  [/\bMechanical Design\b/,         'Mechanical Design'],
+  [/\bCreature Design\b/,           'Creature Design'],
+  [/\bProp Design\b/,               'Prop Design'],
+  [/\bMecha Design\b/,              'Mecha Design'],
+  [/\bWeapon Design\b/,             'Weapon Design'],
+  [/\bConcept Design\b/,            'Concept Design'],
+  [/\bColor Design\b/,              'Color Design'],
+  [/\bSet Design\b/,                'Set Design'],
+  [/\bArt Director\b/,              'Art Director'],
+  [/\bBackground Art\b/,            'Background Art'],
+  [/\bKey Animation\b/,             'Key Animation'],
+  [/\bIn-Between Animation\b/,      'In-Between Animation'],
+  [/\bAnimation Check\b/,           'Animation Check'],
+  [/\bSound Director\b/,            'Sound Director'],
+  [/\bVoice Director\b/,            'Voice Director'],
+  [/\bMusic Director\b/,            'Music Director'],
+  [/\bCG Director\b/,               'CG Director'],
+  [/\b3D Director\b/,               '3D Director'],
+  [/\bDirector of Photography\b/,   'Director of Photography'],
+  [/\bOriginal Creator\b/,          'Original Creator'],
+  [/\bOriginal Character Design\b/, 'Original Character Design'],
+  [/\bIllustration\b/,              'Illustration'],
+  [/\bDesign\b/,                    'Character Design'],
+  [/\bAnimation\b/,                 'Animation'],
+  [/\bDirector\b/,                  'Director'],
+  [/\bStoryboard\b/,                'Storyboard'],
+  [/\bScript\b/,                    'Script'],
+  [/\bScreenplay\b/,                'Screenplay'],
+  [/\bPhotography\b/,               'Photography'],
+  [/\bEditing\b/,                   'Editing'],
+  [/\bRecording\b/,                 'Recording'],
+  [/\bPlanning\b/,                  'Planning'],
+  [/\bProduction\b/,                'Production'],
+  [/\bMusic\b/,                     'Music'],
+  [/\bArt\b/,                       'Art'],
+];
+
 function normalizeRole(raw) {
   if (!raw || typeof raw !== 'string') return 'Unknown';
   const clean = raw
-    .replace(/^"[^"]*"\s*/, '')           // strip quoted title prefix: '"Title" Role' → 'Role'
-    .replace(/^「[^」]*」\s*/, '')          // same for Japanese quotes
-    .replace(/\s*\(ep[s.]?[^)]*\)\s*$/i, '') // strip episode qualifiers ' (ep 2)'
+    .replace(/^"[^"]*"\s*/, '')              // strip quoted title prefix
+    .replace(/^「[^」]*」\s*/, '')             // Japanese quote variant
+    .replace(/\s*\(ep[s.]?[^)]*\)\s*$/i, '') // strip episode qualifiers
     .replace(/\s*;[^)]*\)\s*$/, '')
     .trim();
   if (!clean || clean === ')' || /^\)+$/.test(clean)) return 'Unknown';
-  return ROLE_CONSOLIDATION[clean] ?? clean;
+  const consolidated = ROLE_CONSOLIDATION[clean] ?? clean;
+  // If explicit consolidation resolved it, done
+  if (consolidated !== clean) return consolidated;
+  // Suffix-pattern extraction for brand/character-specific strings
+  for (const [pattern, canonical] of ROLE_SUFFIX_PATTERNS) {
+    if (pattern.test(consolidated)) return canonical;
+  }
+  return consolidated;
 }
 
 // Color palette: person nodes colored by their primary creative role

@@ -1171,18 +1171,86 @@ export function translateGenre(en: string, lang: string): string {
   return GENRE_JP[en] ?? en;
 }
 
-export function translateRole(en: string, lang: string): string {
-  // Trim trailing whitespace (some AniList role strings have trailing spaces).
-  let s = en.trim();
-  // Strip quoted title prefixes: '"Sword Art Online" Animation Director' → 'Animation Director'
+/**
+ * Suffix patterns for AniList-specific role strings that embed product/character
+ * names, e.g. "Digimon Design", "Dark Elf of Explosive Fire Illustration".
+ * Ordered most-specific → least-specific; first match wins.
+ */
+const ROLE_SUFFIX_PATTERNS: [RegExp, string][] = [
+  // Multi-word — must come before single-word fallbacks
+  [/\bChief Animation Director\b/,   'Chief Animation Director'],
+  [/\bAnimation Director\b/,         'Animation Director'],
+  [/\bEpisode Director\b/,           'Episode Director'],
+  [/\bUnit Director\b/,              'Unit Director'],
+  [/\bSeries Composition\b/,         'Series Composition'],
+  [/\bCharacter Design\b/,           'Character Design'],
+  [/\bMonster Design\b/,             'Monster Design'],
+  [/\bMechanical Design\b/,          'Mechanical Design'],
+  [/\bCreature Design\b/,            'Creature Design'],
+  [/\bProp Design\b/,                'Prop Design'],
+  [/\bMecha Design\b/,               'Mecha Design'],
+  [/\bWeapon Design\b/,              'Weapon Design'],
+  [/\bConcept Design\b/,             'Concept Design'],
+  [/\bColor Design\b/,               'Color Design'],
+  [/\bSet Design\b/,                 'Set Design'],
+  [/\bArt Director\b/,               'Art Director'],
+  [/\bBackground Art\b/,             'Background Art'],
+  [/\bKey Animation\b/,              'Key Animation'],
+  [/\bIn-Between Animation\b/,       'In-Between Animation'],
+  [/\bAnimation Check\b/,            'Animation Check'],
+  [/\bSound Director\b/,             'Sound Director'],
+  [/\bVoice Director\b/,             'Voice Director'],
+  [/\bMusic Director\b/,             'Music Director'],
+  [/\bCG Director\b/,                'CG Director'],
+  [/\b3D Director\b/,                '3D Director'],
+  [/\bDirector of Photography\b/,    'Director of Photography'],
+  [/\bOriginal Creator\b/,           'Original Creator'],
+  [/\bOriginal Character Design\b/,  'Original Character Design'],
+  // Single-word fallbacks
+  [/\bIllustration\b/,               'Illustration'],
+  [/\bDesign\b/,                     'Character Design'],
+  [/\bAnimation\b/,                  'Animation'],
+  [/\bDirector\b/,                   'Director'],
+  [/\bStoryboard\b/,                 'Storyboard'],
+  [/\bScript\b/,                     'Script'],
+  [/\bScreenplay\b/,                 'Screenplay'],
+  [/\bPhotography\b/,                'Photography'],
+  [/\bEditing\b/,                    'Editing'],
+  [/\bRecording\b/,                  'Recording'],
+  [/\bPlanning\b/,                   'Planning'],
+  [/\bProduction\b/,                 'Production'],
+  [/\bMusic\b/,                      'Music'],
+  [/\bArt\b/,                        'Art'],
+];
+
+/**
+ * Reduce any raw AniList role string to a canonical EN role name:
+ *   1. Strip quoted title prefixes ("Show Title" Role → Role)
+ *   2. Strip episode qualifiers (ep 2)
+ *   3. Apply explicit ROLE_CONSOLIDATION map
+ *   4. If it's a known ROLE_JP key → done
+ *   5. Try suffix-pattern extraction for brand/character-specific strings
+ *   6. Return '' if still unrecognizable (caller should skip/hide)
+ */
+export function canonicalRoleEN(raw: string): string {
+  let s = raw.trim();
   s = s.replace(/^"[^"]*"\s*/, '').replace(/^「[^」]*」\s*/, '');
-  // Strip episode qualifiers like ' (ep 2)', ' (eps 1-3)' — carry no display value.
   const parenIdx = s.indexOf(' (');
   const base = parenIdx > 0 ? s.slice(0, parenIdx) : s;
-  // Consolidate hyper-specific variants into canonical role names.
-  const canonical = ROLE_CONSOLIDATION[base] ?? base;
-  if (lang !== 'jp') return canonical;
-  return ROLE_JP[canonical] ?? canonical;
+  const consolidated = ROLE_CONSOLIDATION[base] ?? base;
+  if (consolidated in ROLE_JP) return consolidated;
+  for (const [pattern, canonical] of ROLE_SUFFIX_PATTERNS) {
+    if (pattern.test(consolidated)) return canonical;
+  }
+  return ''; // unrecognizable
+}
+
+export function translateRole(en: string, lang: string): string {
+  const canonical = canonicalRoleEN(en);
+  // If completely unrecognizable, fall back to showing the trimmed EN string
+  const display = canonical || en.trim().replace(/^"[^"]*"\s*/, '').replace(/^「[^」]*」\s*/, '');
+  if (lang !== 'jp') return display;
+  return ROLE_JP[display] ?? display;
 }
 
 export function translateTag(en: string, lang: string): string {
