@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { AtlasRenderer, EdgeData } from '../lib/atlas-renderer';
-import { getGenreToMedia, getTagToMedia } from '../lib/data-loader';
+import { getGenreToMedia, getTagToMedia, getRoleToPeople } from '../lib/data-loader';
 import { t, translateClusterLabel } from '../lib/i18n';
 
 // Cluster label segments that indicate adult content — hide them when NSFW is off
@@ -18,6 +18,7 @@ export function AtlasCanvas() {
   const clusters       = useStore(s => s.clusters);
   const mode           = useStore(s => s.mode);
   const mediaFilters   = useStore(s => s.mediaFilters);
+  const peopleFilters  = useStore(s => s.peopleFilters);
   const neighborhood   = useStore(s => s.neighborhoodMap);
   const selectedId     = useStore(s => s.selectedId);
   const searchEntries  = useStore(s => s.searchEntries);
@@ -31,10 +32,12 @@ export function AtlasCanvas() {
   // Lazy-loaded filter indices
   const [genreIndex, setGenreIndex] = useState<Record<string, number[]> | null>(null);
   const [tagIndex,   setTagIndex]   = useState<Record<string, number[]> | null>(null);
+  const [roleIndex,  setRoleIndex]  = useState<Record<string, number[]> | null>(null);
 
   useEffect(() => {
     getGenreToMedia().then(setGenreIndex).catch(() => {});
     getTagToMedia().then(setTagIndex).catch(() => {});
+    getRoleToPeople().then(setRoleIndex).catch(() => {});
   }, []);
 
   // Build a fast lookup map from search entries: id → entry
@@ -48,7 +51,38 @@ export function AtlasCanvas() {
 
   // ── Compute filtered point set ────────────────────────────────────────────
   const filteredPoints = useMemo(() => {
-    if (mode !== 'media') return points; // people mode: no media filters apply
+    if (mode !== 'media') {
+      // ── People mode filters ──────────────────────────────────────────────
+      const { includeVA, roles } = peopleFilters;
+
+      // VA exclusion set
+      const vaIds: Set<number> | null = (!includeVA && roleIndex)
+        ? new Set<number>(roleIndex['Voice Actor'] ?? [])
+        : null;
+
+      // Role filter: intersection across all selected roles
+      let roleAllowed: Set<number> | null = null;
+      if (roles.length > 0 && roleIndex) {
+        for (const r of roles) {
+          const ids = new Set<number>(roleIndex[r] ?? []);
+          if (roleAllowed === null) {
+            roleAllowed = ids;
+          } else {
+            const prev: Set<number> = roleAllowed;
+            roleAllowed = new Set(Array.from(prev).filter((id: number) => ids.has(id)));
+          }
+        }
+      }
+
+      if (!vaIds && !roleAllowed) return points; // no people filters active
+
+      return points.filter(p => {
+        if (p.kind !== 'person') return true;
+        if (vaIds && vaIds.has(p.id)) return false;
+        if (roleAllowed && !roleAllowed.has(p.id)) return false;
+        return true;
+      });
+    }
 
     const { mediaType, yearMin, yearMax, showNSFW, genres, tags } = mediaFilters;
 
@@ -112,7 +146,7 @@ export function AtlasCanvas() {
 
       return true;
     });
-  }, [points, mode, mediaFilters, mediaEntryMap, genreIndex, tagIndex]);
+  }, [points, mode, mediaFilters, peopleFilters, mediaEntryMap, genreIndex, tagIndex, roleIndex]);
 
   // ── Renderer init ─────────────────────────────────────────────────────────
   useEffect(() => {

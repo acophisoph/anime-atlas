@@ -30,6 +30,8 @@ export function DetailDrawer() {
   useEffect(() => {
     if (selectedId === null) { setMeta(null); return; }
     setTab('info');
+    // Default connection edge type to 'collab' for people, 'relations' for media
+    setConnMethod(selectedKind === 'person' ? 'collab' : 'relations');
     if (selectedKind === 'media') {
       loadMediaMeta(selectedId).then(setMeta).catch(() => setMeta(null));
     } else {

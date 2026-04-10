@@ -66,6 +66,19 @@ async function executeListBatch(db, batchType, scopeKey) {
       VALUES (?, ?, ?)
     `);
 
+    // Stub insert: only insert if not already present — never overwrite good data
+    // with empty popularity/genres/cover from a relation discovery.
+    const insertStub = db.prepare(`
+      INSERT OR IGNORE INTO media
+        (id, type, format, season_year, popularity, average_score,
+         title_romaji, title_english, title_native,
+         cover_large, cover_color, genres_json, tags_json, studios_json, updated_at)
+      VALUES
+        (@id, @type, @format, @season_year, @popularity, @average_score,
+         @title_romaji, @title_english, @title_native,
+         @cover_large, @cover_color, @genres_json, @tags_json, @studios_json, @updated_at)
+    `);
+
     const insertStaffBatch = db.prepare(`
       INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
       VALUES ('MEDIA_STAFF', ?, 'PENDING')
@@ -101,8 +114,9 @@ async function executeListBatch(db, batchType, scopeKey) {
       for (let i = 0; i < relNodes.length; i++) {
         const rel = relNodes[i];
         const edgeType = relEdges[i]?.relationType ?? 'UNKNOWN';
-        // Upsert related media stub
-        upsertMedia.run({
+        // Insert related media stub — INSERT OR IGNORE so we never clobber
+        // existing good data (popularity, genres, cover) already fetched via list batches.
+        insertStub.run({
           id: rel.id,
           type: rel.type,
           format: rel.format ?? null,
