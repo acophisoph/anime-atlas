@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../lib/store';
-import { getRoleToPeople, getTagToMedia, getTagToPeople } from '../lib/data-loader';
-import { t, translateRole, translateTag, roleToEN, tagToEN, ROLE_JP, NSFW_TAGS } from '../lib/i18n';
+import { getRoleToPeople, getTagToMedia, getTagToPeople, getGenreToPeople } from '../lib/data-loader';
+import { t, translateRole, translateTag, translateGenre, roleToEN, tagToEN, genreToEN, canonicalRoleEN, ROLE_JP, NSFW_TAGS } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 import type { TalentResult } from '../types';
 
@@ -17,42 +17,54 @@ export function TalentFinder() {
   const [roleInput, setRoleInput] = useState('');
   const [tagInput,  setTagInput]  = useState('');
   const [loading, setLoading]     = useState(false);
-  const [roleOptions, setRoleOptions] = useState<string[]>([]);
-  const [tagOptions,  setTagOptions]  = useState<string[]>([]);
+  const [roleOptions,  setRoleOptions]  = useState<string[]>([]);
+  const [tagOptions,   setTagOptions]   = useState<string[]>([]);
+  const [genreOptions, setGenreOptions] = useState<string[]>([]);
 
   useEffect(() => {
-    // Role keys in role_to_people.json are already canonical (normalized in build-artifacts)
     getRoleToPeople().then(m => setRoleOptions(Object.keys(m).sort())).catch(() => {});
-    // Tags from tag_to_people — people-relevant tags (what they've worked on)
+    // Tags from tag_to_people; fall back to tag_to_media if not yet built
     getTagToPeople()
-      .catch(() => getTagToMedia()) // fallback to media tags if index not built yet
+      .catch(() => getTagToMedia())
       .then((m: Record<string, number[]>) => setTagOptions(Object.keys(m).sort()))
       .catch(() => {});
+    getGenreToPeople().then(m => setGenreOptions(Object.keys(m).sort())).catch(() => {});
   }, []);
 
   const showNSFW = useStore(s => s.mediaFilters.showNSFW);
 
-  // Role keys are already canonical — just translate for display, dedup in case of overlap
+  // Run role keys through canonicalRoleEN to strip junk (e.g. "2D Animation"),
+  // keeping only recognized canonical names. Same pattern as PeopleFiltersPanel.
   const displayRoleOptions = [...new Set(
-    roleOptions.map(r => lang === 'jp' ? (ROLE_JP[r] ?? r) : r)
+    roleOptions.flatMap(r => {
+      const c = canonicalRoleEN(r);
+      if (!c) return [];
+      return [lang === 'jp' ? (ROLE_JP[c] ?? c) : c];
+    })
   )].sort();
 
-  // Tags: hide NSFW when showNSFW is off
-  const displayTagOptions = tagOptions
-    .filter(tag => showNSFW || !NSFW_TAGS.has(tag))
-    .map(tag => translateTag(tag, lang));
+  // Genres (Action, Romance…) + Tags (Isekai, Female Protagonist…), merged into one dropdown
+  const NSFW_GENRES = new Set(['Hentai', 'Ecchi']);
+  const displayTagOptions = [
+    ...genreOptions
+      .filter(g => showNSFW || !NSFW_GENRES.has(g))
+      .map(g => translateGenre(g, lang)),
+    ...tagOptions
+      .filter(tag => showNSFW || !NSFW_TAGS.has(tag))
+      .map(tag => translateTag(tag, lang)),
+  ];
 
   const runSearch = useCallback(async () => {
     setLoading(true);
     try {
-      const [roleToPeople, tagToPeople] = await Promise.all([
+      const [roleToPeople, tagToPeople, genreToPeople] = await Promise.all([
         getRoleToPeople(),
         getTagToPeople().catch(() => ({} as Record<string, number[]>)),
+        getGenreToPeople().catch(() => ({} as Record<string, number[]>)),
       ]);
 
-      // ── Role matching ────────────────────────────────────────────────────
-      // role_to_people keys are already canonical (normalized in build-artifacts).
-      // Exact key lookup — no substring matching which would bloat results.
+      // ── Role matching ─────────────────────────────────────────────────────
+      // Exact key lookup on canonical role names (already normalized in build-artifacts)
       const roleCandidates = new Map<number, number>();
       for (const role of query.roles) {
         const ids = roleToPeople[role] ?? [];
@@ -61,11 +73,13 @@ export function TalentFinder() {
         }
       }
 
-      // ── Tag matching ─────────────────────────────────────────────────────
-      // tag_to_people maps tag → people who worked on media with that tag.
+      // ── Tag + Genre matching ──────────────────────────────────────────────
+      // Tags prefixed with "genre:" look up genre_to_people; bare names use tag_to_people
       const tagCandidates = new Map<number, number>();
       for (const tag of query.tags) {
-        const ids = tagToPeople[tag] ?? [];
+        const ids = tag.startsWith('genre:')
+          ? (genreToPeople[tag.slice(6)] ?? [])
+          : (tagToPeople[tag] ?? []);
         for (const pid of ids) {
           tagCandidates.set(pid, (tagCandidates.get(pid) || 0) + 1);
         }
@@ -151,18 +165,32 @@ export function TalentFinder() {
             value={tagInput}
             onChange={setTagInput}
             onSelect={display => {
-              const en = tagToEN(display, lang);
-              if (!query.tags.includes(en)) setQuery({ tags: [...query.tags, en] });
+              // Try genre first, then tag — genres take priority if same display name
+              const genreEN = genreToEN(display, lang);
+              const isGenre = genreOptions.includes(genreEN);
+              if (isGenre) {
+                if (!query.tags.includes(`genre:${genreEN}`)) {
+                  setQuery({ tags: [...query.tags, `genre:${genreEN}`] });
+                }
+              } else {
+                const en = tagToEN(display, lang);
+                if (!query.tags.includes(en)) setQuery({ tags: [...query.tags, en] });
+              }
               setTagInput('');
             }}
             options={displayTagOptions}
-            selected={query.tags.map(tag => translateTag(tag, lang))}
-            placeholder={t('e.g. Isekai', lang)}
+            selected={query.tags.map(tag =>
+              tag.startsWith('genre:')
+                ? translateGenre(tag.slice(6), lang)
+                : translateTag(tag, lang)
+            )}
+            placeholder={t('e.g. Action, Isekai', lang)}
           />
         </div>
         <div style={css.chips}>
           {query.tags.map(tag => (
-            <Chip key={tag} label={translateTag(tag, lang)}
+            <Chip key={tag}
+              label={tag.startsWith('genre:') ? translateGenre(tag.slice(6), lang) : translateTag(tag, lang)}
               onRemove={() => setQuery({ tags: query.tags.filter(x => x !== tag) })} />
           ))}
         </div>

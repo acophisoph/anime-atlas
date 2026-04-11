@@ -519,6 +519,29 @@ async function main() {
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'tag_to_people.json'), JSON.stringify(tagToPeople));
   console.log(`[artifacts] tag_to_people: ${Object.keys(tagToPeople).length} tags`);
 
+  // --- GENRE TO PEOPLE ---
+  // Map each genre → people who have a credit on media in that genre.
+  const genreToPeopleSet = {};
+  const mediaGenresForPeople = new Map();
+  for (const m of mediaRows) {
+    const genres = JSON.parse(m.genres_json || '[]');
+    if (genres.length) mediaGenresForPeople.set(m.id, genres);
+  }
+  for (const c of creditRows) {
+    if (c.is_localization) continue;
+    const genres = mediaGenresForPeople.get(c.media_id);
+    if (!genres) continue;
+    for (const genre of genres) {
+      if (!genreToPeopleSet[genre]) genreToPeopleSet[genre] = new Set();
+      genreToPeopleSet[genre].add(c.person_id);
+    }
+  }
+  const genreToPeople = Object.fromEntries(
+    Object.entries(genreToPeopleSet).map(([k, v]) => [k, [...v]])
+  );
+  fs.writeFileSync(path.join(DATA_DIR, 'index', 'genre_to_people.json'), JSON.stringify(genreToPeople));
+  console.log(`[artifacts] genre_to_people: ${Object.keys(genreToPeople).length} genres`);
+
   // --- MANIFEST ---
   const lastRunState = db.prepare(
     "SELECT value FROM ingest_state WHERE key='last_run_at'"

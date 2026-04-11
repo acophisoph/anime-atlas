@@ -166,6 +166,15 @@ export async function getTagToPeople(): Promise<Record<string, number[]>> {
   return tagToPeopleCache;
 }
 
+let genreToPeopleCache: Record<string, number[]> | null = null;
+
+export async function getGenreToPeople(): Promise<Record<string, number[]>> {
+  if (!genreToPeopleCache) {
+    genreToPeopleCache = await fetchJson<Record<string, number[]>>('index/genre_to_people.json');
+  }
+  return genreToPeopleCache;
+}
+
 let adultTagsCache: Set<string> | null = null;
 
 export async function getAdultTags(): Promise<Set<string>> {
