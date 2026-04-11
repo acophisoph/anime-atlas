@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../lib/store';
-import { getRoleToPeople, getTagToMedia } from '../lib/data-loader';
-import { t, translateRole, translateTag, roleToEN, tagToEN, canonicalRoleEN, ROLE_JP, NSFW_TAGS } from '../lib/i18n';
+import { getRoleToPeople, getTagToMedia, getTagToPeople } from '../lib/data-loader';
+import { t, translateRole, translateTag, roleToEN, tagToEN, ROLE_JP, NSFW_TAGS } from '../lib/i18n';
 import { AutocompleteInput } from './AutocompleteInput';
 import type { TalentResult } from '../types';
 
@@ -21,19 +21,20 @@ export function TalentFinder() {
   const [tagOptions,  setTagOptions]  = useState<string[]>([]);
 
   useEffect(() => {
+    // Role keys in role_to_people.json are already canonical (normalized in build-artifacts)
     getRoleToPeople().then(m => setRoleOptions(Object.keys(m).sort())).catch(() => {});
-    getTagToMedia().then(m => setTagOptions(Object.keys(m).sort())).catch(() => {});
+    // Tags from tag_to_people — people-relevant tags (what they've worked on)
+    getTagToPeople()
+      .catch(() => getTagToMedia()) // fallback to media tags if index not built yet
+      .then((m: Record<string, number[]>) => setTagOptions(Object.keys(m).sort()))
+      .catch(() => {});
   }, []);
 
   const showNSFW = useStore(s => s.mediaFilters.showNSFW);
 
-  // Canonical roles: strip brand prefixes, consolidate variants, dedup
+  // Role keys are already canonical — just translate for display, dedup in case of overlap
   const displayRoleOptions = [...new Set(
-    roleOptions.flatMap(r => {
-      const c = canonicalRoleEN(r);
-      if (!c) return [];
-      return [lang === 'jp' ? (ROLE_JP[c] ?? c) : c];
-    })
+    roleOptions.map(r => lang === 'jp' ? (ROLE_JP[r] ?? r) : r)
   )].sort();
 
   // Tags: hide NSFW when showNSFW is off
@@ -44,30 +45,68 @@ export function TalentFinder() {
   const runSearch = useCallback(async () => {
     setLoading(true);
     try {
-      const roleToPeople = await getRoleToPeople();
-      const roleCandidates = new Map<number, number>();
+      const [roleToPeople, tagToPeople] = await Promise.all([
+        getRoleToPeople(),
+        getTagToPeople().catch(() => ({} as Record<string, number[]>)),
+      ]);
 
+      // ── Role matching ────────────────────────────────────────────────────
+      // role_to_people keys are already canonical (normalized in build-artifacts).
+      // Exact key lookup — no substring matching which would bloat results.
+      const roleCandidates = new Map<number, number>();
       for (const role of query.roles) {
-        const roleKey = Object.keys(roleToPeople).find(k =>
-          k.toLowerCase().includes(role.toLowerCase())
-        );
-        if (roleKey) {
-          for (const pid of roleToPeople[roleKey]) {
-            roleCandidates.set(pid, (roleCandidates.get(pid) || 0) + 1);
-          }
+        const ids = roleToPeople[role] ?? [];
+        for (const pid of ids) {
+          roleCandidates.set(pid, (roleCandidates.get(pid) || 0) + 1);
         }
       }
 
-      let candidates: number[];
-      if (query.roles.length === 0) {
-        candidates = entries.filter(e => e.kind === 'person').map(e => e.id).slice(0, 200);
-      } else {
-        candidates = [...roleCandidates.keys()].slice(0, 200);
+      // ── Tag matching ─────────────────────────────────────────────────────
+      // tag_to_people maps tag → people who worked on media with that tag.
+      const tagCandidates = new Map<number, number>();
+      for (const tag of query.tags) {
+        const ids = tagToPeople[tag] ?? [];
+        for (const pid of ids) {
+          tagCandidates.set(pid, (tagCandidates.get(pid) || 0) + 1);
+        }
       }
 
-      const scored: TalentResult[] = candidates.map(pid => {
-        const roleFit = (roleCandidates.get(pid) || 0) / Math.max(1, query.roles.length);
-        return { personId: pid, roleFit: Math.min(1, roleFit), tagFit: 0, quality: 0, closeness: 0, total: roleFit };
+      // ── Build candidate pool ─────────────────────────────────────────────
+      // Union of role + tag matches. If no filters at all, sample all people.
+      let candidateIds: number[];
+      const hasRoles = query.roles.length > 0;
+      const hasTags  = query.tags.length > 0;
+
+      if (!hasRoles && !hasTags) {
+        candidateIds = entries.filter(e => e.kind === 'person').map(e => e.id).slice(0, 200);
+      } else if (hasRoles && !hasTags) {
+        candidateIds = [...roleCandidates.keys()];
+      } else if (!hasRoles && hasTags) {
+        candidateIds = [...tagCandidates.keys()];
+      } else {
+        // Intersection: must appear in both role AND tag results
+        const roleSet = new Set(roleCandidates.keys());
+        candidateIds = [...tagCandidates.keys()].filter(id => roleSet.has(id));
+        // Fallback to union if intersection is empty
+        if (candidateIds.length === 0) {
+          const union = new Set([...roleCandidates.keys(), ...tagCandidates.keys()]);
+          candidateIds = [...union];
+        }
+      }
+
+      // ── Score ─────────────────────────────────────────────────────────────
+      const scored: TalentResult[] = candidateIds.map(pid => {
+        const roleFit = hasRoles
+          ? Math.min(1, (roleCandidates.get(pid) || 0) / query.roles.length)
+          : 0;
+        const tagFit = hasTags
+          ? Math.min(1, (tagCandidates.get(pid) || 0) / query.tags.length)
+          : 0;
+        // Combined score: roles weighted 60%, tags 40% when both present
+        const total = hasRoles && hasTags
+          ? roleFit * 0.6 + tagFit * 0.4
+          : hasRoles ? roleFit : tagFit;
+        return { personId: pid, roleFit, tagFit, quality: 0, closeness: 0, total };
       });
 
       scored.sort((a, b) => b.total - a.total);

@@ -481,15 +481,43 @@ async function main() {
 
   // --- ROLE TO PEOPLE ---
   // Use normalised role names: "Key Animation (ep 2)" → "Key Animation"
-  const roleTopeople = {};
+  const roleToPeopleSet = {};
   for (const c of creditRows) {
     if (c.is_localization) continue;
     const key = normalizeRole(c.role);
     if (key === 'Unknown') continue;
-    if (!roleTopeople[key]) roleTopeople[key] = [];
-    if (!roleTopeople[key].includes(c.person_id)) roleTopeople[key].push(c.person_id);
+    if (!roleToPeopleSet[key]) roleToPeopleSet[key] = new Set();
+    roleToPeopleSet[key].add(c.person_id);
   }
+  const roleTopeople = Object.fromEntries(
+    Object.entries(roleToPeopleSet).map(([k, v]) => [k, [...v]])
+  );
   fs.writeFileSync(path.join(DATA_DIR, 'index', 'role_to_people.json'), JSON.stringify(roleTopeople));
+
+  // --- TAG TO PEOPLE ---
+  // Map each tag → people who have a credit on media carrying that tag.
+  // Used by TalentFinder to score tag fit.
+  const tagToPeopleSet = {};
+  // Build media → tag list lookup first
+  const mediaTagsForPeople = new Map();
+  for (const m of mediaRows) {
+    const tags = JSON.parse(m.tags_json || '[]').map(t => t.name);
+    if (tags.length) mediaTagsForPeople.set(m.id, tags);
+  }
+  for (const c of creditRows) {
+    if (c.is_localization) continue;
+    const tags = mediaTagsForPeople.get(c.media_id);
+    if (!tags) continue;
+    for (const tag of tags) {
+      if (!tagToPeopleSet[tag]) tagToPeopleSet[tag] = new Set();
+      tagToPeopleSet[tag].add(c.person_id);
+    }
+  }
+  const tagToPeople = Object.fromEntries(
+    Object.entries(tagToPeopleSet).map(([k, v]) => [k, [...v]])
+  );
+  fs.writeFileSync(path.join(DATA_DIR, 'index', 'tag_to_people.json'), JSON.stringify(tagToPeople));
+  console.log(`[artifacts] tag_to_people: ${Object.keys(tagToPeople).length} tags`);
 
   // --- MANIFEST ---
   const lastRunState = db.prepare(
