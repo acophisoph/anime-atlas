@@ -127,7 +127,12 @@ export function buildPeopleFeatureVectors(peopleRows, creditsMap, mediaTagMap) {
  * points to their nearest sample-neighbour via sparse inverted-index dot
  * product (fast because vectors are sparse after L2-normalisation).
  */
-export async function computeCoordinates(vectors, ids) {
+export async function computeCoordinates(vectors, ids, opts = {}) {
+  const {
+    minDist = 0.4,
+    spread  = 3.0,
+  } = opts;
+
   if (!vectors.length) return [];
   if (vectors.length < UMAP_THRESHOLD) return deterministicLayout(ids);
 
@@ -175,8 +180,8 @@ export async function computeCoordinates(vectors, ids) {
       // Small enough for direct UMAP
       const nNeighbors = n > 5000 ? 15 : 20;
       const nEpochs    = n > 5000 ? 300 : 400;
-      console.log(`[coords] Direct UMAP nNeighbors=${nNeighbors} nEpochs=${nEpochs}`);
-      const umap = new UMAP({ nComponents: 2, nNeighbors, minDist: 0.4, spread: 3.0, nEpochs, random: seededRandom(42) });
+      console.log(`[coords] Direct UMAP nNeighbors=${nNeighbors} nEpochs=${nEpochs} minDist=${minDist} spread=${spread}`);
+      const umap = new UMAP({ nComponents: 2, nNeighbors, minDist, spread, nEpochs, random: seededRandom(42) });
       const raw = umap.fit(normVecs);
       embedding = Array.from(raw, r => [r[0], r[1]]);
 
@@ -191,7 +196,7 @@ export async function computeCoordinates(vectors, ids) {
       const sampleVecs = sampleLocal.map(i => normVecs[i]);
 
       const umap = new UMAP({
-        nComponents: 2, nNeighbors: 15, minDist: 0.4, spread: 3.0,
+        nComponents: 2, nNeighbors: 15, minDist, spread,
         nEpochs: 250, random: seededRandom(42),
       });
       const sampleEmbed = umap.fit(sampleVecs);  // number[][]

@@ -239,6 +239,7 @@ async function main() {
   // Build lookup maps for people credits
   const mediaYearMap = new Map(mediaRows.map(m => [m.id, m.season_year || 0]));
   const mediaRowsMap = new Map(mediaRows.map(m => [m.id, m]));
+  const mediaPopMap  = new Map(mediaRows.map(m => [m.id, m.popularity ?? 0]));
 
   const creditsMap = new Map();
   const mediaTagMap = new Map();
@@ -251,10 +252,23 @@ async function main() {
     creditsMap.get(c.person_id).push(c);
   }
 
+  // Popularity proxy for people: sum of sqrt(mediaPop) across their credits.
+  // sqrt dampens outliers so one mega-hit doesn't dominate.
+  // Capped at 500k so the range fits the uint32 popularity field.
+  const personPopMap = new Map();
+  for (const [personId, credits] of creditsMap) {
+    let score = 0;
+    for (const c of credits) score += Math.sqrt(mediaPopMap.get(c.media_id) ?? 0);
+    personPopMap.set(personId, Math.min(500_000, Math.round(score)));
+  }
+
   console.log('[artifacts] Computing people coordinates...');
   const { vectors: peopleVecs } = buildPeopleFeatureVectors(peopleRows, creditsMap, mediaTagMap);
   const rawPeopleCoords = normalizeCoords(
-    await computeCoordinates(peopleVecs, peopleRows.map(p => p.id))
+    // Higher spread + lower minDist vs media: people share far more tag/role overlap
+    // (everyone who worked on a romance show gets tagged 'Romance'), so we need to
+    // push the UMAP embedding to spread clusters further apart visually.
+    await computeCoordinates(peopleVecs, peopleRows.map(p => p.id), { minDist: 0.1, spread: 5.0 })
   );
   const peopleScale = Math.sqrt(Math.max(peopleRows.length, 100)) * COORD_SCALE;
   const peopleCoords = rawPeopleCoords.map(c => ({ ...c, x: c.x * peopleScale, y: c.y * peopleScale }));
@@ -301,7 +315,7 @@ async function main() {
       return {
         id: p.id, kind: 'person',
         x: c.x, y: c.y,
-        popularity: 0, averageScore: 0,
+        popularity: personPopMap.get(p.id) ?? 0, averageScore: 0,
         color: getPrimaryRoleColor(p.id, creditsMap, mediaYearMap),
       };
     }),
