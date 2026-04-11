@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generated_at": 1775905206895,
-  "last_ingest_run_timestamp": 1775905072943,
+  "generated_at": 1775926090819,
+  "last_ingest_run_timestamp": 1775925951570,
   "total_media_in_db": 111813,
-  "total_plottable_media": 94257,
+  "total_plottable_media": 101071,
   "total_people_in_db": 143734,
-  "completed_batches_count": 227643,
-  "pending_batches_count": 13002,
+  "completed_batches_count": 234557,
+  "pending_batches_count": 6088,
   "failed_batches_count": 12,
   "completeness": {
     "has_staff_for_all_media": false,
@@ -14,7 +14,7 @@
     "is_partial": true
   },
   "artifacts": {
-    "points_count": 237991,
+    "points_count": 244805,
     "media_chunk_count": 224,
     "people_chunk_count": 288
   }
