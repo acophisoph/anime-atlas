@@ -112,31 +112,42 @@ function seedInitialBatches(db) {
     insert.run('MANGA_LIST', 'MANGA:page:1');
   }
 
-  // Seed MEDIA_REFRESH for any stub media (popularity=0 and genres_json='[]').
-  // These are relation-referenced titles that were never returned in list pages.
-  // Only seed if we have media in the DB and media_refresh hasn't been seeded yet.
+  // Seed MEDIA_REFRESH for stub media (popularity=0 and genres_json='[]') that
+  // don't already have a PENDING, RUNNING, or DONE MEDIA_REFRESH batch.
+  // Runs every startup so new stubs created after the initial seeding are covered.
   const hasTables = db.prepare("SELECT COUNT(*) as n FROM sqlite_master WHERE type='table' AND name='media'").get().n;
   if (!hasTables) return;
 
-  const stubCount = db.prepare(
-    "SELECT COUNT(*) as n FROM batches WHERE batch_type='MEDIA_REFRESH'"
-  ).get().n;
+  // Reset FAILED batches so they get one more chance (permanent failures are rare —
+  // most failures are transient rate-limit or network errors).
+  const resetCount = db.prepare(
+    "UPDATE batches SET status='PENDING', attempts=0 WHERE status='FAILED'"
+  ).run().changes;
+  if (resetCount > 0) console.log(`[ingest] Reset ${resetCount} FAILED batches to PENDING`);
 
-  if (stubCount === 0) {
-    const stubs = db.prepare(
-      "SELECT id FROM media WHERE popularity=0 AND genres_json='[]' LIMIT 50000"
-    ).all();
-    if (stubs.length > 0) {
-      console.log(`[ingest] Seeding ${stubs.length} MEDIA_REFRESH batches for stub media...`);
-      const insert = db.prepare(`
-        INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
-        VALUES ('MEDIA_REFRESH', ?, 'PENDING')
-      `);
-      const insertMany = db.transaction((rows) => {
-        for (const r of rows) insert.run(`MEDIA_REFRESH:${r.id}`);
-      });
-      insertMany(stubs);
-    }
+  // Find stubs with no existing MEDIA_REFRESH batch (regardless of whether other
+  // MEDIA_REFRESH batches exist — the old stubCount===0 guard was too coarse).
+  const unseededStubs = db.prepare(`
+    SELECT id FROM media
+    WHERE popularity=0 AND genres_json='[]'
+    AND NOT EXISTS (
+      SELECT 1 FROM batches
+      WHERE batch_type='MEDIA_REFRESH'
+        AND scope_key='MEDIA_REFRESH:' || id
+    )
+    LIMIT 50000
+  `).all();
+
+  if (unseededStubs.length > 0) {
+    console.log(`[ingest] Seeding ${unseededStubs.length} MEDIA_REFRESH batches for unseeded stubs...`);
+    const insert = db.prepare(`
+      INSERT OR IGNORE INTO batches (batch_type, scope_key, status)
+      VALUES ('MEDIA_REFRESH', ?, 'PENDING')
+    `);
+    const insertMany = db.transaction((rows) => {
+      for (const r of rows) insert.run(`MEDIA_REFRESH:${r.id}`);
+    });
+    insertMany(unseededStubs);
   }
 }
 

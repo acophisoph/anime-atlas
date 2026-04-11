@@ -1145,8 +1145,8 @@ export const TAG_JP: Record<string, string> = {
   'Vocal Synth':                   'ボカロ',
   'Vore':                          'ヴォア',
   'Voyeur':                        '覗き',
-  'VTuber':                        'VTuber',
-  'Vtuber':                        'VTuber',   // AniList casing variant
+  'VTuber':                        'Vチューバー',
+  'Vtuber':                        'Vチューバー',   // AniList casing variant
   'Watersports':                   'ウォータースポーツ',
   'Werewolf':                      '人狼',
   'Wilderness':                    '荒野',

@@ -181,28 +181,31 @@ function InfoTab({ meta, isMedia, lang }: { meta: MediaMeta | PersonMeta | null;
 
   if (isMedia) {
     const m = meta as MediaMeta;
+    const genres  = m.genres  ?? [];
+    const tags    = m.tags    ?? [];
+    const studios = m.studios ?? [];
     return (
       <div style={styles.infoWrap}>
-        {m.genres.length > 0 && (
+        {genres.length > 0 && (
           <Section label={t('Genres', lang)}>
             <div style={styles.tagRow}>
-              {m.genres.map(g => <Tag key={g} label={translateGenre(g, lang)} genre={g} />)}
+              {genres.map(g => <Tag key={g} label={translateGenre(g, lang)} genre={g} />)}
             </div>
           </Section>
         )}
-        {m.tags.slice(0, 10).length > 0 && (
+        {tags.slice(0, 10).length > 0 && (
           <Section label={t('Tags', lang)}>
             <div style={styles.tagRow}>
-              {m.tags.slice(0, 10).map(tag => (
+              {tags.slice(0, 10).map(tag => (
                 <Tag key={tag.id} label={`${translateTag(tag.name, lang)} (${tag.rank})`} />
               ))}
             </div>
           </Section>
         )}
-        {m.studios.filter(s => s.isAnimationStudio).length > 0 && (
+        {studios.filter(s => s.isAnimationStudio).length > 0 && (
           <Section label={t('Animation Studio', lang)}>
             <div style={styles.tagRow}>
-              {m.studios.filter(s => s.isAnimationStudio).map(s => (
+              {studios.filter(s => s.isAnimationStudio).map(s => (
                 <Tag key={s.id} label={s.name} color="#1e3a5f" />
               ))}
             </div>

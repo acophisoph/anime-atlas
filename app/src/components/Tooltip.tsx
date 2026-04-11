@@ -49,10 +49,12 @@ export function Tooltip() {
 
   let name: string;
   let subtitle: string;
+  let genreList: string[] = [];
   if (isMedia) {
     const m = meta as MediaMeta;
-    name = (lang === 'jp' ? m.title.native : m.title.english) || m.title.romaji || String(m.id);
+    name = (lang === 'jp' ? m.title?.native : m.title?.english) || m.title?.romaji || String(m.id);
     subtitle = [m.type, m.format, m.seasonYear].filter(Boolean).join(' · ');
+    genreList = m.genres ?? [];
   } else {
     const p = meta as PersonMeta;
     name = (lang === 'jp' ? p.nameNative : p.nameFull) || String(p.id);
@@ -67,9 +69,9 @@ export function Tooltip() {
     <div style={{ ...styles.tooltip, left, top }}>
       <div style={styles.name}>{name}</div>
       {subtitle && <div style={styles.sub}>{subtitle}</div>}
-      {isMedia && (meta as MediaMeta).genres.length > 0 && (
+      {isMedia && genreList.length > 0 && (
         <div style={styles.tags}>
-          {(meta as MediaMeta).genres.slice(0, 4).join(' · ')}
+          {genreList.slice(0, 4).join(' · ')}
         </div>
       )}
     </div>

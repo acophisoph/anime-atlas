@@ -8,6 +8,22 @@ import { DetailDrawer } from './DetailDrawer';
 import { Tooltip } from './Tooltip';
 import { IngestBanner } from './IngestBanner';
 
+// Catches render errors so a bad tooltip or meta payload never blacks out the whole app
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info.componentStack);
+  }
+  render() {
+    if (this.state.error) return this.props.fallback ?? null;
+    return this.props.children;
+  }
+}
+
 export function App() {
   const setManifest = useStore(s => s.setManifest);
   const setPoints   = useStore(s => s.setPoints);
@@ -71,10 +87,10 @@ export function App() {
         <div style={styles.canvasWrap}>
           {isLoading
             ? <div style={styles.loading}>Loading atlas…</div>
-            : <AtlasCanvas />}
-          <Tooltip />
+            : <ErrorBoundary><AtlasCanvas /></ErrorBoundary>}
+          <ErrorBoundary><Tooltip /></ErrorBoundary>
         </div>
-        <DetailDrawer />
+        <ErrorBoundary><DetailDrawer /></ErrorBoundary>
       </div>
     </div>
   );
