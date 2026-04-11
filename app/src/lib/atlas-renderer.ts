@@ -115,6 +115,7 @@ export class AtlasRenderer {
   // Camera state
   camX = 0; camY = 0; zoom = 1;
   private autoFitZoom = 1;   // stored on autoFit — used for relative zoom calc
+  private lastRelZ = -1;     // cached relZ; avoids redundant scale.set() when zoom unchanged
 
   private drag = false;
   private dragStart = { x: 0, y: 0, cx: 0, cy: 0 };
@@ -465,6 +466,8 @@ export class AtlasRenderer {
     const W = this.W(), H = this.H();
     // Relative zoom: how many times we've zoomed in vs the full overview.
     const relZ = this.zoom / (this.autoFitZoom || 1);
+    // Inline transform constants — hoisted here so edges, sprites, and overlays all share them
+    const halfW = W / 2, halfY = H / 2;
 
     // ── Edges ──────────────────────────────────────────────────────────────
     this.edgeGfx.clear();
@@ -474,8 +477,10 @@ export class AtlasRenderer {
         const from = this.ptMap.get(e.fromId) ?? selSp;
         const to   = this.ptMap.get(e.toId);
         if (!from || !to) continue;
-        const [x1, y1] = this.worldToScreen(from.x, from.y);
-        const [x2, y2] = this.worldToScreen(to.x,   to.y);
+        const x1 = (from.x - this.camX) * this.zoom + halfW;
+        const y1 = (from.y - this.camY) * this.zoom + halfY;
+        const x2 = (to.x   - this.camX) * this.zoom + halfW;
+        const y2 = (to.y   - this.camY) * this.zoom + halfY;
         const col  = EDGE_COLORS[Math.min(e.hop - 1, 2)];
         const alp  = Math.max(0.04, 0.38 - (e.hop - 1) * 0.1);
         this.edgeGfx.lineStyle(Math.max(0.5, 1.5 / this.zoom), col, alp);
@@ -486,8 +491,12 @@ export class AtlasRenderer {
 
     // ── Sprites ────────────────────────────────────────────────────────────
     const MARGIN = 20;
+    const relZChanged = Math.abs(relZ - this.lastRelZ) > 0.0001;
+    if (relZChanged) this.lastRelZ = relZ;
+
     for (const sp of this.pts) {
-      const [sx, sy] = this.worldToScreen(sp.x, sp.y);
+      const sx = (sp.x - this.camX) * this.zoom + halfW;
+      const sy = (sp.y - this.camY) * this.zoom + halfY;
       sp.sprite.x = sx;
       sp.sprite.y = sy;
 
@@ -498,8 +507,11 @@ export class AtlasRenderer {
 
       // Screen-space radius: tiny at overview (relZ≈1), grows slowly via
       // power curve so it never gets huge. At relZ=100 it's only ~2.5× base.
-      const r = screenR(sp.base, relZ);
-      sp.sprite.scale.set(r / 16);
+      // Only recompute + push to GPU when zoom actually changed.
+      if (relZChanged) {
+        const r = screenR(sp.base, relZ);
+        sp.sprite.scale.set(r / 16);
+      }
 
       // Colour / alpha state
       if (sp.id === this.selId) {
@@ -524,7 +536,8 @@ export class AtlasRenderer {
     if (this.hovId !== null && this.hovId !== this.selId) {
       const sp = this.ptMap.get(this.hovId);
       if (sp) {
-        const [sx, sy] = this.worldToScreen(sp.x, sp.y);
+        const sx = (sp.x - this.camX) * this.zoom + halfW;
+        const sy = (sp.y - this.camY) * this.zoom + halfY;
         const r = screenR(sp.base, relZ);
         this.overlayGfx.lineStyle(1.5, 0xffffff, 0.6);
         this.overlayGfx.drawCircle(sx, sy, r + 2.5);
@@ -534,7 +547,8 @@ export class AtlasRenderer {
     if (this.selId !== null) {
       const sp = this.ptMap.get(this.selId);
       if (sp) {
-        const [sx, sy] = this.worldToScreen(sp.x, sp.y);
+        const sx = (sp.x - this.camX) * this.zoom + halfW;
+        const sy = (sp.y - this.camY) * this.zoom + halfY;
         const r = screenR(sp.base, relZ);
         this.overlayGfx.lineStyle(2.5, 0xffffff, 1);
         this.overlayGfx.drawCircle(sx, sy, r + 3.5);
@@ -551,7 +565,8 @@ export class AtlasRenderer {
     for (const child of this.labelCtr.children) {
       const wx = (child as any).__wx as number;
       const wy = (child as any).__wy as number;
-      const [sx, sy] = this.worldToScreen(wx, wy);
+      const sx = (wx - this.camX) * this.zoom + halfW;
+      const sy = (wy - this.camY) * this.zoom + halfY;
       child.x = sx;
       child.y = sy;
       // Labels stay legibly sized across a wide zoom range

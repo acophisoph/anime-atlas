@@ -226,8 +226,8 @@ export function AtlasCanvas() {
   // We do NOT show this overlay based on visibleCount (filtered count) because
   // transient filter states can make visibleCount=0 and the solid background
   // causes the "black screen" bug during normal interaction.
-  const hasPeopleData = points.some(p => p.kind === 'person');
-  const mediaVisibleCount = filteredPoints.filter(p => p.kind === 'media').length;
+  const hasPeopleData = useMemo(() => points.some(p => p.kind === 'person'), [points]);
+  const mediaVisibleCount = useMemo(() => filteredPoints.filter(p => p.kind === 'media').length, [filteredPoints]);
 
   return (
     <div ref={wrapRef} style={{ width: '100%', height: '100%', position: 'relative', background: '#07070f' }}>
