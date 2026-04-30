@@ -76,6 +76,19 @@ export const UI_JP: Record<string, string> = {
   'Similar items are computed from staff overlap graphs — available after more ingest runs complete.':
     '類似作品はスタッフ重複グラフから算出されます（さらなるインジェスト実行後に利用可能）。',
 
+  // DetailDrawer — interactive filter pills
+  'Filter by genre':    'ジャンルでフィルター',
+  'Filter by tag':      'タグでフィルター',
+  'Filter by studio':   'スタジオでフィルター',
+  'Filters applied — switch to Media view to see results':
+    'フィルター適用済 — メディアビューで結果を確認',
+  'Similar is available for media nodes — click a show or manga to explore.':
+    '類似はメディアノードで利用可能 — 作品をクリックして探索',
+  'No similarity data for this title yet.':
+    'このタイトルの類似データはまだありません。',
+  'No similar titles found in the graph.':
+    'グラフ内に類似タイトルが見つかりませんでした。',
+
   // AtlasCanvas hints
   'Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles':
     'スクロールでズーム · ドラッグで移動 · クリックで詳細 · ズームインでタイトルを表示',

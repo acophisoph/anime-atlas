@@ -48,17 +48,19 @@ export function Tooltip() {
   const isMedia = pt?.kind === 'media';
 
   let name: string;
-  let subtitle: string;
+  let year: number | null = null;
+  let score: number | null = null;
   let genreList: string[] = [];
+
   if (isMedia) {
     const m = meta as MediaMeta;
     name = (lang === 'jp' ? m.title?.native : m.title?.english) || m.title?.romaji || String(m.id);
-    subtitle = [m.type, m.format, m.seasonYear].filter(Boolean).join(' · ');
+    year = m.seasonYear ?? null;
+    score = m.averageScore ?? null;
     genreList = m.genres ?? [];
   } else {
     const p = meta as PersonMeta;
     name = (lang === 'jp' ? p.nameNative : p.nameFull) || String(p.id);
-    subtitle = p.language || '';
   }
 
   // Offset tooltip so it doesn't cover cursor
@@ -68,10 +70,16 @@ export function Tooltip() {
   return (
     <div style={{ ...styles.tooltip, left, top }}>
       <div style={styles.name}>{name}</div>
-      {subtitle && <div style={styles.sub}>{subtitle}</div>}
+      {isMedia && (year || score) && (
+        <div style={styles.meta}>
+          {year && <span style={styles.year}>{year}</span>}
+          {year && score && <span style={styles.sep}>·</span>}
+          {score && <span style={styles.score}>⭐ {score}%</span>}
+        </div>
+      )}
       {isMedia && genreList.length > 0 && (
         <div style={styles.tags}>
-          {genreList.slice(0, 4).join(' · ')}
+          {genreList.slice(0, 3).join(' · ')}
         </div>
       )}
     </div>
@@ -85,7 +93,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8, padding: '8px 12px', maxWidth: 240,
     boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
   },
-  name: { fontWeight: 600, fontSize: 13, color: '#e8e8f8', marginBottom: 2 },
-  sub:  { fontSize: 11, color: '#8888a8' },
-  tags: { fontSize: 11, color: '#6666a0', marginTop: 3 },
+  name:  { fontWeight: 600, fontSize: 13, color: '#e8e8f8', marginBottom: 2 },
+  meta:  { display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 },
+  year:  { fontSize: 11, color: '#8888a8' },
+  sep:   { fontSize: 11, color: '#555566' },
+  score: { fontSize: 11, color: '#fbbf24' },
+  tags:  { fontSize: 11, color: '#6666a0', marginTop: 3 },
 };

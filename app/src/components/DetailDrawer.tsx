@@ -31,7 +31,6 @@ export function DetailDrawer() {
   useEffect(() => {
     if (selectedId === null) { setMeta(null); return; }
     setTab('info');
-    // Default connection edge type to 'collab' for people, 'relations' for media
     setConnMethod(selectedKind === 'person' ? 'collab' : 'relations');
     if (selectedKind === 'media') {
       loadMediaMeta(selectedId).then(setMeta).catch(() => setMeta(null));
@@ -68,9 +67,8 @@ export function DetailDrawer() {
       ? [m!.type, m!.format, m!.seasonYear].filter(Boolean).join(' · ')
       : p!.language || '';
 
-  // Neighbor list with names
   const neighborEntries = [...neighborhoodMap.entries()]
-    .sort((a, b) => a[1] - b[1]) // sort by hop
+    .sort((a, b) => a[1] - b[1])
     .slice(0, 60)
     .map(([id, hop]) => {
       const se = searchEntries.find(e => e.id === id);
@@ -107,9 +105,7 @@ export function DetailDrawer() {
       {isMedia && m && (m.averageScore || m.popularity) && (
         <div style={styles.scoreRow}>
           {m.averageScore && (
-            <span style={styles.scorePill}>
-              ⭐ {m.averageScore}%
-            </span>
+            <span style={styles.scorePill}>⭐ {m.averageScore}%</span>
           )}
           {m.popularity ? (
             <span style={styles.popPill}>
@@ -135,7 +131,12 @@ export function DetailDrawer() {
 
       <div style={styles.body}>
         {tab === 'info' && (
-          <InfoTab meta={meta} isMedia={isMedia} lang={lang} />
+          <InfoTab
+            meta={meta}
+            isMedia={isMedia}
+            lang={lang}
+            onSelectMedia={(id) => setSelected(id, 'media')}
+          />
         )}
 
         {tab === 'connections' && (
@@ -176,74 +177,305 @@ export function DetailDrawer() {
 }
 
 // ---- Info Tab ----
-function InfoTab({ meta, isMedia, lang }: { meta: MediaMeta | PersonMeta | null; isMedia: boolean; lang: string }) {
+function InfoTab({
+  meta, isMedia, lang, onSelectMedia,
+}: {
+  meta: MediaMeta | PersonMeta | null;
+  isMedia: boolean;
+  lang: string;
+  onSelectMedia: (id: number) => void;
+}) {
   if (!meta) return <div style={styles.loading}>{t('Loading…', lang)}</div>;
+  if (isMedia) return <MediaInfoTab meta={meta as MediaMeta} lang={lang} />;
+  return <PersonInfoTab meta={meta as PersonMeta} lang={lang} onSelectMedia={onSelectMedia} />;
+}
 
-  if (isMedia) {
-    const m = meta as MediaMeta;
-    const genres  = m.genres  ?? [];
-    const tags    = m.tags    ?? [];
-    const studios = m.studios ?? [];
-    return (
-      <div style={styles.infoWrap}>
-        {genres.length > 0 && (
-          <Section label={t('Genres', lang)}>
-            <div style={styles.tagRow}>
-              {genres.map(g => <Tag key={g} label={translateGenre(g, lang)} genre={g} />)}
-            </div>
-          </Section>
-        )}
-        {tags.slice(0, 10).length > 0 && (
-          <Section label={t('Tags', lang)}>
-            <div style={styles.tagRow}>
-              {tags.slice(0, 10).map(tag => (
-                <Tag key={tag.id} label={`${translateTag(tag.name, lang)} (${tag.rank})`} />
-              ))}
-            </div>
-          </Section>
-        )}
-        {studios.filter(s => s.isAnimationStudio).length > 0 && (
-          <Section label={t('Animation Studio', lang)}>
-            <div style={styles.tagRow}>
-              {studios.filter(s => s.isAnimationStudio).map(s => (
-                <Tag key={s.id} label={s.name} color="#1e3a5f" />
-              ))}
-            </div>
-          </Section>
-        )}
-      </div>
-    );
+// ---- Media Info Tab ----
+function MediaInfoTab({ meta: m, lang }: { meta: MediaMeta; lang: string }) {
+  const setFilters = useStore(s => s.setMediaFilters);
+  const filters    = useStore(s => s.mediaFilters);
+
+  const genres  = m.genres  ?? [];
+  const tags    = m.tags    ?? [];
+  const studios = m.studios ?? [];
+
+  function addGenre(g: string) {
+    if (!filters.genres.includes(g)) setFilters({ genres: [...filters.genres, g] });
+  }
+  function addTag(tag: string) {
+    if (!filters.tags.includes(tag)) setFilters({ tags: [...filters.tags, tag] });
+  }
+  function setStudio(name: string) {
+    setFilters({ studio: filters.studio === name ? null : name });
   }
 
-  const p = meta as PersonMeta;
   return (
     <div style={styles.infoWrap}>
-      {p.imageLarge && (
-        <img src={p.imageLarge} alt={p.nameFull ?? ''} style={styles.personPhoto} />
+      {genres.length > 0 && (
+        <Section label={t('Genres', lang)}>
+          <div style={styles.tagRow}>
+            {genres.map(g => (
+              <FilterPill
+                key={g}
+                label={translateGenre(g, lang)}
+                genre={g}
+                onClick={() => addGenre(g)}
+                active={filters.genres.includes(g)}
+                title={t('Filter by genre', lang)}
+              />
+            ))}
+          </div>
+        </Section>
       )}
+      {tags.slice(0, 12).length > 0 && (
+        <Section label={t('Tags', lang)}>
+          <div style={styles.tagRow}>
+            {tags.slice(0, 12).map(tag => (
+              <FilterPill
+                key={tag.id}
+                label={`${translateTag(tag.name, lang)} (${tag.rank})`}
+                onClick={() => addTag(tag.name)}
+                active={filters.tags.includes(tag.name)}
+                title={t('Filter by tag', lang)}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+      {studios.filter(s => s.isAnimationStudio).length > 0 && (
+        <Section label={t('Animation Studio', lang)}>
+          <div style={styles.tagRow}>
+            {studios.filter(s => s.isAnimationStudio).map(s => (
+              <FilterPill
+                key={s.id}
+                label={s.name}
+                color="#1e3a5f"
+                onClick={() => setStudio(s.name)}
+                active={filters.studio === s.name}
+                title={t('Filter by studio', lang)}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+      {filters.genres.length > 0 || filters.tags.length > 0 || filters.studio ? (
+        <div style={styles.filterHint}>{t('Filters applied — switch to Media view to see results', lang)}</div>
+      ) : null}
+    </div>
+  );
+}
+
+// ---- Person Info Tab ----
+function PersonInfoTab({
+  meta: p, lang, onSelectMedia,
+}: {
+  meta: PersonMeta;
+  lang: string;
+  onSelectMedia: (id: number) => void;
+}) {
+  const [coverMetas, setCoverMetas] = useState<Map<number, MediaMeta>>(new Map());
+
+  useEffect(() => {
+    const credits = p.topCredits;
+    if (!credits?.length) return;
+    let cancelled = false;
+    Promise.allSettled(credits.map(c => loadMediaMeta(c.mediaId))).then(results => {
+      if (cancelled) return;
+      const map = new Map<number, MediaMeta>();
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled' && r.value) map.set(credits[i].mediaId, r.value);
+      });
+      setCoverMetas(map);
+    });
+    return () => { cancelled = true; };
+  }, [p.topCredits]);
+
+  const displayName = (lang === 'jp' ? p.nameNative : p.nameFull) ?? p.nameFull ?? '';
+
+  return (
+    <div style={styles.infoWrap}>
+      {/* Avatar: photo if available, else monogram */}
+      {p.imageLarge
+        ? <img src={p.imageLarge} alt={displayName} style={styles.personPhoto} />
+        : displayName
+          ? <MonogramAvatar name={displayName} />
+          : null}
+
       {p.siteUrl && (
         <a href={p.siteUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
           {t('AniList Profile ↗', lang)}
         </a>
       )}
+
       {p.description && (
         <Section label={t('About', lang)}>
           <p style={styles.bio}>{p.description.replace(/<[^>]*>/g, '').slice(0, 300)}…</p>
         </Section>
       )}
+
       {p.topCredits && p.topCredits.length > 0 && (
         <Section label={t('Notable Works', lang)}>
-          <div style={styles.creditList}>
-            {p.topCredits.map((c, i) => (
-              <div key={i} style={styles.creditRow}>
-                <span style={styles.creditRole}>{translateRole(c.role, lang)}</span>
-                <span style={styles.creditTitle}>{c.title}{c.year ? ` (${c.year})` : ''}</span>
-              </div>
-            ))}
-          </div>
+          <CareerTimeline
+            credits={p.topCredits}
+            coverMetas={coverMetas}
+            lang={lang}
+            onSelect={onSelectMedia}
+          />
         </Section>
       )}
     </div>
+  );
+}
+
+// ---- Career Timeline ----
+const ROLE_BADGE_COLORS: Record<string, string> = {
+  'Director':               '#5b9cf6',
+  'Series Director':        '#5b9cf6',
+  'Episode Director':       '#93c5fd',
+  'Animation Director':     '#a855f7',
+  'Chief Animation Director': '#c084fc',
+  'Key Animation':          '#e879f9',
+  'Character Design':       '#f97316',
+  'Art Director':           '#fbbf24',
+  'Music':                  '#22c55e',
+  'Series Composition':     '#4ade80',
+  'Screenplay':             '#34d399',
+  'Script':                 '#34d399',
+  'Sound Director':         '#06b6d4',
+  'Producer':               '#94a3b8',
+  'Executive Producer':     '#94a3b8',
+  'Voice Actor':            '#fb923c',
+  'Original Creator':       '#f87171',
+};
+
+function badgeColor(role: string): string {
+  return ROLE_BADGE_COLORS[role] ?? '#6366f1';
+}
+
+function CareerTimeline({
+  credits, coverMetas, lang, onSelect,
+}: {
+  credits: Array<{ mediaId: number; role: string; title: string; year: number | null }>;
+  coverMetas: Map<number, MediaMeta>;
+  lang: string;
+  onSelect: (id: number) => void;
+}) {
+  const sorted = [...credits].sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
+
+  return (
+    <div style={styles.timeline}>
+      {sorted.map(c => {
+        const mm = coverMetas.get(c.mediaId);
+        const cover = mm?.coverImage?.large ?? null;
+        const score = mm?.averageScore ?? null;
+        const roleLabel = translateRole(c.role, lang);
+        const color = badgeColor(c.role);
+
+        return (
+          <div
+            key={c.mediaId}
+            style={styles.timelineCard}
+            onClick={() => onSelect(c.mediaId)}
+            title={c.title}
+          >
+            <div style={styles.cardCover}>
+              {cover
+                ? <img src={cover} alt={c.title} style={styles.cardImg} />
+                : <div style={styles.cardImgPlaceholder} />}
+              <div style={{ ...styles.cardRoleBadge, borderColor: color + '66', color, background: color + '22' }}>
+                {roleLabel}
+              </div>
+            </div>
+            <div style={styles.cardTitle}>{c.title}</div>
+            <div style={styles.cardMeta}>
+              {c.year && <span>{c.year}</span>}
+              {c.year && score && <span style={{ color: '#444466' }}>·</span>}
+              {score && <span style={{ color: '#fbbf24' }}>⭐{score}%</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- Monogram Avatar ----
+function MonogramAvatar({ name, size = 72 }: { name: string; size?: number }) {
+  const words = name.trim().split(/\s+/);
+  const initials = words.length >= 2
+    ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+  // Deterministic hue from name
+  const hue = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
+  return (
+    <div style={{
+      width: '100%', height: size, display: 'flex', alignItems: 'center',
+      justifyContent: 'center', background: '#0e0e1a', flexShrink: 0,
+      borderBottom: '1px solid #1a1a2e',
+    }}>
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        background: `hsl(${hue}, 35%, 28%)`,
+        border: `2px solid hsl(${hue}, 45%, 40%)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.38, fontWeight: 700, color: '#e8e8f8',
+        userSelect: 'none',
+      }}>
+        {initials}
+      </div>
+    </div>
+  );
+}
+
+// ---- Filter Pill (interactive tag) ----
+function FilterPill({
+  label, genre, onClick, active, color, title: tooltipTitle,
+}: {
+  label: string;
+  genre?: string;
+  onClick: () => void;
+  active: boolean;
+  color?: string;
+  title?: string;
+}) {
+  const [flash, setFlash] = useState(false);
+
+  const GENRE_COLORS: Record<string, string> = {
+    'Action': '#ef4444', 'Adventure': '#f97316', 'Comedy': '#eab308',
+    'Drama': '#22c55e', 'Fantasy': '#a855f7', 'Romance': '#ec4899',
+    'Sci-Fi': '#06b6d4', 'Mystery': '#6366f1', 'Horror': '#dc2626',
+    'Slice of Life': '#84cc16', 'Sports': '#14b8a6', 'Supernatural': '#8b5cf6',
+    'Music': '#f59e0b', 'Psychological': '#94a3b8', 'Mecha': '#0ea5e9',
+  };
+
+  const accent = color ?? (genre && GENRE_COLORS[genre] ? GENRE_COLORS[genre] : null);
+  const bg     = active ? (accent ? accent + '33' : '#2a2a58')
+                        : (accent ? accent + '15' : '#1e1e38');
+  const border = active ? (accent ? accent + '88' : '#5050a0')
+                        : (accent ? accent + '44' : '#2a2a50');
+  const text   = active ? (accent ?? '#c8c8f8') : (accent ?? '#9090c8');
+
+  function handle() {
+    onClick();
+    setFlash(true);
+    setTimeout(() => setFlash(false), 800);
+  }
+
+  return (
+    <span
+      onClick={handle}
+      title={tooltipTitle}
+      style={{
+        padding: '3px 9px', borderRadius: 10,
+        background: flash ? '#1e3a1e' : bg,
+        border: `1px solid ${flash ? '#22c55e66' : border}`,
+        color: flash ? '#22c55e' : text,
+        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+        transition: 'all 0.15s', userSelect: 'none',
+      }}
+    >
+      {flash ? '✓ ' : ''}{label}
+    </span>
   );
 }
 
@@ -257,7 +489,6 @@ function ConnectionsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Method selector */}
       <div>
         <Label>{t('Edge Type', lang)}</Label>
         <div style={styles.segGroup}>
@@ -282,7 +513,6 @@ function ConnectionsTab({
         </div>
       </div>
 
-      {/* Hop depth */}
       <div>
         <Label>{t('Hops out', lang)} — {hopDepth}</Label>
         <input type="range" min={1} max={3} value={hopDepth}
@@ -293,7 +523,6 @@ function ConnectionsTab({
         </div>
       </div>
 
-      {/* Actions */}
       <div style={{ display: 'flex', gap: 6 }}>
         <button style={styles.primaryBtn} onClick={onExplore}>
           {t('Show connections', lang)}
@@ -303,10 +532,9 @@ function ConnectionsTab({
         )}
       </div>
 
-      {/* Hop legend */}
       {neighborEntries.length > 0 && (
         <div style={styles.hopLegend}>
-          {[1,2,3].map((h,i) => (
+          {[1, 2, 3].map((h, i) => (
             <span key={h} style={styles.hopPill}>
               <span style={{ ...styles.hopDot, background: hopColors[i] }} />
               {h} {t('hop', lang)}
@@ -315,7 +543,6 @@ function ConnectionsTab({
         </div>
       )}
 
-      {/* Neighbor list */}
       {neighborEntries.length > 0 && (
         <div>
           <Label>{neighborEntries.length} {t('nodes reachable', lang)}</Label>
@@ -346,17 +573,38 @@ function SimilarTab({ selectedId, isMedia, graphRelations, graphStaff, searchEnt
   graphRelations: Graph | null; graphStaff: Graph | null;
   searchEntries: any[]; onSelect: (id: number, kind: 'media' | 'person') => void; lang: string;
 }) {
-  const graph: Graph | null = isMedia
-    ? (graphStaff && graphStaff.nodeCount > 0 ? graphStaff : graphRelations)
-    : null;
+  if (!isMedia) {
+    return <div style={styles.hint}>{t('Similar is available for media nodes — click a show or manga to explore.', lang)}</div>;
+  }
 
-  if (!graph || graph.nodeCount === 0) {
+  // Prefer staff overlap graph for "similar shows" — it encodes shared creators
+  const graph: Graph | null = graphStaff && graphStaff.nodeCount > 0
+    ? graphStaff
+    : graphRelations && graphRelations.nodeCount > 0
+      ? graphRelations
+      : null;
+
+  if (!graph) {
     return <div style={styles.hint}>{t('Similar items are computed from staff overlap graphs — available after more ingest runs complete.', lang)}</div>;
   }
+
+  const node = graph.nodes.get(selectedId);
+  if (!node) {
+    return <div style={styles.hint}>{t('No similarity data for this title yet.', lang)}</div>;
+  }
+
   const map = getNeighborhood(graph, selectedId, 1, 0);
+  if (map.size === 0) {
+    return <div style={styles.hint}>{t('No similar titles found in the graph.', lang)}</div>;
+  }
+
   const similar = [...map.keys()].slice(0, 20).map(id => {
     const se = searchEntries.find((e: any) => e.id === id);
-    return { id, name: se ? (lang === 'jp' ? se.jp : se.en) || se.ro : String(id), kind: (se?.kind ?? 'media') as 'media' | 'person' };
+    return {
+      id,
+      name: se ? (lang === 'jp' ? se.jp : se.en) || se.ro : String(id),
+      kind: (se?.kind ?? 'media') as 'media' | 'person',
+    };
   });
 
   return (
@@ -383,26 +631,6 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 
 function Label({ children }: { children: React.ReactNode }) {
   return <div style={styles.label}>{children}</div>;
-}
-
-const GENRE_COLORS: Record<string, string> = {
-  'Action': '#ef4444', 'Adventure': '#f97316', 'Comedy': '#eab308',
-  'Drama': '#22c55e', 'Fantasy': '#a855f7', 'Romance': '#ec4899',
-  'Sci-Fi': '#06b6d4', 'Mystery': '#6366f1', 'Horror': '#dc2626',
-  'Slice of Life': '#84cc16', 'Sports': '#14b8a6', 'Supernatural': '#8b5cf6',
-  'Music': '#f59e0b', 'Psychological': '#94a3b8', 'Mecha': '#0ea5e9',
-};
-
-function Tag({ label, genre, color }: { label: string; genre?: string; color?: string }) {
-  const bg = color ?? (genre && GENRE_COLORS[genre] ? GENRE_COLORS[genre] + '22' : '#1e1e38');
-  const border = genre && GENRE_COLORS[genre] ? GENRE_COLORS[genre] + '66' : '#2a2a50';
-  const text = genre && GENRE_COLORS[genre] ? GENRE_COLORS[genre] : '#9090c8';
-  return (
-    <span style={{ padding: '3px 9px', borderRadius: 10, background: bg,
-      border: `1px solid ${border}`, color: text, fontSize: 11, fontWeight: 600 }}>
-      {label}
-    </span>
-  );
 }
 
 function SegBtn({ active, disabled, onClick, children }: any) {
@@ -476,6 +704,10 @@ const styles: Record<string, React.CSSProperties> = {
   bio: { fontSize: 12, color: '#9090b0', lineHeight: 1.7, margin: 0 },
   loading: { color: '#444466', fontSize: 13, padding: '20px 0' },
   hint: { fontSize: 12, color: '#444466', lineHeight: 1.6 },
+  filterHint: {
+    fontSize: 10, color: '#4a6a4a', marginTop: 8, padding: '4px 8px',
+    background: '#0e1e0e', border: '1px solid #1a3a1a', borderRadius: 4,
+  },
   segGroup: { display: 'flex', gap: 4 },
   primaryBtn: {
     flex: 1, padding: '9px 0', borderRadius: 7, border: 'none',
@@ -513,9 +745,43 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   neighborKind: { fontSize: 13, flexShrink: 0 },
-  personPhoto: { width: '100%', maxHeight: 200, objectFit: 'cover' as const, objectPosition: 'top', flexShrink: 0, borderBottom: '1px solid #1a1a2e' },
-  creditList: { display: 'flex', flexDirection: 'column' as const, gap: 4 },
-  creditRow: { display: 'flex', flexDirection: 'column' as const, gap: 1, padding: '4px 0', borderBottom: '1px solid #0e0e1a' },
-  creditRole: { fontSize: 10, color: '#5b9cf6', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
-  creditTitle: { fontSize: 12, color: '#c8c8e8' },
+  personPhoto: {
+    width: '100%', maxHeight: 200, objectFit: 'cover' as const,
+    objectPosition: 'top', flexShrink: 0, borderBottom: '1px solid #1a1a2e',
+  },
+  // Career timeline
+  timeline: {
+    display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8,
+    scrollbarWidth: 'thin',
+  },
+  timelineCard: {
+    flexShrink: 0, width: 96, cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', gap: 4,
+  },
+  cardCover: {
+    position: 'relative', width: 96, height: 135,
+    borderRadius: 6, overflow: 'hidden', background: '#1a1a2a',
+  },
+  cardImg: {
+    width: '100%', height: '100%', objectFit: 'cover' as const,
+  },
+  cardImgPlaceholder: {
+    width: '100%', height: '100%',
+    background: 'linear-gradient(135deg, #1a1a2a 0%, #2a2a40 100%)',
+  },
+  cardRoleBadge: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    fontSize: 9, fontWeight: 700, padding: '2px 4px',
+    textAlign: 'center' as const, borderTop: '1px solid',
+    background: 'rgba(0,0,0,0.7)',
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+  },
+  cardTitle: {
+    fontSize: 11, color: '#c8c8e8', lineHeight: 1.3,
+    overflow: 'hidden', display: '-webkit-box',
+    WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any,
+  },
+  cardMeta: {
+    display: 'flex', gap: 4, fontSize: 10, color: '#666688', flexWrap: 'wrap' as const,
+  },
 };

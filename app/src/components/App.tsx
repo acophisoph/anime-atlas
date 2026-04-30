@@ -6,8 +6,6 @@ import { LeftPanel } from './LeftPanel';
 import { AtlasCanvas } from './AtlasCanvas';
 import { DetailDrawer } from './DetailDrawer';
 import { Tooltip } from './Tooltip';
-import { IngestBanner } from './IngestBanner';
-
 // Catches render errors so a bad tooltip or meta payload never blacks out the whole app
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback?: React.ReactNode },
@@ -80,7 +78,6 @@ export function App() {
 
   return (
     <div style={styles.root}>
-      {manifest?.completeness.is_partial && <IngestBanner manifest={manifest} />}
       <Header />
       <div style={styles.body}>
         <LeftPanel />
