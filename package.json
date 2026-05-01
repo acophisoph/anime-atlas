@@ -9,6 +9,7 @@
     "build:artifacts": "npm run build:artifacts --workspace=scripts",
     "sanity:artifacts": "npm run sanity:artifacts --workspace=scripts",
     "sync:data": "node scripts/commands/sync-data.js",
-    "db:status": "npm run db:status --workspace=scripts"
+    "db:status": "npm run db:status --workspace=scripts",
+    "build:season": "DATA_DIR=$(pwd)/data node scripts/commands/build-season.js"
   }
 }

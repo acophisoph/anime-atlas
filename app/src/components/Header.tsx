@@ -62,6 +62,10 @@ export function Header() {
           style={{ ...styles.modeBtn, ...(mode === 'people' ? styles.modeBtnActive : {}) }}
           onClick={() => setMode('people')}
         >{t('People', lang)}</button>
+        <button
+          style={{ ...styles.modeBtn, ...(mode === 'season' ? styles.modeBtnActive : {}), ...styles.modeBtnSeason }}
+          onClick={() => setMode('season')}
+        >{t('Season', lang)}</button>
       </div>
 
       <div style={styles.searchWrap}>
@@ -111,7 +115,8 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'transparent', color: '#9090b0', cursor: 'pointer', fontSize: 13,
     transition: 'all 0.15s',
   },
-  modeBtnActive: { background: '#2a2a4a', color: '#c8c8f8', borderColor: '#5050a0' },
+  modeBtnActive:  { background: '#2a2a4a', color: '#c8c8f8', borderColor: '#5050a0' },
+  modeBtnSeason:  { borderColor: '#3a3a20', color: '#c8b860' },
   searchWrap: { flex: 1, position: 'relative', maxWidth: 400 },
   searchInput: {
     width: '100%', padding: '7px 12px', borderRadius: 8, border: '1px solid #333344',

@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { AtlasRenderer, EdgeData } from '../lib/atlas-renderer';
 import { getGenreToMedia, getTagToMedia, getRoleToPeople } from '../lib/data-loader';
+import { getDirectEdgeWeight } from '../lib/graph-utils';
 import { t, translateClusterLabel } from '../lib/i18n';
 
 // Cluster label segments that indicate adult content — hide them when NSFW is off
@@ -52,6 +53,8 @@ export function AtlasCanvas() {
 
   // ── Compute filtered point set ────────────────────────────────────────────
   const filteredPoints = useMemo(() => {
+    if (mode === 'season') return points; // SeasonView handles its own display
+
     if (mode !== 'media') {
       // ── People mode filters ──────────────────────────────────────────────
       const { includeVA, roles } = peopleFilters;
@@ -213,8 +216,15 @@ export function AtlasCanvas() {
 
     if (selectedId !== null && neighborhood.size > 0) {
       const edges: EdgeData[] = [];
+      // Pick the best available graph for weight lookup (prefer staff > relations > collab)
+      const weightGraph = graphStaff && graphStaff.nodeCount > 0 ? graphStaff
+                        : graphRelations && graphRelations.nodeCount > 0 ? graphRelations
+                        : graphCollab;
       for (const [nodeId, hop] of neighborhood) {
-        edges.push({ fromId: selectedId, toId: nodeId, hop });
+        const weight = (hop === 1 && weightGraph)
+          ? getDirectEdgeWeight(weightGraph, selectedId, nodeId)
+          : undefined;
+        edges.push({ fromId: selectedId, toId: nodeId, hop, weight });
       }
       r.setEdges(edges);
     } else {

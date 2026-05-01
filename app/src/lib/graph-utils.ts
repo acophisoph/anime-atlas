@@ -45,6 +45,24 @@ export function getNeighborhood(
 }
 
 /**
+ * Get the direct edge weight from fromId → toId.
+ * Returns 1 if no edge found.
+ */
+export function getDirectEdgeWeight(graph: Graph, fromId: number, toId: number): number {
+  const node = graph.nodes.get(fromId);
+  if (!node) return 1;
+  const nodeIds = [...graph.nodes.keys()];
+  const myIdx   = nodeIds.indexOf(fromId);
+  const nextId  = nodeIds[myIdx + 1];
+  const start   = node.edgeOffset;
+  const end     = nextId !== undefined ? graph.nodes.get(nextId)!.edgeOffset : graph.edgeCount;
+  for (let i = start; i < end; i++) {
+    if (graph.edges[i].targetId === toId) return graph.edges[i].weight;
+  }
+  return 1;
+}
+
+/**
  * Compute Jaccard similarity between tag sets.
  */
 export function tagSimilarity(tagsA: string[], tagsB: string[]): number {

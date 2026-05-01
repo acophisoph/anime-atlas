@@ -114,6 +114,11 @@ export async function getPeopleChunkLookup(): Promise<Record<string, string>> {
   return peopleChunkLookup;
 }
 
+// ---- Season current ----
+export async function loadSeasonData(): Promise<import('../types').SeasonData> {
+  return fetchJson<import('../types').SeasonData>('index/season_current.json');
+}
+
 export async function loadMediaMeta(id: number): Promise<import('../types').MediaMeta | null> {
   const lookup = await getMediaChunkLookup();
   const chunkFile = lookup[String(id)];

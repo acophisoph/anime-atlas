@@ -76,6 +76,22 @@ export const UI_JP: Record<string, string> = {
   'Similar items are computed from staff overlap graphs — available after more ingest runs complete.':
     '類似作品はスタッフ重複グラフから算出されます（さらなるインジェスト実行後に利用可能）。',
 
+  // Header modes
+  'Season':             '今期',
+  'Now Airing':         '放送中',
+
+  // Season view
+  'WINTER':             '冬',
+  'SPRING':             '春',
+  'SUMMER':             '夏',
+  'FALL':               '秋',
+  'Recent Anime':       '最近のアニメ',
+  'Loading season data…': '今期データ読込中…',
+  'No seasonal data found.': '今期データが見つかりませんでした。',
+  'View on Sakugabooru ↗': 'Sakugabooruで見る ↗',
+  'Known for':          '代表作',
+  'Studio':             'スタジオ',
+
   // DetailDrawer — interactive filter pills
   'Filter by genre':    'ジャンルでフィルター',
   'Filter by tag':      'タグでフィルター',

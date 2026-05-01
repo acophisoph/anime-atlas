@@ -4,6 +4,7 @@ import { loadManifest, loadPoints, loadClusters, loadSearch, loadGraph } from '.
 import { Header } from './Header';
 import { LeftPanel } from './LeftPanel';
 import { AtlasCanvas } from './AtlasCanvas';
+import { SeasonView } from './SeasonView';
 import { DetailDrawer } from './DetailDrawer';
 import { Tooltip } from './Tooltip';
 // Catches render errors so a bad tooltip or meta payload never blacks out the whole app
@@ -33,6 +34,7 @@ export function App() {
   const loadError   = useStore(s => s.loadError);
   const isLoading   = useStore(s => s.isLoading);
   const manifest    = useStore(s => s.manifest);
+  const mode        = useStore(s => s.mode);
 
   useEffect(() => {
     (async () => {
@@ -84,10 +86,12 @@ export function App() {
         <div style={styles.canvasWrap}>
           {isLoading
             ? <div style={styles.loading}>Loading atlas…</div>
-            : <ErrorBoundary><AtlasCanvas /></ErrorBoundary>}
-          <ErrorBoundary><Tooltip /></ErrorBoundary>
+            : mode === 'season'
+              ? <ErrorBoundary><SeasonView /></ErrorBoundary>
+              : <ErrorBoundary><AtlasCanvas /></ErrorBoundary>}
+          {mode !== 'season' && <ErrorBoundary><Tooltip /></ErrorBoundary>}
         </div>
-        <ErrorBoundary><DetailDrawer /></ErrorBoundary>
+        {mode !== 'season' && <ErrorBoundary><DetailDrawer /></ErrorBoundary>}
       </div>
     </div>
   );

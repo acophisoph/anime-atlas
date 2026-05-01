@@ -1,4 +1,4 @@
-export type Mode = 'media' | 'people';
+export type Mode = 'media' | 'people' | 'season';
 export type Lang = 'en' | 'jp';
 
 export interface Manifest {
@@ -119,6 +119,27 @@ export interface TalentFinderQuery {
   genres: string[];
   seedId: number | null;
   seedKind: 'media' | 'person' | null;
+}
+
+export interface SeasonPedigreeEntry {
+  personId: number;
+  name: string;
+  role: string;
+  notableWork: string;
+  notableWorkId: number;
+  notableWorkScore: number | null;
+}
+
+export interface SeasonMediaEntry {
+  id: number;
+  pedigree: SeasonPedigreeEntry[];
+}
+
+export interface SeasonData {
+  year: number;
+  season: 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL';
+  generated_at: number;
+  media: SeasonMediaEntry[];
 }
 
 export interface TalentResult {

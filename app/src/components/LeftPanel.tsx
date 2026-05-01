@@ -21,6 +21,11 @@ export function LeftPanel() {
           <button style={{ ...styles.tab, ...(tab === 'talent' ? styles.tabActive : {}) }}
             onClick={() => setTab('talent')}>{t('Talent Finder', lang)}</button>
         )}
+        {mode === 'season' && (
+          <div style={{ ...styles.tab, color: '#c8b860', pointerEvents: 'none', fontSize: 11 }}>
+            {t('Now Airing', lang)}
+          </div>
+        )}
       </div>
       <div style={styles.content}>
         {tab === 'filters'

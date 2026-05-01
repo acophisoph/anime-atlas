@@ -14,6 +14,7 @@ export interface EdgeData {
   fromId: number;
   toId: number;
   hop: number;
+  weight?: number;  // shared-works count; drives line thickness when present
 }
 
 // ─── Colour palette ────────────────────────────────────────────────────────
@@ -483,7 +484,10 @@ export class AtlasRenderer {
         const y2 = (to.y   - this.camY) * this.zoom + halfY;
         const col  = EDGE_COLORS[Math.min(e.hop - 1, 2)];
         const alp  = Math.max(0.04, 0.38 - (e.hop - 1) * 0.1);
-        this.edgeGfx.lineStyle(Math.max(0.5, 1.5 / this.zoom), col, alp);
+        // Hop-1 edges thicker; weight scales hop-1 even further (max 4×)
+        const hopBase = [3.0, 1.5, 0.7][Math.min(e.hop - 1, 2)];
+        const wScale  = e.hop === 1 && e.weight ? Math.min(3, 1 + Math.log10(e.weight + 1)) : 1;
+        this.edgeGfx.lineStyle(Math.max(0.3, (hopBase * wScale) / this.zoom), col, alp);
         this.edgeGfx.moveTo(x1, y1);
         this.edgeGfx.lineTo(x2, y2);
       }

@@ -292,6 +292,16 @@ function PersonInfoTab({
 
   const displayName = (lang === 'jp' ? p.nameNative : p.nameFull) ?? p.nameFull ?? '';
 
+  // Show Sakugabooru link for people with animation roles
+  const ANIMATION_ROLES_SET = new Set([
+    'Key Animation', 'Animation Director', 'Chief Animation Director',
+    'Episode Director', 'Director', 'Series Director', 'Storyboard',
+    'In-Between Animation',
+  ]);
+  const isAnimator = p.topCredits?.some(c => ANIMATION_ROLES_SET.has(c.role)) ?? false;
+  const sakugaName = (p.nameFull ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const sakugaUrl  = sakugaName ? `https://www.sakugabooru.com/post?tags=${sakugaName}` : null;
+
   return (
     <div style={styles.infoWrap}>
       {/* Avatar: photo if available, else monogram */}
@@ -301,11 +311,18 @@ function PersonInfoTab({
           ? <MonogramAvatar name={displayName} />
           : null}
 
-      {p.siteUrl && (
-        <a href={p.siteUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
-          {t('AniList Profile ↗', lang)}
-        </a>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 0 4px' }}>
+        {p.siteUrl && (
+          <a href={p.siteUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
+            {t('AniList Profile ↗', lang)}
+          </a>
+        )}
+        {isAnimator && sakugaUrl && (
+          <a href={sakugaUrl} target="_blank" rel="noopener noreferrer" style={{ ...styles.link, color: '#f97316' }}>
+            {t('View on Sakugabooru ↗', lang)}
+          </a>
+        )}
+      </div>
 
       {p.description && (
         <Section label={t('About', lang)}>
