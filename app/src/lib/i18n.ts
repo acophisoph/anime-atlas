@@ -108,6 +108,8 @@ export const UI_JP: Record<string, string> = {
   // AtlasCanvas hints
   'Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles':
     'スクロールでズーム · ドラッグで移動 · クリックで詳細 · ズームインでタイトルを表示',
+  'Pinch to zoom · Drag to pan · Tap a node to explore':
+    'ピンチでズーム · ドラッグで移動 · タップで詳細',
   'People data not yet ingested':
     '人物データが未インジェストです',
   'No media matches these filters':

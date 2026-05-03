@@ -43,6 +43,10 @@ interface AtlasState {
   cameraY: number;
   cameraZoom: number;
 
+  // Mobile UI
+  leftPanelOpen: boolean;
+  setLeftPanelOpen: (open: boolean) => void;
+
   // Actions
   setMode: (mode: Mode) => void;
   setLang: (lang: Lang) => void;
@@ -109,6 +113,9 @@ export const useStore = create<AtlasState>((set) => ({
   cameraX: 0,
   cameraY: 0,
   cameraZoom: 1,
+
+  leftPanelOpen: false,
+  setLeftPanelOpen: (leftPanelOpen) => set({ leftPanelOpen }),
 
   setMode: (mode) => set({ mode, selectedId: null, selectedKind: null, neighborhoodMap: new Map() }),
   setLang: (lang) => set({ lang }),

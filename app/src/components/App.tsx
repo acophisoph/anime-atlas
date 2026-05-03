@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useStore } from '../lib/store';
+import { useIsMobile } from '../lib/use-is-mobile';
 import { loadManifest, loadPoints, loadClusters, loadSearch, loadGraph } from '../lib/data-loader';
 import { Header } from './Header';
 import { LeftPanel } from './LeftPanel';
@@ -7,7 +8,7 @@ import { AtlasCanvas } from './AtlasCanvas';
 import { SeasonView } from './SeasonView';
 import { DetailDrawer } from './DetailDrawer';
 import { Tooltip } from './Tooltip';
-// Catches render errors so a bad tooltip or meta payload never blacks out the whole app
+
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback?: React.ReactNode },
   { error: Error | null }
@@ -35,15 +36,15 @@ export function App() {
   const isLoading   = useStore(s => s.isLoading);
   const manifest    = useStore(s => s.manifest);
   const mode        = useStore(s => s.mode);
+  const leftPanelOpen    = useStore(s => s.leftPanelOpen);
+  const setLeftPanelOpen = useStore(s => s.setLeftPanelOpen);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     (async () => {
       try {
-        // 1. Manifest first
         const m = await loadManifest();
         setManifest(m);
-
-        // 2. Points + search in parallel (needed for initial render)
         const [pts, clusters, search] = await Promise.all([
           loadPoints(),
           loadClusters(),
@@ -53,14 +54,11 @@ export function App() {
         setClusters(clusters);
         setSearch(search);
         setLoading(false);
-
-        // 3. Load graphs lazily after initial render
         Promise.all([
           loadGraph('graph_media_relations.bin').then(g => setGraph('relations', g)),
           loadGraph('graph_media_staff.bin').then(g => setGraph('staff', g)),
           loadGraph('graph_people_collab.bin').then(g => setGraph('collab', g)),
         ]).catch(e => console.warn('[graphs] failed to load:', e));
-
       } catch (e) {
         setError(String(e));
         setLoading(false);
@@ -82,16 +80,51 @@ export function App() {
     <div style={styles.root}>
       <Header />
       <div style={styles.body}>
-        <LeftPanel />
-        <div style={styles.canvasWrap}>
-          {isLoading
-            ? <div style={styles.loading}>Loading atlas…</div>
-            : mode === 'season'
-              ? <ErrorBoundary><SeasonView /></ErrorBoundary>
-              : <ErrorBoundary><AtlasCanvas /></ErrorBoundary>}
-          {mode !== 'season' && <ErrorBoundary><Tooltip /></ErrorBoundary>}
-        </div>
-        {mode !== 'season' && <ErrorBoundary><DetailDrawer /></ErrorBoundary>}
+        {isMobile ? (
+          <>
+            {/* Mobile: LeftPanel as overlay drawer */}
+            {leftPanelOpen && (
+              <div
+                style={mobileStyles.overlay}
+                onClick={() => setLeftPanelOpen(false)}
+              />
+            )}
+            <div style={{
+              ...mobileStyles.drawer,
+              transform: leftPanelOpen ? 'translateX(0)' : 'translateX(-100%)',
+            }}>
+              <LeftPanel />
+            </div>
+
+            {/* Canvas / season view fills full width */}
+            <div style={styles.canvasWrap}>
+              {isLoading
+                ? <div style={styles.loading}>Loading atlas…</div>
+                : mode === 'season'
+                  ? <ErrorBoundary><SeasonView /></ErrorBoundary>
+                  : <ErrorBoundary><AtlasCanvas /></ErrorBoundary>}
+              {mode !== 'season' && <ErrorBoundary><Tooltip /></ErrorBoundary>}
+            </div>
+
+            {/* Mobile: DetailDrawer as bottom sheet */}
+            {mode !== 'season' && (
+              <ErrorBoundary><DetailDrawer /></ErrorBoundary>
+            )}
+          </>
+        ) : (
+          <>
+            <LeftPanel />
+            <div style={styles.canvasWrap}>
+              {isLoading
+                ? <div style={styles.loading}>Loading atlas…</div>
+                : mode === 'season'
+                  ? <ErrorBoundary><SeasonView /></ErrorBoundary>
+                  : <ErrorBoundary><AtlasCanvas /></ErrorBoundary>}
+              {mode !== 'season' && <ErrorBoundary><Tooltip /></ErrorBoundary>}
+            </div>
+            {mode !== 'season' && <ErrorBoundary><DetailDrawer /></ErrorBoundary>}
+          </>
+        )}
       </div>
     </div>
   );
@@ -102,7 +135,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden',
   },
   body: {
-    display: 'flex', flex: 1, overflow: 'hidden',
+    display: 'flex', flex: 1, overflow: 'hidden', position: 'relative',
   },
   canvasWrap: {
     flex: 1, position: 'relative', overflow: 'hidden',
@@ -114,5 +147,17 @@ const styles: Record<string, React.CSSProperties> = {
   error: {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     width: '100%', height: '100%', padding: 32, gap: 16, color: '#f87171',
+  },
+};
+
+const mobileStyles: Record<string, React.CSSProperties> = {
+  overlay: {
+    position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 30,
+  },
+  drawer: {
+    position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 40,
+    width: 280,
+    transition: 'transform 0.25s ease',
+    overflowY: 'auto',
   },
 };

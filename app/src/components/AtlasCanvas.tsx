@@ -4,6 +4,7 @@ import { AtlasRenderer, EdgeData } from '../lib/atlas-renderer';
 import { getGenreToMedia, getTagToMedia, getRoleToPeople } from '../lib/data-loader';
 import { getDirectEdgeWeight } from '../lib/graph-utils';
 import { t, translateClusterLabel } from '../lib/i18n';
+import { useIsMobile } from '../lib/use-is-mobile';
 
 // Cluster label segments that indicate adult content — hide them when NSFW is off
 const NSFW_LABEL_TERMS = new Set(['Hentai', 'Large Breasts', 'Softcore', 'Explicit']);
@@ -30,6 +31,7 @@ export function AtlasCanvas() {
   const setHovered        = useStore(s => s.setHovered);
   const setSelected       = useStore(s => s.setSelected);
   const clearNeighborhood = useStore(s => s.clearNeighborhood);
+  const isMobile = useIsMobile();
 
   // Lazy-loaded filter indices
   const [genreIndex, setGenreIndex] = useState<Record<string, number[]> | null>(null);
@@ -244,7 +246,9 @@ export function AtlasCanvas() {
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
       <div style={styles.zoomHint}>
-        {t('Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles', lang)}
+        {isMobile
+          ? t('Pinch to zoom · Drag to pan · Tap a node to explore', lang)
+          : t('Scroll to zoom · Drag to pan · Click a node to explore · Zoom in to see individual titles', lang)}
       </div>
 
       {/* People not yet ingested — only when data truly doesn't exist */}

@@ -3,6 +3,7 @@ import { useStore } from '../lib/store';
 import { loadMediaMeta, loadPersonMeta } from '../lib/data-loader';
 import { getNeighborhood } from '../lib/graph-utils';
 import { t, translateGenre, translateTag, translateRole } from '../lib/i18n';
+import { useIsMobile } from '../lib/use-is-mobile';
 import type { MediaMeta, PersonMeta, Graph } from '../types';
 
 type ConnTab = 'info' | 'connections' | 'similar';
@@ -53,6 +54,7 @@ export function DetailDrawer() {
 
   if (selectedId === null) return null;
 
+  const isMobile = useIsMobile();
   const isMedia = selectedKind === 'media';
   const m = meta as MediaMeta | null;
   const p = meta as PersonMeta | null;
@@ -85,8 +87,15 @@ export function DetailDrawer() {
 
   const graphAvailable = (g: typeof graphRelations) => g && g.nodeCount > 0;
 
+  const drawerStyle = isMobile
+    ? {
+        ...mobileDrawerStyle,
+        transform: selectedId !== null ? 'translateY(0)' : 'translateY(100%)',
+      }
+    : styles.drawer;
+
   return (
-    <aside style={styles.drawer}>
+    <aside style={drawerStyle}>
       {/* Header */}
       <div style={styles.header}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -801,4 +810,13 @@ const styles: Record<string, React.CSSProperties> = {
   cardMeta: {
     display: 'flex', gap: 4, fontSize: 10, color: '#666688', flexWrap: 'wrap' as const,
   },
+};
+
+const mobileDrawerStyle: React.CSSProperties = {
+  position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 50,
+  height: '70vh', background: '#0e0e1a',
+  borderTop: '1px solid #1a1a2e', borderRadius: '16px 16px 0 0',
+  display: 'flex', flexDirection: 'column', overflow: 'hidden',
+  transition: 'transform 0.3s ease',
+  boxShadow: '0 -8px 32px rgba(0,0,0,0.6)',
 };

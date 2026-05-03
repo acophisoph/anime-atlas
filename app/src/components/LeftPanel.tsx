@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../lib/store';
+import { useIsMobile } from '../lib/use-is-mobile';
 import { t } from '../lib/i18n';
 import { MediaFiltersPanel } from './MediaFiltersPanel';
 import { PeopleFiltersPanel } from './PeopleFiltersPanel';
@@ -10,7 +11,9 @@ type Tab = 'filters' | 'talent';
 export function LeftPanel() {
   const mode = useStore(s => s.mode);
   const lang = useStore(s => s.lang);
+  const setLeftPanelOpen = useStore(s => s.setLeftPanelOpen);
   const [tab, setTab] = useState<Tab>('filters');
+  const isMobile = useIsMobile();
 
   return (
     <aside style={styles.panel}>
@@ -26,6 +29,13 @@ export function LeftPanel() {
             {t('Now Airing', lang)}
           </div>
         )}
+        {isMobile && (
+          <button
+            style={styles.closeBtn}
+            onClick={() => setLeftPanelOpen(false)}
+            aria-label="Close panel"
+          >✕</button>
+        )}
       </div>
       <div style={styles.content}>
         {tab === 'filters'
@@ -40,7 +50,7 @@ const styles: Record<string, React.CSSProperties> = {
   panel: {
     width: 260, flexShrink: 0, background: '#111118',
     borderRight: '1px solid #1e1e2e', display: 'flex', flexDirection: 'column',
-    overflow: 'hidden',
+    overflow: 'hidden', height: '100%',
   },
   tabs: {
     display: 'flex', borderBottom: '1px solid #1e1e2e',
@@ -51,5 +61,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '2px solid transparent', transition: 'all 0.15s',
   },
   tabActive: { color: '#c8c8f8', borderBottomColor: '#5050a0' },
+  closeBtn: {
+    border: 'none', background: 'transparent', color: '#555577',
+    cursor: 'pointer', fontSize: 16, padding: '0 10px',
+    flexShrink: 0,
+  },
   content: { flex: 1, overflowY: 'auto', padding: 12 },
 };

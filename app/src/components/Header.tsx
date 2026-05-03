@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useStore } from '../lib/store';
 import { t } from '../lib/i18n';
+import { useIsMobile } from '../lib/use-is-mobile';
 import type { SearchEntry } from '../types';
 
 export function Header() {
@@ -15,7 +16,10 @@ export function Header() {
   const setResults = useStore(s => s.setSearchResults);
   const setSelected = useStore(s => s.setSelected);
   const mediaFilters = useStore(s => s.mediaFilters);
+  const leftPanelOpen = useStore(s => s.leftPanelOpen);
+  const setLeftPanelOpen = useStore(s => s.setLeftPanelOpen);
   const [focused, setFocused] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleSearch = useCallback((q: string) => {
     setQuery(q);
@@ -44,6 +48,68 @@ export function Header() {
 
   function displayName(e: SearchEntry) {
     return lang === 'jp' ? (e.jp || e.en) : (e.en || e.ro);
+  }
+
+  if (isMobile) {
+    return (
+      <header style={mobileStyles.header}>
+        {/* Row 1: hamburger + brand + mode buttons + lang */}
+        <div style={mobileStyles.row1}>
+          <button
+            style={mobileStyles.hamburger}
+            onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+            aria-label="Toggle filters"
+          >
+            {leftPanelOpen ? '✕' : '☰'}
+          </button>
+          <span style={mobileStyles.title}>{t('Anime Atlas', lang)}</span>
+          <div style={mobileStyles.modeGroup}>
+            <button
+              style={{ ...mobileStyles.modeBtn, ...(mode === 'media' ? mobileStyles.modeBtnActive : {}) }}
+              onClick={() => setMode('media')}
+            >{t('Media', lang)}</button>
+            <button
+              style={{ ...mobileStyles.modeBtn, ...(mode === 'people' ? mobileStyles.modeBtnActive : {}) }}
+              onClick={() => setMode('people')}
+            >{t('People', lang)}</button>
+            <button
+              style={{ ...mobileStyles.modeBtn, ...(mode === 'season' ? mobileStyles.modeBtnActive : {}), ...mobileStyles.modeBtnSeason }}
+              onClick={() => setMode('season')}
+            >{t('Season', lang)}</button>
+          </div>
+          <div style={mobileStyles.langGroup}>
+            <button style={{ ...mobileStyles.langBtn, ...(lang === 'en' ? mobileStyles.langBtnActive : {}) }}
+              onClick={() => setLang('en')}>EN</button>
+            <button style={{ ...mobileStyles.langBtn, ...(lang === 'jp' ? mobileStyles.langBtnActive : {}) }}
+              onClick={() => setLang('jp')}>JP</button>
+          </div>
+        </div>
+        {/* Row 2: search bar */}
+        <div style={mobileStyles.row2}>
+          <div style={mobileStyles.searchWrap}>
+            <input
+              style={mobileStyles.searchInput}
+              placeholder={mode === 'media' ? t('Search anime / manga…', lang) : t('Search staff / VA…', lang)}
+              value={query}
+              onChange={e => handleSearch(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setTimeout(() => setFocused(false), 150)}
+            />
+            {focused && results.length > 0 && (
+              <div style={styles.dropdown}>
+                {results.map(r => (
+                  <div key={r.id} style={styles.dropdownItem} onMouseDown={() => pickResult(r)}>
+                    <span style={styles.dropdownKind}>{r.kind === 'media' ? '🎬' : '👤'}</span>
+                    <span>{displayName(r)}</span>
+                    {r.year && <span style={styles.dropdownYear}>{r.year}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+    );
   }
 
   return (
@@ -121,6 +187,7 @@ const styles: Record<string, React.CSSProperties> = {
   searchInput: {
     width: '100%', padding: '7px 12px', borderRadius: 8, border: '1px solid #333344',
     background: '#1a1a28', color: '#e8e8f8', fontSize: 14, outline: 'none',
+    boxSizing: 'border-box',
   },
   dropdown: {
     position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
@@ -140,4 +207,44 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'transparent', color: '#9090b0', cursor: 'pointer', fontSize: 12,
   },
   langBtnActive: { background: '#2a2a4a', color: '#c8c8f8' },
+};
+
+const mobileStyles: Record<string, React.CSSProperties> = {
+  header: {
+    display: 'flex', flexDirection: 'column',
+    background: '#111118', borderBottom: '1px solid #222230',
+    flexShrink: 0, zIndex: 20, padding: '6px 10px 6px',
+  },
+  row1: {
+    display: 'flex', alignItems: 'center', gap: 8, minHeight: 40,
+  },
+  row2: {
+    paddingTop: 6,
+  },
+  hamburger: {
+    background: 'transparent', border: '1px solid #333344', borderRadius: 6,
+    color: '#c8c8f8', cursor: 'pointer', fontSize: 16,
+    width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  title: { fontWeight: 700, fontSize: 15, color: '#e8e8f8', letterSpacing: '-0.5px', flexShrink: 0 },
+  modeGroup: { display: 'flex', gap: 3, flex: 1, justifyContent: 'center' },
+  modeBtn: {
+    padding: '4px 8px', borderRadius: 6, border: '1px solid #333344',
+    background: 'transparent', color: '#9090b0', cursor: 'pointer', fontSize: 11,
+  },
+  modeBtnActive: { background: '#2a2a4a', color: '#c8c8f8', borderColor: '#5050a0' },
+  modeBtnSeason: { borderColor: '#3a3a20', color: '#c8b860' },
+  langGroup: { display: 'flex', gap: 2, flexShrink: 0 },
+  langBtn: {
+    padding: '3px 6px', borderRadius: 4, border: '1px solid #333344',
+    background: 'transparent', color: '#9090b0', cursor: 'pointer', fontSize: 11,
+  },
+  langBtnActive: { background: '#2a2a4a', color: '#c8c8f8' },
+  searchWrap: { position: 'relative', width: '100%' },
+  searchInput: {
+    width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #333344',
+    background: '#1a1a28', color: '#e8e8f8', fontSize: 14, outline: 'none',
+    boxSizing: 'border-box',
+  },
 };
