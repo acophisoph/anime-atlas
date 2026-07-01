@@ -1,0 +1,2801 @@
+{
+  "year": 2026,
+  "season": "",
+  "generated_at": 1782875177643,
+  "media": [
+    {
+      "id": 172463,
+      "pedigree": [
+        {
+          "personId": 103110,
+          "name": "Yasunori Ebina",
+          "role": "Director",
+          "notableWork": "Naruto",
+          "notableWorkId": 20,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 104503,
+          "name": "Takeru Satou",
+          "role": "Director",
+          "notableWork": "Chainsaw Man",
+          "notableWorkId": 127230,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 119687,
+          "name": "Junichi Higashi",
+          "role": "Director",
+          "notableWork": "Cowboy Bebop",
+          "notableWorkId": 1,
+          "notableWorkScore": 86
+        }
+      ]
+    },
+    {
+      "id": 182255,
+      "pedigree": [
+        {
+          "personId": 120066,
+          "name": "Shouji Hata",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 135989,
+          "name": "Akane Fushihara",
+          "role": "Director",
+          "notableWork": "One-Punch Man",
+          "notableWorkId": 21087,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 147828,
+          "name": "Kana Imagaki",
+          "role": "Director",
+          "notableWork": "Attack on Titan Season 3 Part 2",
+          "notableWorkId": 104578,
+          "notableWorkScore": 90
+        }
+      ]
+    },
+    {
+      "id": 166613,
+      "pedigree": [
+        {
+          "personId": 119687,
+          "name": "Junichi Higashi",
+          "role": "Director",
+          "notableWork": "Cowboy Bebop",
+          "notableWorkId": 1,
+          "notableWorkScore": 86
+        },
+        {
+          "personId": 146805,
+          "name": "Kaori Makita",
+          "role": "Director",
+          "notableWork": "Attack on Titan Final Season",
+          "notableWorkId": 110277,
+          "notableWorkScore": 87
+        },
+        {
+          "personId": 245503,
+          "name": "Haruka Juuta",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 167152,
+      "pedigree": [
+        {
+          "personId": 148064,
+          "name": "Yoshiki Nakakouji",
+          "role": "Director",
+          "notableWork": "No Game, No Life",
+          "notableWorkId": 19815,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 152776,
+          "name": "Hiroyuki Takashima",
+          "role": "Director",
+          "notableWork": "One-Punch Man",
+          "notableWorkId": 21087,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 121054,
+          "name": "Kenta Ihara",
+          "role": "Series Composition",
+          "notableWork": "Vinland Saga",
+          "notableWorkId": 101348,
+          "notableWorkScore": 87
+        }
+      ]
+    },
+    {
+      "id": 147105,
+      "pedigree": [
+        {
+          "personId": 110643,
+          "name": "Ayumu Watanabe",
+          "role": "Director",
+          "notableWork": "Komi Can’t Communicate",
+          "notableWorkId": 133965,
+          "notableWorkScore": 76
+        },
+        {
+          "personId": 120643,
+          "name": "Kisuke Koizumi",
+          "role": "Director",
+          "notableWork": "Chainsaw Man",
+          "notableWorkId": 127230,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 149008,
+          "name": "Tadashi Kitaoka",
+          "role": "Director",
+          "notableWork": "Redo of Healer",
+          "notableWorkId": 113425,
+          "notableWorkScore": 57
+        }
+      ]
+    },
+    {
+      "id": 182587,
+      "pedigree": [
+        {
+          "personId": 103185,
+          "name": "Takeshi Takadera",
+          "role": "Director",
+          "notableWork": "Oshi No Ko",
+          "notableWorkId": 150672,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 111501,
+          "name": "Junichirou Taniguchi",
+          "role": "Director",
+          "notableWork": "Your Name.",
+          "notableWorkId": 21519,
+          "notableWorkScore": 86
+        },
+        {
+          "personId": 134794,
+          "name": "Daisuke Hiramaki",
+          "role": "Director",
+          "notableWork": "Naruto: Shippuden",
+          "notableWorkId": 1735,
+          "notableWorkScore": 82
+        }
+      ]
+    },
+    {
+      "id": 184951,
+      "pedigree": [
+        {
+          "personId": 105138,
+          "name": "Eriko Kimura",
+          "role": "Director",
+          "notableWork": "DAN DA DAN",
+          "notableWorkId": 171018,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 118624,
+          "name": "Kyouhei Ishiguro",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 119689,
+          "name": "Tomoyuki Shiokawa",
+          "role": "Director",
+          "notableWork": "The Promised Neverland",
+          "notableWorkId": 101759,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 179062,
+      "pedigree": [
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 143032,
+          "name": "Mariko Kubo",
+          "role": "Director",
+          "notableWork": "Gurren Lagann",
+          "notableWorkId": 2001,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 147656,
+          "name": "Tatsuma Minamikawa",
+          "role": "Director",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 166617,
+      "pedigree": [
+        {
+          "personId": 118429,
+          "name": "Masanori Tsuchiya",
+          "role": "Director",
+          "notableWork": "Wotakoi: Love is Hard for Otaku",
+          "notableWorkId": 99578,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 128243,
+          "name": "Shun Enokido",
+          "role": "Director",
+          "notableWork": "One-Punch Man",
+          "notableWorkId": 21087,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 128687,
+          "name": "Shinichi Miyakaze",
+          "role": "Director",
+          "notableWork": "Parasyte -the maxim-",
+          "notableWorkId": 20623,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 189046,
+      "pedigree": [
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 134798,
+          "name": "Masahiro Shinohara",
+          "role": "Director",
+          "notableWork": "Re:ZERO -Starting Life in Another World-",
+          "notableWorkId": 21355,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 144948,
+          "name": "Ryouka Kinoshita",
+          "role": "Director",
+          "notableWork": "Re:ZERO -Starting Life in Another World-",
+          "notableWorkId": 21355,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 180745,
+      "pedigree": [
+        {
+          "personId": 118912,
+          "name": "Satoki Iida",
+          "role": "Director",
+          "notableWork": "Assassination Classroom",
+          "notableWorkId": 20755,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 133412,
+          "name": "Noriyuki Nomata",
+          "role": "Director",
+          "notableWork": "Tokyo Revengers",
+          "notableWorkId": 120120,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 146153,
+          "name": "Hirofune Hane",
+          "role": "Director",
+          "notableWork": "DARLING in the FRANXX",
+          "notableWorkId": 99423,
+          "notableWorkScore": 69
+        }
+      ]
+    },
+    {
+      "id": 182205,
+      "pedigree": [
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 105146,
+          "name": "Kenji Yasuda",
+          "role": "Director",
+          "notableWork": "Fullmetal Alchemist",
+          "notableWorkId": 121,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 110107,
+          "name": "Naokatsu Tsuda",
+          "role": "Director",
+          "notableWork": "JoJo's Bizarre Adventure (TV)",
+          "notableWorkId": 14719,
+          "notableWorkScore": 77
+        }
+      ]
+    },
+    {
+      "id": 178789,
+      "pedigree": [
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 119953,
+          "name": "Keiya Nakano",
+          "role": "Director",
+          "notableWork": "Blue Exorcist",
+          "notableWorkId": 9919,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 120031,
+          "name": "Masakazu Miyake",
+          "role": "Director",
+          "notableWork": "Steins;Gate",
+          "notableWorkId": 9253,
+          "notableWorkScore": 89
+        }
+      ]
+    },
+    {
+      "id": 190327,
+      "pedigree": [
+        {
+          "personId": 101016,
+          "name": "Yoshikazu Iwanami",
+          "role": "Director",
+          "notableWork": "Sword Art Online",
+          "notableWorkId": 11757,
+          "notableWorkScore": 70
+        },
+        {
+          "personId": 106845,
+          "name": "Toshiyuki Katou",
+          "role": "Director",
+          "notableWork": "Steins;Gate",
+          "notableWorkId": 9253,
+          "notableWorkScore": 89
+        },
+        {
+          "personId": 119573,
+          "name": "Hideya Takahashi",
+          "role": "Director",
+          "notableWork": "Sword Art Online",
+          "notableWorkId": 11757,
+          "notableWorkScore": 70
+        }
+      ]
+    },
+    {
+      "id": 135865,
+      "pedigree": [
+        {
+          "personId": 121055,
+          "name": "Yuuji Hosogoe",
+          "role": "Director",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 153960,
+          "name": "Takayuki Yamamoto",
+          "role": "Director",
+          "notableWork": "My Hero Academia Season 2",
+          "notableWorkId": 21856,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 121054,
+          "name": "Kenta Ihara",
+          "role": "Series Composition",
+          "notableWork": "Vinland Saga",
+          "notableWorkId": 101348,
+          "notableWorkScore": 87
+        }
+      ]
+    },
+    {
+      "id": 195600,
+      "pedigree": [
+        {
+          "personId": 101518,
+          "name": "Masahiro Andou",
+          "role": "Director",
+          "notableWork": "Fullmetal Alchemist: Brotherhood",
+          "notableWorkId": 5114,
+          "notableWorkScore": 90
+        },
+        {
+          "personId": 118586,
+          "name": "Kazuhiro Wakabayashi",
+          "role": "Director",
+          "notableWork": "Mob Psycho 100",
+          "notableWorkId": 21507,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 120002,
+          "name": "Nobuhiro Arai",
+          "role": "Director",
+          "notableWork": "Fullmetal Alchemist: Brotherhood",
+          "notableWorkId": 5114,
+          "notableWorkScore": 90
+        }
+      ]
+    },
+    {
+      "id": 187264,
+      "pedigree": [
+        {
+          "personId": 106185,
+          "name": "Hiroyuki Kanbe",
+          "role": "Director",
+          "notableWork": "ERASED",
+          "notableWorkId": 21234,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 144097,
+          "name": "Takatoshi Hamano",
+          "role": "Director",
+          "notableWork": "GOBLIN SLAYER",
+          "notableWorkId": 101165,
+          "notableWorkScore": 71
+        },
+        {
+          "personId": 144534,
+          "name": "Kenta Tsuboi",
+          "role": "Director",
+          "notableWork": "Solo Leveling Season 2 -Arise from the Shadow-",
+          "notableWorkId": 176496,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 170019,
+      "pedigree": [
+        {
+          "personId": 155697,
+          "name": "Tomoya Kamijou",
+          "role": "Director",
+          "notableWork": "Fire Force",
+          "notableWorkId": 105310,
+          "notableWorkScore": 76
+        },
+        {
+          "personId": 239426,
+          "name": "Chihiro Kumano",
+          "role": "Director",
+          "notableWork": "Black Clover",
+          "notableWorkId": 97940,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 267109,
+          "name": "Ryousuke Kawai",
+          "role": "Director",
+          "notableWork": "Trapped in a Dating Sim: The World of Otome Games Is Tough for Mobs",
+          "notableWorkId": 142074,
+          "notableWorkScore": 71
+        }
+      ]
+    },
+    {
+      "id": 182300,
+      "pedigree": [
+        {
+          "personId": 112047,
+          "name": "Tatsuya Yoshihara",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 119347,
+          "name": "Hideaki Nakano",
+          "role": "Director",
+          "notableWork": "Golden Time",
+          "notableWorkId": 17895,
+          "notableWorkScore": 75
+        },
+        {
+          "personId": 197856,
+          "name": "Sayaka Ono",
+          "role": "Director",
+          "notableWork": "Code Geass: Lelouch of the Rebellion",
+          "notableWorkId": 1575,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 201903,
+      "pedigree": [
+        {
+          "personId": 112759,
+          "name": "Sunao Chikaoka",
+          "role": "Director",
+          "notableWork": "Fullmetal Alchemist: Brotherhood",
+          "notableWorkId": 5114,
+          "notableWorkScore": 90
+        },
+        {
+          "personId": 114914,
+          "name": "Shingo Yamashita",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 131341,
+          "name": "Moaang",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 199221,
+      "pedigree": []
+    },
+    {
+      "id": 180746,
+      "pedigree": [
+        {
+          "personId": 137912,
+          "name": "Shinyo Kondou",
+          "role": "Director",
+          "notableWork": "KONOSUBA -God's blessing on this wonderful world!",
+          "notableWorkId": 21202,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 148059,
+          "name": "Shinsuke Ooshima",
+          "role": "Director",
+          "notableWork": "KONOSUBA -God's blessing on this wonderful world!",
+          "notableWorkId": 21202,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 149567,
+          "name": "Yoshihiro Nakamura",
+          "role": "Director",
+          "notableWork": "Mushoku Tensei: Jobless Reincarnation Season 2",
+          "notableWorkId": 146065,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 133007,
+      "pedigree": [
+        {
+          "personId": 100089,
+          "name": "Akiyuki Shinbou",
+          "role": "Director",
+          "notableWork": "Bakemonogatari",
+          "notableWorkId": 5081,
+          "notableWorkScore": 82
+        },
+        {
+          "personId": 107328,
+          "name": "Yukihiro Miyamoto",
+          "role": "Director",
+          "notableWork": "Bakemonogatari",
+          "notableWorkId": 5081,
+          "notableWorkScore": 82
+        },
+        {
+          "personId": 127492,
+          "name": "Magica Quartet",
+          "role": "Original Creator",
+          "notableWork": "Puella Magi Madoka Magica",
+          "notableWorkId": 9756,
+          "notableWorkScore": 83
+        }
+      ]
+    },
+    {
+      "id": 177385,
+      "pedigree": [
+        {
+          "personId": 101671,
+          "name": "Takahiro Oomori",
+          "role": "Director",
+          "notableWork": "Durarara!!",
+          "notableWorkId": 6746,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 128664,
+          "name": "Satoshi Namiki",
+          "role": "Director",
+          "notableWork": "Another",
+          "notableWorkId": 11111,
+          "notableWorkScore": 71
+        },
+        {
+          "personId": 144736,
+          "name": "Miyuki Ooshiro",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 176276,
+      "pedigree": [
+        {
+          "personId": 118607,
+          "name": "Masafumi Tamura",
+          "role": "Director",
+          "notableWork": "Durarara!!",
+          "notableWorkId": 6746,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 120169,
+          "name": "Chikako Yokota",
+          "role": "Director",
+          "notableWork": "Bungo Stray Dogs",
+          "notableWorkId": 21311,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 123934,
+          "name": "Kouji Hayashi",
+          "role": "Director",
+          "notableWork": "WONDER EGG PRIORITY",
+          "notableWorkId": 124845,
+          "notableWorkScore": 74
+        }
+      ]
+    },
+    {
+      "id": 195515,
+      "pedigree": []
+    },
+    {
+      "id": 178005,
+      "pedigree": [
+        {
+          "personId": 120040,
+          "name": "Youko Itou",
+          "role": "Director",
+          "notableWork": "Toradora!",
+          "notableWorkId": 4224,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 133657,
+          "name": "Chika Nagaoka",
+          "role": "Director",
+          "notableWork": "Toradora!",
+          "notableWorkId": 4224,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 152890,
+          "name": "Mitsuru Chiba",
+          "role": "Director",
+          "notableWork": "The Pet Girl of Sakurasou",
+          "notableWorkId": 13759,
+          "notableWorkScore": 78
+        }
+      ]
+    },
+    {
+      "id": 185874,
+      "pedigree": [
+        {
+          "personId": 118452,
+          "name": "Takashi Hashimoto",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 119841,
+          "name": "Tomohisa Taguchi",
+          "role": "Director",
+          "notableWork": "Black Clover",
+          "notableWorkId": 97940,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 119896,
+          "name": "Yukio Nagasaki",
+          "role": "Director",
+          "notableWork": "Blue Spring Ride",
+          "notableWorkId": 20596,
+          "notableWorkScore": 75
+        }
+      ]
+    },
+    {
+      "id": 182206,
+      "pedigree": [
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 106444,
+          "name": "Yasuhito Kikuchi",
+          "role": "Director",
+          "notableWork": "That Time I Got Reincarnated as a Slime",
+          "notableWorkId": 101280,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 125180,
+          "name": "Masayori Komine",
+          "role": "Director",
+          "notableWork": "A Whisker Away",
+          "notableWorkId": 114963,
+          "notableWorkScore": 73
+        }
+      ]
+    },
+    {
+      "id": 187942,
+      "pedigree": [
+        {
+          "personId": 120031,
+          "name": "Masakazu Miyake",
+          "role": "Director",
+          "notableWork": "Steins;Gate",
+          "notableWorkId": 9253,
+          "notableWorkScore": 89
+        },
+        {
+          "personId": 147481,
+          "name": "Yuuichi Morita",
+          "role": "Director",
+          "notableWork": "WONDER EGG PRIORITY",
+          "notableWorkId": 124845,
+          "notableWorkScore": 74
+        },
+        {
+          "personId": 211987,
+          "name": "Tsutomu Nomoto",
+          "role": "Director",
+          "notableWork": "Beck: Mongolian Chop Squad",
+          "notableWorkId": 57,
+          "notableWorkScore": 80
+        }
+      ]
+    },
+    {
+      "id": 195516,
+      "pedigree": [
+        {
+          "personId": 121911,
+          "name": "Akinori Fudesaka",
+          "role": "Director",
+          "notableWork": "Komi Can’t Communicate",
+          "notableWorkId": 133965,
+          "notableWorkScore": 76
+        },
+        {
+          "personId": 122066,
+          "name": "Touko Shino",
+          "role": "Character Design",
+          "notableWork": "The Apothecary Diaries",
+          "notableWorkId": 161645,
+          "notableWorkScore": 88
+        }
+      ]
+    },
+    {
+      "id": 195322,
+      "pedigree": [
+        {
+          "personId": 111749,
+          "name": "Masafumi Mima",
+          "role": "Director",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 119341,
+          "name": "Kenichi Suzuki",
+          "role": "Director",
+          "notableWork": "JoJo's Bizarre Adventure (TV)",
+          "notableWorkId": 14719,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 120007,
+          "name": "Yukihiro Watanabe",
+          "role": "Director",
+          "notableWork": "Kaguya-sama: Love is War",
+          "notableWorkId": 101921,
+          "notableWorkScore": 83
+        }
+      ]
+    },
+    {
+      "id": 185993,
+      "pedigree": [
+        {
+          "personId": 105428,
+          "name": "Michio Fukuda",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 119893,
+          "name": "Nobuyuki Abe",
+          "role": "Director",
+          "notableWork": "The Detective Is Already Dead",
+          "notableWorkId": 128712,
+          "notableWorkScore": 61
+        },
+        {
+          "personId": 218008,
+          "name": "Seung-Deok Kim",
+          "role": "Director",
+          "notableWork": "Black Clover",
+          "notableWorkId": 97940,
+          "notableWorkScore": 79
+        }
+      ]
+    },
+    {
+      "id": 192507,
+      "pedigree": [
+        {
+          "personId": 144402,
+          "name": "Youko Nakao",
+          "role": "Director",
+          "notableWork": "Trapped in a Dating Sim: The World of Otome Games Is Tough for Mobs",
+          "notableWorkId": 142074,
+          "notableWorkScore": 71
+        },
+        {
+          "personId": 148088,
+          "name": "Yuusuke Maruyama",
+          "role": "Director",
+          "notableWork": "Soul Eater",
+          "notableWorkId": 3588,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 158125,
+          "name": "Mutsuki Aoki",
+          "role": "Director",
+          "notableWork": "Attack on Titan Season 3 Part 2",
+          "notableWorkId": 104578,
+          "notableWorkScore": 90
+        }
+      ]
+    },
+    {
+      "id": 185262,
+      "pedigree": [
+        {
+          "personId": 112537,
+          "name": "Hirotsugu Kakoi",
+          "role": "Director",
+          "notableWork": "Blue Exorcist",
+          "notableWorkId": 9919,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 120061,
+          "name": "Sugawara  Teruaki",
+          "role": "Director",
+          "notableWork": "Harem in the Labyrinth of Another World",
+          "notableWorkId": 127090,
+          "notableWorkScore": 63
+        },
+        {
+          "personId": 130008,
+          "name": "Makoto Tamagawa",
+          "role": "Director",
+          "notableWork": "Tokyo Revengers",
+          "notableWorkId": 120120,
+          "notableWorkScore": 77
+        }
+      ]
+    },
+    {
+      "id": 163144,
+      "pedigree": [
+        {
+          "personId": 126654,
+          "name": "Masako Satou",
+          "role": "Director",
+          "notableWork": "HAIKYU!!",
+          "notableWorkId": 20464,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 134517,
+          "name": "Eiji Inomoto",
+          "role": "Director",
+          "notableWork": "The Rising of the Shield Hero",
+          "notableWorkId": 99263,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 147040,
+          "name": "Katsuhisa Oono",
+          "role": "Director",
+          "notableWork": "KanColle",
+          "notableWorkId": 20553,
+          "notableWorkScore": 64
+        }
+      ]
+    },
+    {
+      "id": 159042,
+      "pedigree": [
+        {
+          "personId": 103743,
+          "name": "Shinji Ishihira",
+          "role": "Director",
+          "notableWork": "My Hero Academia",
+          "notableWorkId": 21459,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 120066,
+          "name": "Shouji Hata",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 131330,
+          "name": "Satoshi Sakai",
+          "role": "Director",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 186333,
+      "pedigree": [
+        {
+          "personId": 119886,
+          "name": "Hideaki Ooba",
+          "role": "Director",
+          "notableWork": "Dr. STONE",
+          "notableWorkId": 105333,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 144480,
+          "name": "Yuki Enatsu",
+          "role": "Series Composition",
+          "notableWork": "Princess Jellyfish",
+          "notableWorkId": 8129,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 116513,
+          "name": "Youko Satou",
+          "role": "Character Design",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 173172,
+      "pedigree": [
+        {
+          "personId": 115016,
+          "name": "Yuuichirou Hayashi",
+          "role": "Director",
+          "notableWork": "Hunter x Hunter (2011)",
+          "notableWorkId": 11061,
+          "notableWorkScore": 89
+        },
+        {
+          "personId": 115568,
+          "name": "Tomohiro Kishi",
+          "role": "Director",
+          "notableWork": "Attack on Titan Final Season",
+          "notableWorkId": 110277,
+          "notableWorkScore": 87
+        },
+        {
+          "personId": 118972,
+          "name": "Akiko Fujita",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 199547,
+      "pedigree": [
+        {
+          "personId": 128668,
+          "name": "Haru Yamada",
+          "role": "Director",
+          "notableWork": "Your Name.",
+          "notableWorkId": 21519,
+          "notableWorkScore": 86
+        },
+        {
+          "personId": 129980,
+          "name": "Kouhei Tokuoka",
+          "role": "Director",
+          "notableWork": "ERASED",
+          "notableWorkId": 21234,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 146158,
+          "name": "Motonobu Hori",
+          "role": "Director",
+          "notableWork": "My Hero Academia Season 3",
+          "notableWorkId": 100166,
+          "notableWorkScore": 79
+        }
+      ]
+    },
+    {
+      "id": 191205,
+      "pedigree": [
+        {
+          "personId": 125179,
+          "name": "Takayuki Kuriyama",
+          "role": "Director",
+          "notableWork": "Re:CREATORS",
+          "notableWorkId": 97980,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 126916,
+          "name": "Tetsuya Tatamitani",
+          "role": "Director",
+          "notableWork": "Lucifer and the Biscuit Hammer",
+          "notableWorkId": 144323,
+          "notableWorkScore": 50
+        },
+        {
+          "personId": 120783,
+          "name": "Kururi",
+          "role": "Character Design",
+          "notableWork": "Magic Maker: How to Make Magic in Another World",
+          "notableWorkId": 179297,
+          "notableWorkScore": 66
+        }
+      ]
+    },
+    {
+      "id": 160275,
+      "pedigree": [
+        {
+          "personId": 106507,
+          "name": "Masayuki Kojima",
+          "role": "Director",
+          "notableWork": "Blue Exorcist",
+          "notableWorkId": 9919,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 121797,
+          "name": "Osamu Masuyama",
+          "role": "Director",
+          "notableWork": "Your Name.",
+          "notableWorkId": 21519,
+          "notableWorkScore": 86
+        },
+        {
+          "personId": 128668,
+          "name": "Haru Yamada",
+          "role": "Director",
+          "notableWork": "Your Name.",
+          "notableWorkId": 21519,
+          "notableWorkScore": 86
+        }
+      ]
+    },
+    {
+      "id": 169580,
+      "pedigree": [
+        {
+          "personId": 105935,
+          "name": "Hideki Tachibana",
+          "role": "Director",
+          "notableWork": "Naruto",
+          "notableWorkId": 20,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 118429,
+          "name": "Masanori Tsuchiya",
+          "role": "Director",
+          "notableWork": "Wotakoi: Love is Hard for Otaku",
+          "notableWorkId": 99578,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 121285,
+          "name": "Shouko Takimoto",
+          "role": "Director",
+          "notableWork": "Your Name.",
+          "notableWorkId": 21519,
+          "notableWorkScore": 86
+        }
+      ]
+    },
+    {
+      "id": 202955,
+      "pedigree": [
+        {
+          "personId": 101474,
+          "name": "Kazuto Nakazawa",
+          "role": "Director",
+          "notableWork": "Attack on Titan Season 2",
+          "notableWorkId": 20958,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 103102,
+          "name": "Yuusuke Takeda",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 151779,
+          "name": "Keisuke Nozawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 186497,
+      "pedigree": [
+        {
+          "personId": 107300,
+          "name": "Mankyuu",
+          "role": "Director",
+          "notableWork": "Kakushigoto",
+          "notableWorkId": 113311,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 168938,
+          "name": "Mika Watanabe",
+          "role": "Director",
+          "notableWork": "DARLING in the FRANXX",
+          "notableWorkId": 99423,
+          "notableWorkScore": 69
+        },
+        {
+          "personId": 204558,
+          "name": "Kouhei Yoshida",
+          "role": "Director",
+          "notableWork": "March comes in like a lion",
+          "notableWorkId": 21366,
+          "notableWorkScore": 83
+        }
+      ]
+    },
+    {
+      "id": 182317,
+      "pedigree": [
+        {
+          "personId": 119350,
+          "name": "Masaki Mayuzumi",
+          "role": "Director",
+          "notableWork": "The Dangers in My Heart",
+          "notableWorkId": 153152,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 121841,
+          "name": "Hiroaki Akagi",
+          "role": "Director",
+          "notableWork": "The Disastrous Life of Saiki K.",
+          "notableWorkId": 21804,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 153135,
+          "name": "Yuuichi Takezawa",
+          "role": "Director",
+          "notableWork": "Re:ZERO -Starting Life in Another World-",
+          "notableWorkId": 21355,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 190143,
+      "pedigree": [
+        {
+          "personId": 103102,
+          "name": "Yuusuke Takeda",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 105138,
+          "name": "Eriko Kimura",
+          "role": "Director",
+          "notableWork": "DAN DA DAN",
+          "notableWorkId": 171018,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 136052,
+          "name": "Ken Yamamoto",
+          "role": "Director",
+          "notableWork": "JUJUTSU KAISEN",
+          "notableWorkId": 113415,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 196935,
+      "pedigree": [
+        {
+          "personId": 110643,
+          "name": "Ayumu Watanabe",
+          "role": "Director",
+          "notableWork": "Komi Can’t Communicate",
+          "notableWorkId": 133965,
+          "notableWorkScore": 76
+        },
+        {
+          "personId": 117429,
+          "name": "Yasunari Nitta",
+          "role": "Director",
+          "notableWork": "One-Punch Man",
+          "notableWorkId": 21087,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 120432,
+          "name": "Hisashi Kagawa",
+          "role": "Director",
+          "notableWork": "Toradora!",
+          "notableWorkId": 4224,
+          "notableWorkScore": 78
+        }
+      ]
+    },
+    {
+      "id": 171110,
+      "pedigree": [
+        {
+          "personId": 101180,
+          "name": "Yoshiaki Iwasaki",
+          "role": "Director",
+          "notableWork": "The Familiar of Zero",
+          "notableWorkId": 1195,
+          "notableWorkScore": 68
+        },
+        {
+          "personId": 102499,
+          "name": "Seiki Tamura",
+          "role": "Director",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 133280,
+          "name": "Mayuko Koike",
+          "role": "Director",
+          "notableWork": "Mushoku Tensei: Jobless Reincarnation",
+          "notableWorkId": 108465,
+          "notableWorkScore": 82
+        }
+      ]
+    },
+    {
+      "id": 197754,
+      "pedigree": [
+        {
+          "personId": 101498,
+          "name": "Yuuzou Satou",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 120643,
+          "name": "Kisuke Koizumi",
+          "role": "Director",
+          "notableWork": "Chainsaw Man",
+          "notableWorkId": 127230,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 151112,
+          "name": "Hironobu Hatanaka",
+          "role": "Director",
+          "notableWork": "Hunter x Hunter (2011)",
+          "notableWorkId": 11061,
+          "notableWorkScore": 89
+        }
+      ]
+    },
+    {
+      "id": 202102,
+      "pedigree": [
+        {
+          "personId": 121856,
+          "name": "Fumiyuki Gou",
+          "role": "Director",
+          "notableWork": "The Rising of the Shield Hero",
+          "notableWorkId": 99263,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 156628,
+          "name": "Jiann-Horng Wu",
+          "role": "Director",
+          "notableWork": "Plastic Memories",
+          "notableWorkId": 20872,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 169339,
+          "name": "Masaoki Nakashima",
+          "role": "Director",
+          "notableWork": "BNA",
+          "notableWorkId": 110354,
+          "notableWorkScore": 72
+        }
+      ]
+    },
+    {
+      "id": 184492,
+      "pedigree": [
+        {
+          "personId": 95936,
+          "name": "Hozumi Gouda",
+          "role": "Director",
+          "notableWork": "Akame ga Kill!",
+          "notableWorkId": 20613,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 109581,
+          "name": "Makoto Moriwaki",
+          "role": "Director",
+          "notableWork": "Maid-Sama!",
+          "notableWorkId": 7054,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 146328,
+          "name": "Hitomi Yoshida",
+          "role": "Director",
+          "notableWork": "KONOSUBA -God's blessing on this wonderful world!",
+          "notableWorkId": 21202,
+          "notableWorkScore": 79
+        }
+      ]
+    },
+    {
+      "id": 177679,
+      "pedigree": [
+        {
+          "personId": 101016,
+          "name": "Yoshikazu Iwanami",
+          "role": "Director",
+          "notableWork": "Sword Art Online",
+          "notableWorkId": 11757,
+          "notableWorkScore": 70
+        },
+        {
+          "personId": 105133,
+          "name": "Masanobu Nomura",
+          "role": "Director",
+          "notableWork": "Akame ga Kill!",
+          "notableWorkId": 20613,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 110107,
+          "name": "Naokatsu Tsuda",
+          "role": "Director",
+          "notableWork": "JoJo's Bizarre Adventure (TV)",
+          "notableWorkId": 14719,
+          "notableWorkScore": 77
+        }
+      ]
+    },
+    {
+      "id": 197824,
+      "pedigree": [
+        {
+          "personId": 121856,
+          "name": "Fumiyuki Gou",
+          "role": "Director",
+          "notableWork": "The Rising of the Shield Hero",
+          "notableWorkId": 99263,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 123947,
+          "name": "Hirofumi Sakagami",
+          "role": "Director",
+          "notableWork": "WONDER EGG PRIORITY",
+          "notableWorkId": 124845,
+          "notableWorkScore": 74
+        },
+        {
+          "personId": 124672,
+          "name": "Ryouichi Kuraya",
+          "role": "Director",
+          "notableWork": "Overlord",
+          "notableWorkId": 20832,
+          "notableWorkScore": 76
+        }
+      ]
+    },
+    {
+      "id": 170110,
+      "pedigree": [
+        {
+          "personId": 100652,
+          "name": "Shin Itagaki",
+          "role": "Director",
+          "notableWork": "Gurren Lagann",
+          "notableWorkId": 2001,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 122285,
+          "name": "Rein Kuwashima",
+          "role": "Character Design",
+          "notableWork": "I Got a Cheat Skill in Another World and Became Unrivaled in The Real World, Too",
+          "notableWorkId": 153845,
+          "notableWorkScore": 63
+        },
+        {
+          "personId": 146927,
+          "name": "Hiromi Kimura",
+          "role": "Character Design",
+          "notableWork": "So I'm a Spider, So What?",
+          "notableWorkId": 103632,
+          "notableWorkScore": 72
+        }
+      ]
+    },
+    {
+      "id": 191718,
+      "pedigree": [
+        {
+          "personId": 119420,
+          "name": "Nobuharu Kamanaka",
+          "role": "Director",
+          "notableWork": "Trigun",
+          "notableWorkId": 6,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 120043,
+          "name": "Satoshi Yano",
+          "role": "Director",
+          "notableWork": "Violet Evergarden",
+          "notableWorkId": 21827,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 142881,
+          "name": "Shigeyuki  Suga",
+          "role": "Director",
+          "notableWork": "Fullmetal Alchemist",
+          "notableWorkId": 121,
+          "notableWorkScore": 79
+        }
+      ]
+    },
+    {
+      "id": 194317,
+      "pedigree": [
+        {
+          "personId": 103143,
+          "name": "Keitarou Motonaga",
+          "role": "Director",
+          "notableWork": "Date A Live",
+          "notableWorkId": 15583,
+          "notableWorkScore": 68
+        },
+        {
+          "personId": 106606,
+          "name": "Takamitsu Kouno",
+          "role": "Series Composition",
+          "notableWork": "Gabriel DropOut",
+          "notableWorkId": 21878,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 347689,
+          "name": "TurtleMe",
+          "role": "Original Creator",
+          "notableWork": "The Beginning After the End",
+          "notableWorkId": 183161,
+          "notableWorkScore": 59
+        }
+      ]
+    },
+    {
+      "id": 182483,
+      "pedigree": [
+        {
+          "personId": 101483,
+          "name": "Takashi Yamazaki",
+          "role": "Director",
+          "notableWork": "My Hero Academia",
+          "notableWorkId": 21459,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 134957,
+          "name": "Masayoshi Kikuchi",
+          "role": "Director",
+          "notableWork": "Kill la Kill",
+          "notableWorkId": 18679,
+          "notableWorkScore": 79
+        }
+      ]
+    },
+    {
+      "id": 187260,
+      "pedigree": [
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 167973,
+          "name": "Shouhei Chino",
+          "role": "Director",
+          "notableWork": "Children of the Sea",
+          "notableWorkId": 103221,
+          "notableWorkScore": 72
+        },
+        {
+          "personId": 180215,
+          "name": "Junki Nakata",
+          "role": "Director",
+          "notableWork": "The Seven Deadly Sins: Revival of the Commandments",
+          "notableWorkId": 99539,
+          "notableWorkScore": 73
+        }
+      ]
+    },
+    {
+      "id": 189123,
+      "pedigree": [
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 142140,
+          "name": "Yuuki Kawashita",
+          "role": "Director",
+          "notableWork": "One-Punch Man",
+          "notableWorkId": 21087,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 159015,
+          "name": "Daisuke  Sakou",
+          "role": "Director",
+          "notableWork": "Tower of God",
+          "notableWorkId": 115230,
+          "notableWorkScore": 74
+        }
+      ]
+    },
+    {
+      "id": 185039,
+      "pedigree": [
+        {
+          "personId": 128969,
+          "name": "Yuuichirou Tozawa",
+          "role": "Director",
+          "notableWork": "Durarara!!",
+          "notableWorkId": 6746,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 164179,
+          "name": "Nozomi Nakatani",
+          "role": "Director",
+          "notableWork": "Tanaka-kun is Always Listless",
+          "notableWorkId": 21495,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 218680,
+          "name": "Ryouko Takashimizu",
+          "role": "Director",
+          "notableWork": "Rascal Does Not Dream of Bunny Girl Senpai",
+          "notableWorkId": 101291,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 190704,
+      "pedigree": [
+        {
+          "personId": 103155,
+          "name": "Yasushi Nagura",
+          "role": "Director",
+          "notableWork": "A Silent Voice",
+          "notableWorkId": 20954,
+          "notableWorkScore": 88
+        },
+        {
+          "personId": 132084,
+          "name": "Hisashi Isogawa",
+          "role": "Director",
+          "notableWork": "No Game, No Life",
+          "notableWorkId": 19815,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 133416,
+          "name": "Yasushi Muroya",
+          "role": "Director",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 199588,
+      "pedigree": [
+        {
+          "personId": 222832,
+          "name": "Teruhiko Niita",
+          "role": "Director",
+          "notableWork": "The Pet Girl of Sakurasou",
+          "notableWorkId": 13759,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 234006,
+          "name": "Atsushi Kimura",
+          "role": "Director",
+          "notableWork": "A Certain Scientific Railgun T",
+          "notableWorkId": 104462,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 266606,
+          "name": "Lion Matsuda",
+          "role": "Director",
+          "notableWork": "Reborn to Master the Blade: From Hero-King to Extraordinary Squire",
+          "notableWorkId": 142193,
+          "notableWorkScore": 64
+        }
+      ]
+    },
+    {
+      "id": 187901,
+      "pedigree": [
+        {
+          "personId": 118971,
+          "name": "Saho Yamane",
+          "role": "Director",
+          "notableWork": "High School of the Dead",
+          "notableWorkId": 8074,
+          "notableWorkScore": 67
+        },
+        {
+          "personId": 138285,
+          "name": "Ryousuke Naya",
+          "role": "Director",
+          "notableWork": "Demon Slayer: Kimetsu no Yaiba",
+          "notableWorkId": 101922,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 196452,
+          "name": "Haruka Serizawa",
+          "role": "Director",
+          "notableWork": "Attack on Titan Season 2",
+          "notableWorkId": 20958,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 183270,
+      "pedigree": [
+        {
+          "personId": 121855,
+          "name": "Nobuhito Sue",
+          "role": "Director",
+          "notableWork": "Attack on Titan Final Season",
+          "notableWorkId": 110277,
+          "notableWorkScore": 87
+        },
+        {
+          "personId": 123403,
+          "name": "Morita to Jumpei",
+          "role": "Director",
+          "notableWork": "Occultic;Nine",
+          "notableWorkId": 21708,
+          "notableWorkScore": 65
+        },
+        {
+          "personId": 147481,
+          "name": "Yuuichi Morita",
+          "role": "Director",
+          "notableWork": "WONDER EGG PRIORITY",
+          "notableWorkId": 124845,
+          "notableWorkScore": 74
+        }
+      ]
+    },
+    {
+      "id": 179950,
+      "pedigree": [
+        {
+          "personId": 106281,
+          "name": "Kousuke Murayama",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 119896,
+          "name": "Yukio Nagasaki",
+          "role": "Director",
+          "notableWork": "Blue Spring Ride",
+          "notableWorkId": 20596,
+          "notableWorkScore": 75
+        },
+        {
+          "personId": 120228,
+          "name": "Kenta Masuda",
+          "role": "Director",
+          "notableWork": "Mushoku Tensei: Jobless Reincarnation",
+          "notableWorkId": 108465,
+          "notableWorkScore": 82
+        }
+      ]
+    },
+    {
+      "id": 103303,
+      "pedigree": [
+        {
+          "personId": 147754,
+          "name": "Kouhei Okamura",
+          "role": "Director",
+          "notableWork": "A Silent Voice",
+          "notableWorkId": 20954,
+          "notableWorkScore": 88
+        },
+        {
+          "personId": 150315,
+          "name": "Minoru Oota",
+          "role": "Director",
+          "notableWork": "A Silent Voice",
+          "notableWorkId": 20954,
+          "notableWorkScore": 88
+        },
+        {
+          "personId": 102191,
+          "name": "Tatsuhiko Urahata",
+          "role": "Series Composition",
+          "notableWork": "Violet Evergarden",
+          "notableWorkId": 21827,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 189565,
+      "pedigree": [
+        {
+          "personId": 101549,
+          "name": "Satoshi Motoyama",
+          "role": "Director",
+          "notableWork": "Death Parade",
+          "notableWorkId": 20931,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 123001,
+          "name": "Satoshi Kuwabara",
+          "role": "Director",
+          "notableWork": "Dororo",
+          "notableWorkId": 101347,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 147033,
+          "name": "Shunya Kimura",
+          "role": "Director",
+          "notableWork": "The Seven Deadly Sins",
+          "notableWorkId": 20789,
+          "notableWorkScore": 73
+        }
+      ]
+    },
+    {
+      "id": 183661,
+      "pedigree": [
+        {
+          "personId": 103743,
+          "name": "Shinji Ishihira",
+          "role": "Director",
+          "notableWork": "My Hero Academia",
+          "notableWorkId": 21459,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 119350,
+          "name": "Masaki Mayuzumi",
+          "role": "Director",
+          "notableWork": "The Dangers in My Heart",
+          "notableWorkId": 153152,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 120066,
+          "name": "Shouji Hata",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 166521,
+      "pedigree": [
+        {
+          "personId": 114976,
+          "name": "Yukihiro Shibutani",
+          "role": "Director",
+          "notableWork": "Rascal Does Not Dream of Bunny Girl Senpai",
+          "notableWorkId": 101291,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 118500,
+          "name": "Shizutaka Sugahara",
+          "role": "Director",
+          "notableWork": "Dr. STONE",
+          "notableWorkId": 105333,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 192496,
+          "name": "Mao Miyake",
+          "role": "Director",
+          "notableWork": "Rascal Does Not Dream of Bunny Girl Senpai",
+          "notableWorkId": 101291,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 204356,
+      "pedigree": [
+        {
+          "personId": 104834,
+          "name": "Kouhei Horikoshi",
+          "role": "Original Creator",
+          "notableWork": "My Hero Academia",
+          "notableWorkId": 21459,
+          "notableWorkScore": 77
+        }
+      ]
+    },
+    {
+      "id": 194028,
+      "pedigree": [
+        {
+          "personId": 147355,
+          "name": "Kenta Oonishi",
+          "role": "Director",
+          "notableWork": "The Rising of the Shield Hero",
+          "notableWorkId": 99263,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 164179,
+          "name": "Nozomi Nakatani",
+          "role": "Director",
+          "notableWork": "Tanaka-kun is Always Listless",
+          "notableWorkId": 21495,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 105294,
+          "name": "Touko Machida",
+          "role": "Series Composition",
+          "notableWork": "Akame ga Kill!",
+          "notableWorkId": 20613,
+          "notableWorkScore": 73
+        }
+      ]
+    },
+    {
+      "id": 199112,
+      "pedigree": [
+        {
+          "personId": 106485,
+          "name": "Keito Watanabe",
+          "role": "Director",
+          "notableWork": "I Want to Eat Your Pancreas",
+          "notableWorkId": 99750,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 132891,
+          "name": "Takayuki Yamaguchi",
+          "role": "Director",
+          "notableWork": "ERASED",
+          "notableWorkId": 21234,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 136123,
+          "name": "Takuma Morooka",
+          "role": "Director",
+          "notableWork": "Keijo!!!!!!!!",
+          "notableWorkId": 21639,
+          "notableWorkScore": 68
+        }
+      ]
+    },
+    {
+      "id": 187941,
+      "pedigree": [
+        {
+          "personId": 144649,
+          "name": "Nobuyoshi Arai",
+          "role": "Director",
+          "notableWork": "Kakegurui",
+          "notableWorkId": 98314,
+          "notableWorkScore": 70
+        },
+        {
+          "personId": 148150,
+          "name": "Gou Takahashi",
+          "role": "Director",
+          "notableWork": "School Rumble Third Term",
+          "notableWorkId": 4015,
+          "notableWorkScore": 69
+        },
+        {
+          "personId": 149657,
+          "name": "Yuuta Takamura",
+          "role": "Director",
+          "notableWork": "The Seven Deadly Sins",
+          "notableWorkId": 20789,
+          "notableWorkScore": 73
+        }
+      ]
+    },
+    {
+      "id": 195518,
+      "pedigree": [
+        {
+          "personId": 101952,
+          "name": "Takayuki Hamana",
+          "role": "Director",
+          "notableWork": "PSYCHO-PASS",
+          "notableWorkId": 13601,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 118545,
+          "name": "Yoshimi Narita",
+          "role": "Series Composition",
+          "notableWork": "Shikimori's Not Just a Cutie",
+          "notableWorkId": 127911,
+          "notableWorkScore": 68
+        },
+        {
+          "personId": 118958,
+          "name": "Majiro",
+          "role": "Character Design",
+          "notableWork": "Fullmetal Alchemist: Brotherhood",
+          "notableWorkId": 5114,
+          "notableWorkScore": 90
+        }
+      ]
+    },
+    {
+      "id": 183660,
+      "pedigree": [
+        {
+          "personId": 119896,
+          "name": "Yukio Nagasaki",
+          "role": "Director",
+          "notableWork": "Blue Spring Ride",
+          "notableWorkId": 20596,
+          "notableWorkScore": 75
+        },
+        {
+          "personId": 120505,
+          "name": "Hiroshi Ikehata",
+          "role": "Director",
+          "notableWork": "Fullmetal Alchemist: Brotherhood",
+          "notableWorkId": 5114,
+          "notableWorkScore": 90
+        },
+        {
+          "personId": 132762,
+          "name": "Ayumi Satou",
+          "role": "Director",
+          "notableWork": "That Time I Got Reincarnated as a Slime",
+          "notableWorkId": 101280,
+          "notableWorkScore": 80
+        }
+      ]
+    },
+    {
+      "id": 194742,
+      "pedigree": [
+        {
+          "personId": 103110,
+          "name": "Yasunori Ebina",
+          "role": "Director",
+          "notableWork": "Naruto",
+          "notableWorkId": 20,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 103838,
+          "name": "Masahiko Oota",
+          "role": "Director",
+          "notableWork": "Himouto! Umaru-chan",
+          "notableWorkId": 20987,
+          "notableWorkScore": 68
+        },
+        {
+          "personId": 120050,
+          "name": "Shunsuke Suzuki",
+          "role": "Director",
+          "notableWork": "HAIKYU!!",
+          "notableWorkId": 20464,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 194393,
+      "pedigree": [
+        {
+          "personId": 107546,
+          "name": "Azuma Tani",
+          "role": "Director",
+          "notableWork": "Japan Anima(tor)’s Exhibition",
+          "notableWorkId": 20947,
+          "notableWorkScore": 71
+        },
+        {
+          "personId": 120043,
+          "name": "Satoshi Yano",
+          "role": "Director",
+          "notableWork": "Violet Evergarden",
+          "notableWorkId": 21827,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 155063,
+          "name": "Jun Kubota",
+          "role": "Director",
+          "notableWork": "Wandering Witch: The Journey of Elaina",
+          "notableWorkId": 112609,
+          "notableWorkScore": 74
+        }
+      ]
+    },
+    {
+      "id": 180228,
+      "pedigree": [
+        {
+          "personId": 101016,
+          "name": "Yoshikazu Iwanami",
+          "role": "Director",
+          "notableWork": "Sword Art Online",
+          "notableWorkId": 11757,
+          "notableWorkScore": 70
+        },
+        {
+          "personId": 123659,
+          "name": "Aoi Umeki",
+          "role": "Director",
+          "notableWork": "My Dress-Up Darling",
+          "notableWorkId": 132405,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 126916,
+          "name": "Tetsuya Tatamitani",
+          "role": "Director",
+          "notableWork": "Easygoing Territory Defense by the Optimistic Lord",
+          "notableWorkId": 191205,
+          "notableWorkScore": 68
+        }
+      ]
+    },
+    {
+      "id": 196187,
+      "pedigree": [
+        {
+          "personId": 169940,
+          "name": "Aoi Mori",
+          "role": "Director",
+          "notableWork": "Made in Abyss",
+          "notableWorkId": 97986,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 195697,
+          "name": "Masato Suzuki",
+          "role": "Director",
+          "notableWork": "Fruits Basket (2019)",
+          "notableWorkId": 105334,
+          "notableWorkScore": 82
+        },
+        {
+          "personId": 204558,
+          "name": "Kouhei Yoshida",
+          "role": "Director",
+          "notableWork": "March comes in like a lion",
+          "notableWorkId": 21366,
+          "notableWorkScore": 83
+        }
+      ]
+    },
+    {
+      "id": 192261,
+      "pedigree": [
+        {
+          "personId": 111329,
+          "name": "Toshinori Fukushima",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 119938,
+          "name": "Hiroto Morishita",
+          "role": "Director",
+          "notableWork": "Monster Musume: Everyday Life With Monster Girls",
+          "notableWorkId": 21093,
+          "notableWorkScore": 66
+        },
+        {
+          "personId": 238255,
+          "name": "Ayumi Kaikiri",
+          "role": "Director",
+          "notableWork": "Dragon Ball DAIMA",
+          "notableWorkId": 170083,
+          "notableWorkScore": 75
+        }
+      ]
+    },
+    {
+      "id": 199340,
+      "pedigree": [
+        {
+          "personId": 101389,
+          "name": "Souichi Masui",
+          "role": "Director",
+          "notableWork": "Rascal Does Not Dream of Bunny Girl Senpai",
+          "notableWorkId": 101291,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 114175,
+          "name": "Masahiro Yokotani",
+          "role": "Series Composition",
+          "notableWork": "Re:ZERO -Starting Life in Another World-",
+          "notableWorkId": 21355,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 114950,
+          "name": "Keiji Mizoguchi",
+          "role": "Character Design",
+          "notableWork": "Rascal Does Not Dream of Bunny Girl Senpai",
+          "notableWorkId": 101291,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 189275,
+      "pedigree": [
+        {
+          "personId": 107517,
+          "name": "Yasutaka Yamamoto",
+          "role": "Director",
+          "notableWork": "Blue Exorcist",
+          "notableWorkId": 9919,
+          "notableWorkScore": 73
+        },
+        {
+          "personId": 128918,
+          "name": "Yuuichi Imaizumi",
+          "role": "Director",
+          "notableWork": "Baccano!",
+          "notableWorkId": 2251,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 165273,
+          "name": "Kentarou Kashiwagi",
+          "role": "Director",
+          "notableWork": "Medalist",
+          "notableWorkId": 165171,
+          "notableWorkScore": 83
+        }
+      ]
+    },
+    {
+      "id": 199111,
+      "pedigree": [
+        {
+          "personId": 100152,
+          "name": "Shinji Takamatsu",
+          "role": "Director",
+          "notableWork": "Gintama",
+          "notableWorkId": 918,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 111441,
+          "name": "Kimitake Yoshioka",
+          "role": "Character Design",
+          "notableWork": "Grand Blue Dreaming",
+          "notableWorkId": 100922,
+          "notableWorkScore": 82
+        }
+      ]
+    },
+    {
+      "id": 187892,
+      "pedigree": [
+        {
+          "personId": 134313,
+          "name": "Tomotaka Kubo ",
+          "role": "Director",
+          "notableWork": "Promare",
+          "notableWorkId": 99425,
+          "notableWorkScore": 78
+        },
+        {
+          "personId": 152221,
+          "name": "Tomonari Nakajima",
+          "role": "Director",
+          "notableWork": "Tokyo Ghoul",
+          "notableWorkId": 20605,
+          "notableWorkScore": 76
+        },
+        {
+          "personId": 155439,
+          "name": "Kenichirou Akimoto",
+          "role": "Director",
+          "notableWork": "Children of the Sea",
+          "notableWorkId": 103221,
+          "notableWorkScore": 72
+        }
+      ]
+    },
+    {
+      "id": 187267,
+      "pedigree": [
+        {
+          "personId": 134521,
+          "name": "Shinichi Matsumi",
+          "role": "Director",
+          "notableWork": "BEASTARS",
+          "notableWorkId": 107660,
+          "notableWorkScore": 77
+        },
+        {
+          "personId": 121564,
+          "name": "Paru Itagaki",
+          "role": "Original Creator",
+          "notableWork": "BEASTARS",
+          "notableWorkId": 107660,
+          "notableWorkScore": 77
+        }
+      ]
+    },
+    {
+      "id": 178083,
+      "pedigree": [
+        {
+          "personId": 118912,
+          "name": "Satoki Iida",
+          "role": "Director",
+          "notableWork": "Assassination Classroom",
+          "notableWorkId": 20755,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 146668,
+          "name": "Maki Kodaira",
+          "role": "Director",
+          "notableWork": "Naruto: Shippuden",
+          "notableWorkId": 1735,
+          "notableWorkScore": 82
+        },
+        {
+          "personId": 163312,
+          "name": "Rumi Matsumoto",
+          "role": "Director",
+          "notableWork": "BANANA FISH",
+          "notableWorkId": 100388,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 200769,
+      "pedigree": [
+        {
+          "personId": 122910,
+          "name": "Makoto Hoshino",
+          "role": "Director",
+          "notableWork": "ERASED",
+          "notableWorkId": 21234,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 144097,
+          "name": "Takatoshi Hamano",
+          "role": "Director",
+          "notableWork": "GOBLIN SLAYER",
+          "notableWorkId": 101165,
+          "notableWorkScore": 71
+        },
+        {
+          "personId": 148480,
+          "name": "Yukiko Ashino",
+          "role": "Director",
+          "notableWork": "Fate/stay night: Unlimited Blade Works",
+          "notableWorkId": 19603,
+          "notableWorkScore": 80
+        }
+      ]
+    },
+    {
+      "id": 152677,
+      "pedigree": [
+        {
+          "personId": 133642,
+          "name": "Manabu Kurihara",
+          "role": "Director",
+          "notableWork": "Tokyo Ghoul",
+          "notableWorkId": 20605,
+          "notableWorkScore": 76
+        },
+        {
+          "personId": 177097,
+          "name": "Yousuke Itou",
+          "role": "Director",
+          "notableWork": "PSYCHO-PASS",
+          "notableWorkId": 13601,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 104540,
+          "name": "Hitomi Mieno",
+          "role": "Series Composition",
+          "notableWork": "Noragami",
+          "notableWorkId": 20447,
+          "notableWorkScore": 78
+        }
+      ]
+    },
+    {
+      "id": 185514,
+      "pedigree": [
+        {
+          "personId": 111049,
+          "name": "Yukiko Iijima",
+          "role": "Director",
+          "notableWork": "KONOSUBA -God's blessing on this wonderful world!- Legend of Crimson",
+          "notableWorkId": 102976,
+          "notableWorkScore": 82
+        },
+        {
+          "personId": 128918,
+          "name": "Yuuichi Imaizumi",
+          "role": "Director",
+          "notableWork": "Baccano!",
+          "notableWorkId": 2251,
+          "notableWorkScore": 81
+        },
+        {
+          "personId": 132127,
+          "name": "Rabbit MACHINE",
+          "role": "Director",
+          "notableWork": "Dahlia in Bloom: Crafting a Fresh Start with Magical Tools",
+          "notableWorkId": 168623,
+          "notableWorkScore": 66
+        }
+      ]
+    },
+    {
+      "id": 179813,
+      "pedigree": [
+        {
+          "personId": 156551,
+          "name": "Daisuke Suzuki",
+          "role": "Director",
+          "notableWork": "Gurren Lagann",
+          "notableWorkId": 2001,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 99012,
+          "name": "Hiroshi Seko",
+          "role": "Series Composition",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        }
+      ]
+    },
+    {
+      "id": 185542,
+      "pedigree": [
+        {
+          "personId": 101549,
+          "name": "Satoshi Motoyama",
+          "role": "Director",
+          "notableWork": "Death Parade",
+          "notableWorkId": 20931,
+          "notableWorkScore": 80
+        },
+        {
+          "personId": 117933,
+          "name": "Katsumi Ono",
+          "role": "Director",
+          "notableWork": "Skeleton Knight in Another World",
+          "notableWorkId": 132474,
+          "notableWorkScore": 70
+        },
+        {
+          "personId": 170566,
+          "name": "Hijiri Yamamoto",
+          "role": "Director",
+          "notableWork": "I Want to Eat Your Pancreas",
+          "notableWorkId": 99750,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 206914,
+      "pedigree": [
+        {
+          "personId": 102499,
+          "name": "Seiki Tamura",
+          "role": "Director",
+          "notableWork": "Attack on Titan",
+          "notableWorkId": 16498,
+          "notableWorkScore": 85
+        },
+        {
+          "personId": 120066,
+          "name": "Shouji Hata",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 127038,
+          "name": "Takahiko Abiru",
+          "role": "Director",
+          "notableWork": "Death Note",
+          "notableWorkId": 1535,
+          "notableWorkScore": 84
+        }
+      ]
+    },
+    {
+      "id": 177580,
+      "pedigree": [
+        {
+          "personId": 101468,
+          "name": "Shigeru Ueda",
+          "role": "Director",
+          "notableWork": "Bleach",
+          "notableWorkId": 269,
+          "notableWorkScore": 79
+        },
+        {
+          "personId": 103074,
+          "name": "Jin Aketagawa",
+          "role": "Director",
+          "notableWork": "Your lie in April",
+          "notableWorkId": 20665,
+          "notableWorkScore": 84
+        },
+        {
+          "personId": 111405,
+          "name": "Kei Ichikura",
+          "role": "Director",
+          "notableWork": "Angel Beats!",
+          "notableWorkId": 6547,
+          "notableWorkScore": 77
+        }
+      ]
+    },
+    {
+      "id": 178707,
+      "pedigree": [
+        {
+          "personId": 145795,
+          "name": "Jimmy Stone",
+          "role": "Director",
+          "notableWork": "Code Geass: Lelouch of the Rebellion R2",
+          "notableWorkId": 2904,
+          "notableWorkScore": 87
+        },
+        {
+          "personId": 112601,
+          "name": "Kana Ishida",
+          "role": "Character Design",
+          "notableWork": "Naruto: Shippuden",
+          "notableWorkId": 1735,
+          "notableWorkScore": 82
+        }
+      ]
+    },
+    {
+      "id": 198946,
+      "pedigree": [
+        {
+          "personId": 120018,
+          "name": "Atsushi Morikawa",
+          "role": "Director",
+          "notableWork": "Demon Slayer: Kimetsu no Yaiba",
+          "notableWorkId": 101922,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 120096,
+          "name": "Souichirou Sako",
+          "role": "Director",
+          "notableWork": "Fullmetal Alchemist: Brotherhood",
+          "notableWorkId": 5114,
+          "notableWorkScore": 90
+        },
+        {
+          "personId": 123725,
+          "name": "Natsuko Kondou",
+          "role": "Director",
+          "notableWork": "Toradora!",
+          "notableWorkId": 4224,
+          "notableWorkScore": 78
+        }
+      ]
+    },
+    {
+      "id": 181443,
+      "pedigree": [
+        {
+          "personId": 144097,
+          "name": "Takatoshi Hamano",
+          "role": "Director",
+          "notableWork": "GOBLIN SLAYER",
+          "notableWorkId": 101165,
+          "notableWorkScore": 71
+        },
+        {
+          "personId": 150705,
+          "name": "Shouko Shiga",
+          "role": "Director",
+          "notableWork": "Stars Align",
+          "notableWorkId": 104052,
+          "notableWorkScore": 76
+        },
+        {
+          "personId": 105294,
+          "name": "Touko Machida",
+          "role": "Series Composition",
+          "notableWork": "Akame ga Kill!",
+          "notableWorkId": 20613,
+          "notableWorkScore": 73
+        }
+      ]
+    },
+    {
+      "id": 177699,
+      "pedigree": [
+        {
+          "personId": 119402,
+          "name": "Taisei Iwasaki",
+          "role": "Director",
+          "notableWork": "Blood Blockade Battlefront",
+          "notableWorkId": 20727,
+          "notableWorkScore": 74
+        },
+        {
+          "personId": 120995,
+          "name": "Shuuhei Handa",
+          "role": "Director",
+          "notableWork": "One-Punch Man",
+          "notableWorkId": 21087,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 249262,
+          "name": "Moko-chan",
+          "role": "Director",
+          "notableWork": "DAN DA DAN",
+          "notableWorkId": 171018,
+          "notableWorkScore": 83
+        }
+      ]
+    },
+    {
+      "id": 187989,
+      "pedigree": [
+        {
+          "personId": 104813,
+          "name": "Shinji Ushiro",
+          "role": "Director",
+          "notableWork": "ONE PIECE",
+          "notableWorkId": 21,
+          "notableWorkScore": 87
+        },
+        {
+          "personId": 118966,
+          "name": "Kazuhiro Inoue",
+          "role": "Director",
+          "notableWork": "Another",
+          "notableWorkId": 11111,
+          "notableWorkScore": 71
+        },
+        {
+          "personId": 129977,
+          "name": "Tsunetaka Ema",
+          "role": "Director",
+          "notableWork": "Re:ZERO -Starting Life in Another World-",
+          "notableWorkId": 21355,
+          "notableWorkScore": 81
+        }
+      ]
+    },
+    {
+      "id": 189987,
+      "pedigree": [
+        {
+          "personId": 137129,
+          "name": "Risa Wakabayashi",
+          "role": "Director",
+          "notableWork": "Kaguya-sama: Love is War",
+          "notableWorkId": 101921,
+          "notableWorkScore": 83
+        },
+        {
+          "personId": 150697,
+          "name": "Tomohiko Kan",
+          "role": "Director",
+          "notableWork": "Grimgar of Fantasy and Ash",
+          "notableWorkId": 21428,
+          "notableWorkScore": 74
+        },
+        {
+          "personId": 163906,
+          "name": "Satoshi Houno",
+          "role": "Director",
+          "notableWork": "Love After World Domination",
+          "notableWorkId": 132010,
+          "notableWorkScore": 73
+        }
+      ]
+    }
+  ]
+}
